@@ -128,6 +128,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>.\asmlib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>libacof32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -157,12 +158,14 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>.\asmlib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>libacof64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AutoYUY2.cpp" />
     <ClCompile Include="nnedi3.cpp" />
     <ClCompile Include="PlanarFrame.cpp" />
+    <ClCompile Include="plugins_JPSDR.cpp" />
     <ClCompile Include="resample.cpp" />
     <ClCompile Include="resample_functions.cpp" />
     <ClCompile Include="ThreadPool.cpp" />
@@ -223,6 +226,7 @@
       <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</GenerateDebugInformation>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </MASM>
     <CustomBuild Include="nnedi3_asm_FMA_x64.asm">
       <FileType>Document</FileType>
@@ -240,6 +244,7 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)%(Filename).obj;%(Outputs)</Outputs>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </CustomBuild>
     <CustomBuild Include="nnedi3_asm_x64.asm">
       <FileType>Document</FileType>

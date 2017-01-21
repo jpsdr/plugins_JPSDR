@@ -36,6 +36,9 @@
     <ClCompile Include="resample_functions.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
+    <ClCompile Include="plugins_JPSDR.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="avisynth.h">
