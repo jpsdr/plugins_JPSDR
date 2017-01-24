@@ -132,9 +132,9 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
 	const short *current_coeff = program->pixel_coefficient+filter_size*MinY;
 
 	const int val_min = (range==1) ? 0 : 16;
-	const int val_max = (range==1) ? 255 : (range==2) ? 235 : 240;
+	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
 
-	if ((mode_YUY2) && (range>=2))
+	if ((mode_YUY2) && ((range>=2) && (range<=3)))
 	{
 		const int TabMax[4] = {235,240,235,240};
 
@@ -223,7 +223,7 @@ static void resize_v_c_planar_s(BYTE* dst, const BYTE* src, int dst_pitch, int s
 	const __int64 val_min = (range==1) ? 0 : (int)16 << (bits_per_pixel-8);
 	const __int64 val235 = (int)235 << (bits_per_pixel-8);
 	const __int64 val240 = (int)240 << (bits_per_pixel-8);
-	const __int64 val_max = (range==1) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val235 : val240;
+	const __int64 val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val235 : val240;
 
 	dst_pitch>>=1;
 
@@ -261,11 +261,11 @@ static void resize_v_mmx_planar(BYTE* dst, const BYTE* src, int dst_pitch, int s
   const __m64 zero = _mm_setzero_si64();
 
 	const int val_min = (range==1) ? 0 : 16;
-	const int val_max = (range==1) ? 255 : (range==2) ? 235 : 240;
+	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
 	const int TabMax[4] = {235,240,235,240};
 
 	const __m64 val_min_m64 = _mm_set1_pi16((short)((val_min << 8)|val_min));
-	const __m64 val_max_m64 = (mode_YUY2 && (range>=2)) ? _mm_set1_pi16((short)(((int)240 << 8)|235)) : _mm_set1_pi16((short)((val_max << 8)|val_max));
+	const __m64 val_max_m64 = (mode_YUY2 && ((range>=2) && (range<=3))) ? _mm_set1_pi16((short)(((int)240 << 8)|235)) : _mm_set1_pi16((short)((val_max << 8)|val_max));
 
   
   for (int y = MinY; y < MaxY; y++)
@@ -349,7 +349,7 @@ static void resize_v_mmx_planar(BYTE* dst, const BYTE* src, int dst_pitch, int s
     }
 
     // Leftover
-	if ((mode_YUY2) && (range>=2))
+	if ((mode_YUY2) && ((range>=2) && (range<=3)))
 	{
 		for (int x = wMod8; x < width; x++)
 		{
@@ -398,11 +398,11 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
 
 
 	const int val_min = (range==1) ? 0 : 16;
-	const int val_max = (range==1) ? 255 : (range==2) ? 235 : 240;
+	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
 	const int TabMax[4] = {235,240,235,240};
 
 	const __m128i val_min_m128 = _mm_set1_epi16((short)((val_min << 8)|val_min));
-	const __m128i val_max_m128 = (mode_YUY2 && (range>=2)) ? _mm_set1_epi16((short)(((int)240 << 8)|235)) : _mm_set1_epi16((short)((val_max << 8)|val_max));
+	const __m128i val_max_m128 = (mode_YUY2 && ((range>=2) && (range<=3))) ? _mm_set1_epi16((short)(((int)240 << 8)|235)) : _mm_set1_epi16((short)((val_max << 8)|val_max));
 
   for (int y = MinY; y < MaxY; y++)
   {
@@ -485,7 +485,7 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
     }
 
     // Leftover
-	if ((mode_YUY2) && (range>=2))
+	if ((mode_YUY2) && ((range>=2) && (range<=3)))
 	{
 		for (int x = wMod16; x < width; x++)
 		{
@@ -600,7 +600,7 @@ static void resize_v_sseX_planar_16(BYTE* dst0, const BYTE* src0, int dst_pitch,
 	const int val_min = (range==1) ? 0 : (int)16 << (bits_per_pixel-8);
 	const int val_235 = (int)235 << (bits_per_pixel-8);
 	const int val_240 = (int)240 << (bits_per_pixel-8);
-	const int val_max = (range==1) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val_235 : val_240;
+	const int val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val_235 : val_240;
 	const float val_minf = (float)val_min;
 	const float val_maxf = (float)val_max;
 
@@ -701,11 +701,11 @@ static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int
   const int wMod16 = (width >> 4) << 4;
 
 	const int val_min = (range==1) ? 0 : 16;
-	const int val_max = (range==1) ? 255 : (range==2) ? 235 : 240;
+	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
 	const int TabMax[4] = {235,240,235,240};
 
 	const __m128i val_min_m128 = _mm_set1_epi16((short)((val_min << 8)|val_min));
-	const __m128i val_max_m128 = (mode_YUY2 && (range>=2)) ? _mm_set1_epi16((short)(((int)240 << 8)|235)) : _mm_set1_epi16((short)((val_max << 8)|val_max));
+	const __m128i val_max_m128 = (mode_YUY2 && ((range>=2) && (range<=3))) ? _mm_set1_epi16((short)(((int)240 << 8)|235)) : _mm_set1_epi16((short)((val_max << 8)|val_max));
 
   const __m128i zero = _mm_setzero_si128();
   const __m128i coeff_unpacker = _mm_set_epi8(1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0);
@@ -757,7 +757,7 @@ static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int
     }
 
     // Leftover
-	if ((mode_YUY2) && (range>=2))
+	if ((mode_YUY2) && ((range>=2) && (range<=3)))
 	{
 		for (int x = wMod16; x < width; x++)
 		{
@@ -878,7 +878,7 @@ void resize_v_avx_planar_16(BYTE* dst0, const BYTE* src0, int dst_pitch, int src
 	const int val_min = (range==1) ? 0 : (int)16 << (bits_per_pixel-8);
 	const int val_235 = (int)235 << (bits_per_pixel-8);
 	const int val_240 = (int)240 << (bits_per_pixel-8);
-	const int val_max = (range==1) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val_235 : val_240;
+	const int val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val_235 : val_240;
 	const float val_minf = (float)val_min;
 	const float val_maxf = (float)val_max;
 
@@ -1035,7 +1035,7 @@ void resize_v_avx2_planar_16(BYTE* dst0, const BYTE* src0, int dst_pitch, int sr
 	const int val_min = (range==1) ? 0 : (int)16 << (bits_per_pixel-8);
 	const int val_235 = (int)235 << (bits_per_pixel-8);
 	const int val_240 = (int)240 << (bits_per_pixel-8);
-	const int val_max = (range==1) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val_235 : val_240;
+	const int val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val_235 : val_240;
 	const float val_minf = (float)val_min;
 	const float val_maxf = (float)val_max;
 
@@ -1200,11 +1200,11 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
   int y_src_pitch=0,y_dst_pitch=0;
   
 	const int val_min = (range==1) ? 0 : 16;
-	const int val_max = (range==1) ? 255 : (range==2) ? 235 : 240;
+	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
 
   // external loop y is much faster
 
-	if ((mode_YUY2) && (range>=2))
+	if ((mode_YUY2) && ((range>=2) && (range<=3)))
 	{
 		const int TabMax[4] = {235,240,235,240};
 
@@ -1266,7 +1266,7 @@ static void resize_h_c_planar_s(BYTE* dst, const BYTE* src, int dst_pitch, int s
 	const __int64 val_min = (range==1) ? 0 : (int)16 << (bits_per_pixel-8);
 	const __int64 val235 = (int)235 << (bits_per_pixel-8);
 	const __int64 val240 = (int)240 << (bits_per_pixel-8);
-	const __int64 val_max = (range==1) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val235 : val240;
+	const __int64 val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val235 : val240;
 
   src_pitch>>=1;
   dst_pitch>>=1;
@@ -1462,7 +1462,7 @@ static void resizer_h_ssse3_generic_int16_float_16(BYTE* dst8, const BYTE* src8,
 	const int val_min = (range==1) ? 0 : (int)16 << (bits_per_pixel-8);
 	const int val_235 = (int)235 << (bits_per_pixel-8);
 	const int val_240 = (int)240 << (bits_per_pixel-8);
-	const int val_max = (range==1) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val_235 : val_240;
+	const int val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val_235 : val_240;
 	const float val_minf = (float)val_min;
 	const float val_maxf = (float)val_max;
 
@@ -1604,10 +1604,10 @@ static void resizer_h_ssse3_generic(BYTE* dst, const BYTE* src, int dst_pitch, i
   const __m128i zero = _mm_setzero_si128();
 
 	const int val_min = (range==1) ? 0 : 16;
-	const int val_max = (range==1) ? 255 : (range==2) ? 235 : 240;
+	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
 
 	const __m128i val_min_m128 = _mm_set1_epi16((short)((val_min << 8)|val_min));
-	const __m128i val_max_m128 = (mode_YUY2 && (range>=2)) ? _mm_set1_epi16((short)(((int)240 << 8)|235)) : _mm_set1_epi16((short)((val_max << 8)|val_max));
+	const __m128i val_max_m128 = (mode_YUY2 && ((range>=2) && (range<=3))) ? _mm_set1_epi16((short)(((int)240 << 8)|235)) : _mm_set1_epi16((short)((val_max << 8)|val_max));
 
   for (int y = 0; y < height; y++)
   {
@@ -1701,11 +1701,11 @@ static void resizer_h_ssse3_8(BYTE* dst, const BYTE* src, int dst_pitch, int src
   const __m128i zero = _mm_setzero_si128();
 
 	const int val_min = (range==1) ? 0 : 16;
-	const int val_max = (range==1) ? 255 : (range==2) ? 235 : 240;
+	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
 	const int TabMax[4] = {235,240,235,240};
 
 	const __m128i val_min_m128 = _mm_set1_epi16((short)((val_min << 8)|val_min));
-	const __m128i val_max_m128 = (mode_YUY2 && (range>=2)) ? _mm_set1_epi16((short)(((int)240 << 8)|235)) : _mm_set1_epi16((short)((val_max << 8)|val_max));
+	const __m128i val_max_m128 = (mode_YUY2 && ((range>=2) && (range<=3))) ? _mm_set1_epi16((short)(((int)240 << 8)|235)) : _mm_set1_epi16((short)((val_max << 8)|val_max));
 
   for (int y = 0; y < height; y++)
   {
@@ -1942,7 +1942,7 @@ static void resizer_h_avx_generic_int16_float_16(BYTE* dst8, const BYTE* src8, i
 	const int val_min = (range==1) ? 0 : (int)16 << (bits_per_pixel-8);
 	const int val_235 = (int)235 << (bits_per_pixel-8);
 	const int val_240 = (int)240 << (bits_per_pixel-8);
-	const int val_max = (range==1) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val_235 : val_240;
+	const int val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val_235 : val_240;
 	const float val_minf = (float)val_min;
 	const float val_maxf = (float)val_max;
 
@@ -2231,7 +2231,7 @@ static void resizer_h_avx2_generic_int16_float_16(BYTE* dst8, const BYTE* src8, 
 	const int val_min = (range==1) ? 0 : (int)16 << (bits_per_pixel-8);
 	const int val_235 = (int)235 << (bits_per_pixel-8);
 	const int val_240 = (int)240 << (bits_per_pixel-8);
-	const int val_max = (range==1) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val_235 : val_240;
+	const int val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ? val_235 : val_240;
 	const float val_minf = (float)val_min;
 	const float val_maxf = (float)val_max;
 
@@ -2396,7 +2396,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
   mode_YUY2 = vi.IsYUY2();
 
-	if (range_mode!=1)
+	if ((range_mode!=1) && (range_mode!=4))
 	{
 		if (vi.IsYUV())
 		{
@@ -2420,8 +2420,10 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 	}
 	else
 	{
+		if (vi.IsRGB()) range_mode=1;
+
 		for (uint8_t i=0; i<3; i++)
-			plane_range[i]=1;
+			plane_range[i]=range_mode;
 	}
 	plane_range[3]=1;
 
@@ -2980,7 +2982,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	mode_YUY2 = vi.IsYUY2();
 
-	if (range_mode!=1)
+	if ((range_mode!=1) && (range_mode!=4))
 	{
 		if (vi.IsYUV())
 		{
@@ -3004,8 +3006,10 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 	}
 	else
 	{
+		if (vi.IsRGB()) range_mode=1;
+
 		for (uint8_t i=0; i<3; i++)
-			plane_range[i]=1;
+			plane_range[i]=range_mode;
 	}
 	plane_range[3]=1;
 	
@@ -3842,7 +3846,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
     env->ThrowError("ResizeMT: Width must be greater than 0.");
   }
 
-  if ((range_mode<0) || (range_mode>3)) env->ThrowError("ResizeMT: [range] must be between 0 and 3.");
+  if ((range_mode<0) || (range_mode>4)) env->ThrowError("ResizeMT: [range] must be between 0 and 4.");
 
   if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("ResizeMT: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
   if (prefetch==0) prefetch=1;
@@ -3896,7 +3900,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 
   uint8_t plane_range[4];
 
-	if (range_mode!=1)
+	if ((range_mode!=1) && (range_mode!=4))
 	{
 		if (vi.IsYUV())
 		{
@@ -3920,17 +3924,144 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 	}
 	else
 	{
+		if (vi.IsRGB()) range_mode=1;
+
 		for (uint8_t i=0; i<3; i++)
-			plane_range[i]=1;
+			plane_range[i]=range_mode;
 	}
 	plane_range[3]=1;
+
+	bool step1,step2;
 
   if (!fast_resize)
   {
 	  if (area_FirstH < area_FirstV)
 	  {
-		if ((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height))
-			result=clip;
+		if ((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)) step1=false;
+		else
+		{
+			if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
+			   && (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height))
+			{
+				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
+
+				if (((int(subrange_top) | int(subrange_height)) & mask) == 0) step1=false;
+				else step1=true;
+			}
+			else step1=true;
+		}
+		if (!((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)))
+		{
+			if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
+				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width))
+			{
+				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
+
+			    if (((int(subrange_left) | int(subrange_width)) & mask) == 0) step2=false;
+				else step2=true;
+			}
+			else step2=true;
+		}
+		else step2=false;
+	  }
+	  else
+	  {
+		if ((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)) step1=false;
+		else
+		{
+			if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
+				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width))
+			{
+				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
+
+			    if (((int(subrange_left) | int(subrange_width)) & mask) == 0) step1=false;
+				else step1=true;
+			}
+			else step1=true;
+		}
+		if (!((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)))
+		{
+			if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
+			&& (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height))
+			{
+				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
+				
+				if (((int(subrange_top) | int(subrange_height)) & mask) == 0) step2=false;
+				else step2=true;
+			}
+			else step2=true;
+		}
+		else step2=false;
+	  }
+  }
+  else
+  {	  
+	  if (area_FirstH < area_FirstV)
+	  {
+		if ((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)) step1=false;
+		else
+		{
+			if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
+			   && (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height))
+			{
+				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
+
+				if (((int(subrange_top) | int(subrange_height)) & mask) == 0) step1=false;
+				else step1=true;
+			}
+			else step1=true;
+		}
+		if (!((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)))
+		{
+			if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
+				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width))
+			{
+				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
+
+			    if (((int(subrange_left) | int(subrange_width)) & mask) == 0) step2=false;
+				else step2=true;
+			}
+			else step2=true;
+		}
+		else step2=false;
+	  }
+	  else
+	  {
+		if ((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)) step1=false;
+		else
+		{
+			if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
+				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width))
+			{
+				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
+
+			    if (((int(subrange_left) | int(subrange_width)) & mask) == 0) step1=false;
+				else step1=true;
+			}
+			else step1=true;
+		}
+		if (!((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)))
+		{
+			if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
+			&& (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height))
+			{
+				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
+				
+				if (((int(subrange_top) | int(subrange_height)) & mask) == 0) step2=false;
+				else step2=true;
+			}
+			else step2=true;
+		}
+		else step2=false;
+	  }
+  }
+
+
+  if (!fast_resize)
+  {
+	  if (area_FirstH < area_FirstV)
+	  {
+		if ((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)) result=clip;
 		else
 		{
 			if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
@@ -3943,9 +4074,9 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 					  AVSValue sargs[6] = {clip,0,int(subrange_top),vi.width,int(subrange_height),0};
 					  result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 				}
-				else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep, range_mode,avsp, f, env);
+				else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:range_mode,avsp, f, env);
 			}
-			else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,range_mode,avsp, f, env);
+			else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:range_mode,avsp, f, env);
 		}
 		if (!((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)))
 		{
@@ -4094,10 +4225,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 	  }
 	  else
 	  {
-		if ((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width))
-		{
-			result=clip;
-		}
+		if ((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)) result=clip;
 		else
 		{
 			if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
@@ -4123,7 +4251,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 							
 							if (avsp)
 							{
-								AVSValue sargs[2] = {result,"Y"};
+								AVSValue sargs[2] = {clip,"Y"};
 								
 								v=env->Invoke("PlaneToY",AVSValue(sargs,2)).AsClip();
 								sargs[1]="U";
@@ -4138,19 +4266,19 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 							}
 							else
 							{
-								vu = env->Invoke("UtoY8",result).AsClip();
-								vv = env->Invoke("VtoY8",result).AsClip();
-								v = env->Invoke("ConvertToY8",result).AsClip();								
+								vu = env->Invoke("UtoY8",clip).AsClip();
+								vv = env->Invoke("VtoY8",clip).AsClip();
+								v = env->Invoke("ConvertToY8",clip).AsClip();								
 							}		
 
 							v = env->Invoke(turnRightFunction,v).AsClip();
 							vu = env->Invoke(turnRightFunction,vu).AsClip();
 							vv = env->Invoke(turnRightFunction,vv).AsClip();
 							if (isAlphaChannel) va = env->Invoke(turnRightFunction,va).AsClip();
-							v = CreateResizeV(v.AsClip(), subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,plane_range[0],avsp, f, env);
-							vu = CreateResizeV(vu.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,plane_range[1],avsp, f, env);
-							vv = CreateResizeV(vv.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,plane_range[2],avsp, f, env);
-							if (isAlphaChannel) va = CreateResizeV(va.AsClip(), subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,plane_range[3],avsp, f, env);
+							v = CreateResizeV(v.AsClip(), subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:plane_range[0],avsp, f, env);
+							vu = CreateResizeV(vu.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:plane_range[1],avsp, f, env);
+							vv = CreateResizeV(vv.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:plane_range[2],avsp, f, env);
+							if (isAlphaChannel) va = CreateResizeV(va.AsClip(), subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:plane_range[3],avsp, f, env);
 							v = env->Invoke(turnLeftFunction,v).AsClip();
 							vu = env->Invoke(turnLeftFunction,vu).AsClip();
 							vv = env->Invoke(turnLeftFunction,vv).AsClip();
@@ -4164,15 +4292,15 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 						else
 						{
 							result=env->Invoke(turnRightFunction,clip).AsClip();
-							result=CreateResizeV(result, subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,range_mode,avsp, f, env);
+							result=CreateResizeV(result, subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:range_mode,avsp, f, env);
 							result=env->Invoke(turnLeftFunction,result).AsClip();
 						}
 					}
 					else
 					{
-						result=env->Invoke(turnLeftFunction,result).AsClip();
-						result=CreateResizeV(result, subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,range_mode,avsp, f, env);
-						result=env->Invoke(turnRightFunction,clip).AsClip();
+						result=env->Invoke(turnLeftFunction,clip).AsClip();
+						result=CreateResizeV(result, subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:range_mode,avsp, f, env);
+						result=env->Invoke(turnRightFunction,result).AsClip();
 					}
 				}
 			}
@@ -4189,7 +4317,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 						
 						if (avsp)
 						{
-							AVSValue sargs[2] = {result,"Y"};
+							AVSValue sargs[2] = {clip,"Y"};
 								
 							v=env->Invoke("PlaneToY",AVSValue(sargs,2)).AsClip();
 							sargs[1]="U";
@@ -4204,19 +4332,19 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 						}
 						else
 						{
-							vu = env->Invoke("UtoY8",result).AsClip();
-							vv = env->Invoke("VtoY8",result).AsClip();
-							v = env->Invoke("ConvertToY8",result).AsClip();								
+							vu = env->Invoke("UtoY8",clip).AsClip();
+							vv = env->Invoke("VtoY8",clip).AsClip();
+							v = env->Invoke("ConvertToY8",clip).AsClip();								
 						}
 						
 						v = env->Invoke(turnRightFunction,v).AsClip();
 						vu = env->Invoke(turnRightFunction,vu).AsClip();
 						vv = env->Invoke(turnRightFunction,vv).AsClip();
 						if (isAlphaChannel) va = env->Invoke(turnRightFunction,va).AsClip();
-						v = CreateResizeV(v.AsClip(), subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,plane_range[0],avsp, f, env);
-						vu = CreateResizeV(vu.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,plane_range[1],avsp, f, env);
-						vv = CreateResizeV(vv.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,plane_range[2],avsp, f, env);
-						if (isAlphaChannel) va = CreateResizeV(va.AsClip(), subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,plane_range[3],avsp, f, env);
+						v = CreateResizeV(v.AsClip(), subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:plane_range[0],avsp, f, env);
+						vu = CreateResizeV(vu.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:plane_range[1],avsp, f, env);
+						vv = CreateResizeV(vv.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:plane_range[2],avsp, f, env);
+						if (isAlphaChannel) va = CreateResizeV(va.AsClip(), subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:plane_range[3],avsp, f, env);
 						v = env->Invoke(turnLeftFunction,v).AsClip();
 						vu = env->Invoke(turnLeftFunction,vu).AsClip();
 						vv = env->Invoke(turnLeftFunction,vv).AsClip();
@@ -4230,15 +4358,15 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 					else
 					{
 						result=env->Invoke(turnRightFunction,clip).AsClip();
-						result=CreateResizeV(result, subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,range_mode,avsp, f, env);
+						result=CreateResizeV(result, subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:range_mode,avsp, f, env);
 						result=env->Invoke(turnLeftFunction,result).AsClip();
 					}
 				}
 				else
 				{
-					result=env->Invoke(turnLeftFunction,result).AsClip();
-					result=CreateResizeV(result, subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,range_mode,avsp, f, env);
-					result=env->Invoke(turnRightFunction,clip).AsClip();
+					result=env->Invoke(turnLeftFunction,clip).AsClip();
+					result=CreateResizeV(result, subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:range_mode,avsp, f, env);
+					result=env->Invoke(turnRightFunction,result).AsClip();
 				}
 			}
 		}
@@ -4264,8 +4392,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
   {	  
 	  if (area_FirstH < area_FirstV)
 	  {
-		if ((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height))
-			result=clip;
+		if ((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)) result=clip;
 		else
 		{
 			if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
@@ -4278,9 +4405,9 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 					  AVSValue sargs[6] = {clip,0,int(subrange_top),vi.width,int(subrange_height),0};
 					  result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 				}
-				else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,range_mode, avsp, f, env);
+				else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:range_mode, avsp, f, env);
 			}
-			else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,range_mode,avsp, f, env);
+			else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:range_mode,avsp, f, env);
 		}
 		if (!((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)))
 		{
@@ -4301,8 +4428,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 	  }
 	  else
 	  {
-		if ((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width))
-			result=clip;
+		if ((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)) result=clip;
 		else
 		{
 			if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
@@ -4315,11 +4441,10 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 				  AVSValue sargs[6] = {clip,int(subrange_left),0,int(subrange_width),vi.height,0};
 				  result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 				}
-				else result = CreateResizeH(clip, subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,range_mode,avsp, f, env);
+				else result = CreateResizeH(clip, subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:range_mode,avsp, f, env);
 			}
-			else result = CreateResizeH(clip, subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,range_mode,avsp, f, env);
+			else result = CreateResizeH(clip, subrange_left, subrange_width, target_width,_threads,_LogicalCores,_MaxPhysCores,_SetAffinity, _Sleep,(step2)?1:range_mode,avsp, f, env);
 		}
-
 		if (!((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)))
 		{
 			if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
@@ -4347,7 +4472,7 @@ AVSValue __cdecl FilteredResizeMT::Create_PointResize(AVSValue args, void*, IScr
   PointFilter f;
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(0),&args[3],&f, env );
+	  args[12].AsInt(0),args[13].AsInt(1),&args[3],&f, env );
 }
 
 
@@ -4356,7 +4481,7 @@ AVSValue __cdecl FilteredResizeMT::Create_BilinearResize(AVSValue args, void*, I
   TriangleFilter f;
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(0),&args[3],&f, env );
+	  args[12].AsInt(0),args[13].AsInt(1),&args[3],&f, env );
 }
 
 
@@ -4365,7 +4490,7 @@ AVSValue __cdecl FilteredResizeMT::Create_BicubicResize(AVSValue args, void*, IS
   MitchellNetravaliFilter f(args[3].AsDblDef(1./3.), args[4].AsDblDef(1./3.));
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[9].AsInt(0),
 	  args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(false),args[13].AsBool(false),
-	  args[14].AsInt(0),args[15].AsInt(0),&args[5],&f, env );
+	  args[14].AsInt(0),args[15].AsInt(1),&args[5],&f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_LanczosResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4373,7 +4498,7 @@ AVSValue __cdecl FilteredResizeMT::Create_LanczosResize(AVSValue args, void*, IS
   LanczosFilter f(args[7].AsInt(3));
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(0),&args[3],&f, env );
+	  args[13].AsInt(0),args[14].AsInt(1),&args[3],&f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4381,7 +4506,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Lanczos4Resize(AVSValue args, void*, I
   LanczosFilter f(4);
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(0),&args[3], &f, env );
+	  args[12].AsInt(0),args[13].AsInt(1),&args[3], &f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_BlackmanResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4389,7 +4514,7 @@ AVSValue __cdecl FilteredResizeMT::Create_BlackmanResize(AVSValue args, void*, I
   BlackmanFilter f(args[7].AsInt(4));
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(0),&args[3],&f, env );
+	  args[13].AsInt(0),args[14].AsInt(1),&args[3],&f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_Spline16Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4397,7 +4522,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Spline16Resize(AVSValue args, void*, I
   Spline16Filter f;
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(0),&args[3], &f, env );
+	  args[12].AsInt(0),args[13].AsInt(1),&args[3], &f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_Spline36Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4405,7 +4530,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Spline36Resize(AVSValue args, void*, I
   Spline36Filter f;
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(0),&args[3], &f, env );
+	  args[12].AsInt(0),args[13].AsInt(1),&args[3], &f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_Spline64Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4413,7 +4538,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Spline64Resize(AVSValue args, void*, I
   Spline64Filter f;
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(0),&args[3],&f, env );
+	  args[12].AsInt(0),args[13].AsInt(1),&args[3],&f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_GaussianResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4421,7 +4546,7 @@ AVSValue __cdecl FilteredResizeMT::Create_GaussianResize(AVSValue args, void*, I
   GaussianFilter f(args[7].AsFloat(30.0f));
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(0),&args[3],&f, env );
+	  args[13].AsInt(0),args[14].AsInt(1),&args[3],&f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_SincResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4429,5 +4554,5 @@ AVSValue __cdecl FilteredResizeMT::Create_SincResize(AVSValue args, void*, IScri
   SincFilter f(args[7].AsInt(4));
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(0),&args[3], &f, env );
+	  args[13].AsInt(0),args[14].AsInt(1),&args[3], &f, env );
 }

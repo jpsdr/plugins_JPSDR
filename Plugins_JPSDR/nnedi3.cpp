@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.35 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.36 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -130,7 +130,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if ((fapprox<0) || (fapprox>15)) env->ThrowError("nnedi3: fapprox must be [0,15]!\n");
 	if ((pscrn<0) || (pscrn>4)) env->ThrowError("nnedi3: pscrn must be [0,4]!\n");
 	if ((etype<0) || (etype>1)) env->ThrowError("nnedi3: etype must be [0,1]!\n");
-	if ((range_mode<0) || (range_mode>3)) env->ThrowError("nnedi3: range must be [0,3]!\n");
+	if ((range_mode<0) || (range_mode>4)) env->ThrowError("nnedi3: range must be [0,4]!\n");
 	
 	grey = vi.IsY();
 	isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
@@ -149,7 +149,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 	uint8_t plane_range[PLANE_MAX];
 
-	if (range_mode!=1)
+	if ((range_mode!=1) && (range_mode!=4))
 	{
 		if (vi.IsYUV())
 		{
@@ -173,8 +173,10 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	}
 	else
 	{
+		if (vi.IsRGB()) range_mode=1;
+
 		for (uint8_t i=0; i<3; i++)
-			plane_range[i]=1;
+			plane_range[i]=range_mode;
 	}
 	plane_range[3]=1;
 
@@ -1564,6 +1566,9 @@ void evalFunc_1(void *ps)
 			case 3 :
 				val_min=16; val_max=240;
 				break;
+			case 4 :
+				val_min=16; val_max=255;
+				break;
 			default :
 				val_min=0; val_max=255;
 				break;
@@ -1887,6 +1892,9 @@ void evalFunc_1_16(void *ps)
 				break;
 			case 3 :
 				val_min=(uint16_t)((int)16 << (bits_per_pixel-8)); val_max=(uint16_t)((int)240 << (bits_per_pixel-8));
+				break;
+			case 4 :
+				val_min=(uint16_t)((int)16 << (bits_per_pixel-8)); val_max=(uint16_t)(((int)1 << bits_per_pixel) - 1);
 				break;
 			default :
 				val_min=0; val_max=(uint16_t)(((int)1 << bits_per_pixel) - 1);
@@ -2352,6 +2360,9 @@ void evalFunc_2(void *ps)
 			case 3 :
 				val_min=16; val_max=240;
 				break;
+			case 4 :
+				val_min=16; val_max=255;
+				break;
 			default :
 				val_min=0; val_max=255;
 				break;
@@ -2628,6 +2639,9 @@ void evalFunc_2_16(void *ps)
 				break;
 			case 3 :
 				val_min=(int32_t)((int32_t)16 << (bits_per_pixel-8)); val_max=(int32_t)((int32_t)240 << (bits_per_pixel-8));
+				break;
+			case 4 :
+				val_min=(int32_t)((int32_t)16 << (bits_per_pixel-8)); val_max=(int32_t)(((int32_t)1 << bits_per_pixel) - 1);
 				break;
 			default :
 				val_min=0; val_max=(int32_t)(((int32_t)1 << bits_per_pixel) - 1);
