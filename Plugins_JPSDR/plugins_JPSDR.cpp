@@ -1,20 +1,13 @@
-#include ".\asmlib\asmlib.h"
 #include "resample.h"
 #include "AutoYUY2.h"
 #include "nnedi3.h"
-
-extern "C" int IInstrSet;
-// Cache size for asmlib function, a little more the size of a 720p YV12 frame
-#define MAX_CACHE_SIZE 1400000
-
-size_t CPU_Cache_Size;
 
 ThreadPoolInterface *poolInterface;
 
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 1.0.1"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 1.1.0"
 
 /*
   threshold : int, default value : 4
@@ -761,8 +754,6 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
 {
 	AVS_linkage = vectors;
-	if (IInstrSet<0) InstructionSet();
-	CPU_Cache_Size=DataCacheSize(0)>>2;
 
 	poolInterface=ThreadPoolInterface::Init(0);
 
