@@ -24,7 +24,7 @@
 #include "avisynth.h"
 #include "ThreadPoolInterface.h"
 
-#define AUTOYUY2_VERSION "AutoYUY2 3.2.2 JPSDR"
+#define AUTOYUY2_VERSION "AutoYUY2 3.2.3 JPSDR"
 // Inspired from Neuron2 filter
 
 #define Interlaced_Tab_Size 3
@@ -88,9 +88,6 @@ private:
 	uint8_t CreateMTData(uint8_t max_threads,int32_t size_x,int32_t size_y);
 
 	void FreeData(void);
-
-	inline void Move_Full(const void *src_, void *dst_, const int32_t w,const int32_t h,
-		int src_pitch,int dst_pitch);
 
 	void Convert_Progressive_YUY2(uint8_t thread_num);
 	void Convert_Progressive_YUY2_SSE(uint8_t thread_num);
