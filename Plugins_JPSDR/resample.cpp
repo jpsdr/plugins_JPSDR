@@ -3832,8 +3832,8 @@ PClip FilteredResizeMT::CreateResizeH(PClip clip, double subrange_top, double su
 
 
 PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_height,int _threads,
-	bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,bool _Sleep,int range_mode,
-	int prefetch,const AVSValue* args,ResamplingFunction* f,
+	bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,bool _Sleep,int prefetch,
+	int range_mode,const AVSValue* args,ResamplingFunction* f,
 	IScriptEnvironment* env)
 {
   const VideoInfo& vi = clip->GetVideoInfo();
