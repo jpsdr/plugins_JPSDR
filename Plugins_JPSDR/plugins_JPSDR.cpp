@@ -7,7 +7,7 @@ ThreadPoolInterface *poolInterface;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 1.1.1"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 1.1.2"
 
 /*
   threshold : int, default value : 4

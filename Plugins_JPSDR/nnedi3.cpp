@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.38 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.39 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -77,7 +77,7 @@ extern "C" void computeNetwork0_i16_SSE2(const float *inputf,const float *weight
 extern "C" void uc2f48_SSE2(const uint8_t *t,const int pitch,float *p);
 extern "C" void uc2f48_SSE2_16(const uint8_t *t, const int pitch, float *p);
 extern "C" void uc2s48_SSE2(const uint8_t *t,const int pitch,float *pf);
-extern "C" int processLine0_SSE2_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint8_t val_min,const uint8_t val_max);
+extern "C" int processLine0_SSE2_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const int16_t val_min,const int16_t val_max);
 extern "C" int processLine0_SSE2_ASM_16(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t val_min,const uint16_t val_max);
 extern "C" int processLine0_SSE2_ASM_32(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch);
 extern "C" void extract_m8_SSE2(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input);
