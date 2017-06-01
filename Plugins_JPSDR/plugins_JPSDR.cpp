@@ -7,7 +7,7 @@ ThreadPoolInterface *poolInterface;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 1.1.5"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 1.1.6"
 
 /*
   threshold : int, default value : 4
@@ -50,7 +50,6 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 	const bool sleep = args[8].AsBool(false);
 	int prefetch=args[9].AsInt(0);
 
-		//bool LogicalCores,MaxPhysCores,SetAffinity;
 	if ((mode<-1) || (mode>2))
 		env->ThrowError("AutoYUY2: [mode] must be -1 (Automatic), 0 (Progessive) , 1 (Interlaced) or 2 (Test).");
 	if ((output<0) || (output>1))
@@ -60,10 +59,22 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("AutoYUY2: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
-	if (!poolInterface->CreatePool(prefetch)) env->ThrowError("AutoYUY2: Unable to create ThreadPool!");
 
-	return new AutoYUY2(args[0].AsClip(), thrs, mode, output, threads, LogicalCores, MaxPhysCores,
-		SetAffinity,sleep, env);
+	uint8_t threads_number=1;
+
+	if (threads!=1)
+	{
+		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("AutoYUY2: Unable to create ThreadPool!");
+
+		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
+
+		if (threads_number==0) env->ThrowError("AutoYUY2: Error with the TheadPool while getting CPU info!");
+
+		if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,sleep,-1))
+			env->ThrowError("AutoYUY2: Error with the TheadPool while allocating threadpool!");
+	}
+
+	return new AutoYUY2(args[0].AsClip(), thrs, mode, output, threads_number, sleep, env);
 }
 
 
@@ -90,15 +101,36 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 			env->ThrowError("nnedi3: only planar, YUY2 and RGB24 input are supported!");				
 	}
 
-	int prefetch = args[18].AsInt(0);
-	if (prefetch == 0) prefetch = 1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("ResizeMT: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
+	const int threads=args[11].AsInt(0);
+	const bool LogicalCores=args[14].AsBool(true);
+	const bool MaxPhysCores=args[15].AsBool(true);
+	const bool SetAffinity=args[16].AsBool(false);
+	const bool sleep = args[18].AsBool(false);
+	int prefetch = args[19].AsInt(0);
+
+	if ((threads<0) || (threads>MAX_MT_THREADS))
+		env->ThrowError("nnedi3: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
+
+	if (prefetch==0) prefetch=1;
+	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("nnedi3: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
 			
 	const bool dh = args[2].AsBool(false);
-	if ((vi.height&1) && !dh)
+	if (((vi.height&1)!=0) && !dh)
 		env->ThrowError("nnedi3: height must be mod 2 when dh=false (%d)!", vi.height);
 
-	if (!poolInterface->CreatePool(prefetch)) env->ThrowError("nnedi3: Unable to create ThreadPool!");
+	uint8_t threads_number=1;
+
+	if (threads!=1)
+	{
+		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("nnedi3: Unable to create ThreadPool!");
+
+		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
+
+		if (threads_number==0) env->ThrowError("nnedi3: Error with the TheadPool while getting CPU info!");
+
+		if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,sleep,-1))
+			env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool!");
+	}
 
 	if (!vi.IsY8())
 	{
@@ -110,10 +142,8 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 			else v=env->Invoke("ConvertToPlanarRGB",v).AsClip();
 			v= new nnedi3(v.AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
 				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),args[17].AsBool(true),
-				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
-				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),
-				args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),args[17].AsBool(false),
-				args[19].AsInt(1),avsp,env);
+				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),args[10].AsInt(2),
+				threads_number,args[12].AsInt(0),args[13].AsInt(15),args[18].AsBool(false),args[20].AsInt(1),avsp,env);
 			if (RGB32) return env->Invoke("ConvertToRGB32",v).AsClip();
 			else
 			{
@@ -123,18 +153,15 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 		}
 		else return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
 				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),args[17].AsBool(true),
-				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
-				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),
-				args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),args[17].AsBool(false),
-				args[19].AsInt(1),avsp,env);
+				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),args[10].AsInt(2),
+				threads_number,args[12].AsInt(0),args[13].AsInt(15),args[18].AsBool(false),args[20].AsInt(1),avsp,env);
 			
 	}
 	else
 		return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
-				args[3].AsBool(true),false,false,false,args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),
-				args[9].AsInt(0),args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),
-				args[13].AsInt(15),args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),args[17].AsBool(false),
-				args[19].AsInt(1),avsp,env);
+				args[3].AsBool(true),false,false,false,args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
+				args[10].AsInt(2),threads_number,args[12].AsInt(0),args[13].AsInt(15),args[18].AsBool(false),
+				args[20].AsInt(1),avsp,env);
 }
 
 
@@ -220,10 +247,27 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 	if ((range_mode<0) || (range_mode>4)) env->ThrowError("nnedi3_rpow2: [range] must be between 0 and 4!");
 
+	if ((threads<0) || (threads>MAX_MT_THREADS))
+		env->ThrowError("nnedi3_rpow2: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
+	if ((threads_rs<0) || (threads_rs>MAX_MT_THREADS))
+		env->ThrowError("nnedi3_rpow2: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
+
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("nnedi3_rpow2: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
 
-	if (!poolInterface->CreatePool(prefetch)) env->ThrowError("nnedi3_rpow2: Unable to create ThreadPool!");
+	uint8_t threads_number=1;
+
+	if (threads!=1)
+	{
+		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("nnedi3_rpow2: Unable to create ThreadPool!");
+
+		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
+
+		if (threads_number==0) env->ThrowError("nnedi3_rpow2: Error with the TheadPool while getting CPU info!");
+
+		if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,sleep,-1))
+			env->ThrowError("nnedi3_rpow2: Error with the TheadPool while allocating threadpool!");
+	}
 
 	AVSValue v = args[0].AsClip();
 
@@ -352,9 +396,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			for (int i=0; i<ct; i++)
 			{
 				v = env->Invoke(turnRightFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,1,avsp,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,avsp,env);
 				v = env->Invoke(turnLeftFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,(i==(ct-1))?range_:1,avsp,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,avsp,env);
 			}
 		}
 		else
@@ -387,9 +431,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				v = env->Invoke(turnRightFunction,v).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				v = new nnedi3(v.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,1,avsp,env);
+				v = new nnedi3(v.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,avsp,env);
 				v = env->Invoke(turnLeftFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,(i==(ct-1))?range_:1,avsp,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,avsp,env);
 			}
 
 			range_=(do_resize) ? 1 : plane_range[1];
@@ -397,9 +441,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				vu = env->Invoke(turnRightFunction,vu).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				vu = new nnedi3(vu.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,1,avsp,env);
+				vu = new nnedi3(vu.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,avsp,env);
 				vu = env->Invoke(turnLeftFunction,vu).AsClip();
-				vu = new nnedi3(vu.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,(i==(ct-1))?range_:1,avsp,env);
+				vu = new nnedi3(vu.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,avsp,env);
 			}
 
 			range_=(do_resize) ? 1 : plane_range[2];
@@ -407,9 +451,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				vv = env->Invoke(turnRightFunction,vv).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				vv = new nnedi3(vv.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,1,avsp,env);
+				vv = new nnedi3(vv.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,avsp,env);
 				vv = env->Invoke(turnLeftFunction,vv).AsClip();
-				vv = new nnedi3(vv.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,(i==(ct-1))?range_:1,avsp,env);
+				vv = new nnedi3(vv.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,avsp,env);
 			}
 
 			range_=(do_resize) ? 1 : plane_range[3];
@@ -419,9 +463,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				{
 					va = env->Invoke(turnRightFunction,va).AsClip();
 					// always use field=1 to keep chroma/luma horizontal alignment
-					va = new nnedi3(va.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,1,avsp,env);
+					va = new nnedi3(va.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,avsp,env);
 					va = env->Invoke(turnLeftFunction,va).AsClip();
-					va = new nnedi3(va.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,(i==(ct-1))?range_:1,avsp,env);
+					va = new nnedi3(va.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,avsp,env);
 				}				
 			}
 		}
@@ -756,6 +800,8 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 	AVS_linkage = vectors;
 
 	poolInterface=ThreadPoolInterface::Init(0);
+
+	if (!poolInterface->GetThreadPoolInterfaceStatus()) env->ThrowError("plugins_JPSDR: Error with the TheadPool status!");
 
     env->AddFunction("AutoYUY2",
 		"c[threshold]i[mode]i[output]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",

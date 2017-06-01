@@ -170,10 +170,8 @@ uint8_t AutoYUY2::CreateMTData(uint8_t max_threads,int32_t size_x,int32_t size_y
 }
 
 
-AutoYUY2::AutoYUY2(PClip _child, int _threshold, int _mode,  int _output, int _threads,bool _LogicalCores,
-	bool _MaxPhysCores, bool _SetAffinity,bool _Sleep,IScriptEnvironment* env) :
-	GenericVideoFilter(_child), threshold(_threshold), mode(_mode), output(_output), threads(_threads),
-	LogicalCores(_LogicalCores),MaxPhysCores(_MaxPhysCores),SetAffinity(_SetAffinity),Sleep(_Sleep)
+AutoYUY2::AutoYUY2(PClip _child, int _threshold, int _mode,  int _output, uint8_t _threads,bool _sleep,IScriptEnvironment* env) :
+	GenericVideoFilter(_child), threshold(_threshold), mode(_mode), output(_output), threads(_threads),sleep(_sleep)
 {
 	bool ok;
 	int16_t i,j;
@@ -199,15 +197,8 @@ AutoYUY2::AutoYUY2(PClip _child, int _threshold, int _mode,  int _output, int _t
 		MT_Thread[i].pFunc=StaticThreadpoolF;
 	}
 
-	if (!poolInterface->GetThreadPoolInterfaceStatus()) env->ThrowError("AutoYUY2: Error with the TheadPool status!");
-
-	if (vi.height>=32)
-	{
-		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
-		if (threads_number==0)
-			env->ThrowError("AutoYUY2: Error with the TheadPool while getting CPU info!");
-	}
-	else threads_number=1;
+	if (vi.height<32) threads_number=1;
+	else threads_number=threads;
 
 	threads_number=CreateMTData(threads_number,vi.width,vi.height);
 
@@ -262,10 +253,10 @@ AutoYUY2::AutoYUY2(PClip _child, int _threshold, int _mode,  int _output, int _t
 
 	if (threads_number>1)
 	{
-		if (!poolInterface->AllocateThreads(UserId,threads_number,0,0,MaxPhysCores,SetAffinity,Sleep,-1))
+		if (!poolInterface->GetUserId(UserId))
 		{
 			FreeData();
-			env->ThrowError("AutoYUY2: Error with the TheadPool while allocating threadpool!");
+			env->ThrowError("AutoYUY2: Error with the TheadPool while getting UserId!");
 		}
 	}
 }
@@ -289,9 +280,14 @@ void AutoYUY2::FreeData(void)
 
 AutoYUY2::~AutoYUY2() 
 {
-	if (threads_number>1) poolInterface->DeAllocateThreads(UserId);
+	if (threads_number>1)
+	{
+		poolInterface->RemoveUserId(UserId);
+		poolInterface->DeAllocateAllThreads(true);
+	}
 	FreeData();
 }
+
 
 static inline void Move_Full(const void *src_, void *dst_, const int32_t w,const int32_t h,
 		int src_pitch,int dst_pitch)
@@ -3739,7 +3735,7 @@ PVideoFrame __stdcall AutoYUY2::GetFrame(int n, IScriptEnvironment* env)
 		if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,-1,false))
 		{
 			ReleaseMutex(ghMutex);
-			env->ThrowError("AutoYUY2: Error with the TheadPool while requesting threadpool !");
+			env->ThrowError("AutoYUY2: Error with the TheadPool while requesting threadpool!");
 		}
 	}
 
@@ -3805,7 +3801,7 @@ PVideoFrame __stdcall AutoYUY2::GetFrame(int n, IScriptEnvironment* env)
 		for(uint8_t i=0; i<threads_number; i++)
 			MT_Thread[i].f_process=0;
 
-		poolInterface->ReleaseThreadPool(UserId,Sleep);
+		poolInterface->ReleaseThreadPool(UserId,sleep);
 	}
 	else
 	{

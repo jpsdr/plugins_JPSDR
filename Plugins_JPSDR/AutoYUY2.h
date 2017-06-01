@@ -24,7 +24,7 @@
 #include "avisynth.h"
 #include "ThreadPoolInterface.h"
 
-#define AUTOYUY2_VERSION "AutoYUY2 3.2.4 JPSDR"
+#define AUTOYUY2_VERSION "AutoYUY2 3.2.5 JPSDR"
 // Inspired from Neuron2 filter
 
 #define Interlaced_Tab_Size 3
@@ -50,9 +50,8 @@ typedef struct _MT_Data_Info_AutoYUY2
 class AutoYUY2 : public GenericVideoFilter
 {
 public:
-	AutoYUY2(PClip _child, int _threshold, int _mode, int _output,int _threads,bool _LogicalCores,
-		bool _MaxPhysCores, bool _SetAffinity,bool _Sleep, IScriptEnvironment* env);
-	~AutoYUY2();
+	AutoYUY2(PClip _child, int _threshold, int _mode, int _output,uint8_t _threads,bool _sleep, IScriptEnvironment* env);
+	virtual ~AutoYUY2();
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
 	int __stdcall SetCacheHints(int cachehints, int frame_range);
@@ -70,7 +69,7 @@ private:
 	int mode;
 	int output;
 	int threads;
-	bool LogicalCores,MaxPhysCores,SetAffinity,Sleep;
+	bool sleep;
 	uint16_t lookup_Upscale[768];
 	bool *interlaced_tab_U[MAX_MT_THREADS][Interlaced_Tab_Size],*interlaced_tab_V[MAX_MT_THREADS][Interlaced_Tab_Size];
 	bool SSE2_Enable;

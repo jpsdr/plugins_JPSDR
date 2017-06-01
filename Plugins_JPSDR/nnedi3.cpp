@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.42 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.43 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -141,15 +141,11 @@ void shufflePreScrnL2L3(float *wf, float *rf, const int opt)
 
 
 nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,int _nsize,int _nns,int _qual,int _etype,int _pscrn,
-	int _threads,int _opt,int _fapprox,bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,bool _Sleep,int range_mode,
-	bool _avsp, IScriptEnvironment *env) :
-	GenericVideoFilter(_child),field(_field),dh(_dh),Y(_Y),U(_U),V(_V),A(_A),
-	nsize(_nsize),nns(_nns),qual(_qual),etype(_etype),pscrn(_pscrn),threads(_threads),opt(_opt),fapprox(_fapprox),
-	LogicalCores(_LogicalCores),MaxPhysCores(_MaxPhysCores),SetAffinity(_SetAffinity),Sleep(_Sleep),
-	avsp(_avsp)
+	uint8_t _threads,int _opt,int _fapprox,bool _sleep,int range_mode,bool _avsp, IScriptEnvironment *env) :
+	GenericVideoFilter(_child),field(_field),dh(_dh),Y(_Y),U(_U),V(_V),A(_A),nsize(_nsize),nns(_nns),qual(_qual),
+	etype(_etype),pscrn(_pscrn),threads(_threads),opt(_opt),fapprox(_fapprox),sleep(_sleep),avsp(_avsp)
 {
 	if ((field<-2) || (field>3)) env->ThrowError("nnedi3: field must be set to -2, -1, 0, 1, 2, or 3!");
-	if ((threads<0) || (threads>MAX_MT_THREADS)) env->ThrowError("nnedi3: threads must be between 0 and %d inclusive!",MAX_MT_THREADS);
 	if (dh && ((field<-1) || (field>1))) env->ThrowError("nnedi3: field must be set to -1, 0, or 1 when dh=true!");
 	if ((nsize<0) || (nsize>=NUM_NSIZE)) env->ThrowError("nnedi3: nsize must be in [0,%d]!\n",NUM_NSIZE-1);
 	if ((nns<0) || (nns>=NUM_NNS)) env->ThrowError("nnedi3: nns must be in [0,%d]!\n",NUM_NNS-1);
@@ -246,11 +242,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	ghMutex=NULL;
 	UserId=0;
 
-	if (!poolInterface->GetThreadPoolInterfaceStatus()) env->ThrowError("nnedi3: Error with the TheadPool status !");
-
-	threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
-	if (threads_number==0)
-		env->ThrowError("nnedi3: Error with the TheadPool while getting CPU info !");
+	if (vi.height<32) threads_number=1;
+	else threads_number=threads;
 
 	srcPF = new PlanarFrame();
 	if (srcPF==NULL)
@@ -916,10 +909,10 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 	if (threads_number>1)
 	{
-		if (!poolInterface->AllocateThreads(UserId,threads_number,0,0,MaxPhysCores,SetAffinity,Sleep,-1))
+		if (!poolInterface->GetUserId(UserId))
 		{
 			FreeData();
-			env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool !");
+			env->ThrowError("nnedi3: Error with the TheadPool while getting UserId!");
 		}
 	}
 }
@@ -958,7 +951,11 @@ void nnedi3::FreeData(void)
 
 nnedi3::~nnedi3()
 {
-	if (threads_number>1) poolInterface->DeAllocateThreads(UserId);
+	if (threads_number>1)
+	{
+		poolInterface->RemoveUserId(UserId);
+		poolInterface->DeAllocateAllThreads(true);
+	}
 	FreeData();
 }
 
@@ -1037,7 +1034,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 		if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,-1,false))
 		{
 			ReleaseMutex(ghMutex);
-			env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool !");
+			env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool!");
 		}
 		for (uint8_t b=0; b<PlaneMax; b++)
 		{
@@ -1090,7 +1087,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 
 			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 		}
-		poolInterface->ReleaseThreadPool(UserId,Sleep);
+		poolInterface->ReleaseThreadPool(UserId,sleep);
 	}
 	else
 	{
