@@ -3875,8 +3875,11 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 
 		if (threads_number==0) env->ThrowError("ResizeMT: Error with the TheadPool while getting CPU info!");
 
-		if (!poolInterface->AllocateThreads(threads_number,0,0,_MaxPhysCores,_SetAffinity,true,-1))
-			env->ThrowError("ResizeMT: Error with the TheadPool while allocating threadpool!");
+		if (threads_number<1)
+		{
+			if (!poolInterface->AllocateThreads(threads_number,0,0,_MaxPhysCores,_SetAffinity,true,-1))
+				env->ThrowError("ResizeMT: Error with the TheadPool while allocating threadpool!");
+		}
 	}
 
   double subrange_width = args[2].AsDblDef(vi.width), subrange_height = args[3].AsDblDef(vi.height);
