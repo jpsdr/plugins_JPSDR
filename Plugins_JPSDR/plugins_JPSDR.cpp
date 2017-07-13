@@ -7,7 +7,7 @@ ThreadPoolInterface *poolInterface;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 1.1.7"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 1.1.8"
 
 /*
   threshold : int, default value : 4
@@ -246,8 +246,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 		env->ThrowError("nnedi3_rpow2: 0 <= threads <= %d!\n",MAX_MT_THREADS);
 	if (threads_rs < 0 || threads_rs > MAX_MT_THREADS)
 		env->ThrowError("nnedi3_rpow2: 0 <= threads_rs <= %d!\n",MAX_MT_THREADS);
-	if (opt < 0 || opt > 5)
-		env->ThrowError("nnedi3_rpow2: opt must be in [0,5]!\n");
+	if (opt < 0 || opt > 7)
+		env->ThrowError("nnedi3_rpow2: opt must be in [0,7]!\n");
 	if (fapprox < 0 || fapprox > 15)
 		env->ThrowError("nnedi3_rpow2: fapprox must be [0,15]!\n");
 
