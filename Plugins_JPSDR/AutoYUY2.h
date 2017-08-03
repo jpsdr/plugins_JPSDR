@@ -24,7 +24,7 @@
 #include "avisynth.h"
 #include "ThreadPoolInterface.h"
 
-#define AUTOYUY2_VERSION "AutoYUY2 3.2.6 JPSDR"
+#define AUTOYUY2_VERSION "AutoYUY2 3.2.7 JPSDR"
 // Inspired from Neuron2 filter
 
 #define Interlaced_Tab_Size 3
@@ -50,7 +50,7 @@ typedef struct _MT_Data_Info_AutoYUY2
 class AutoYUY2 : public GenericVideoFilter
 {
 public:
-	AutoYUY2(PClip _child, int _threshold, int _mode, int _output,uint8_t _threads,bool _sleep, IScriptEnvironment* env);
+	AutoYUY2(PClip _child, int _threshold, int _mode, int _output,uint8_t _threads, bool _sleep, IScriptEnvironment* env);
 	virtual ~AutoYUY2();
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
@@ -72,7 +72,7 @@ private:
 	bool sleep;
 	uint16_t lookup_Upscale[768];
 	bool *interlaced_tab_U[MAX_MT_THREADS][Interlaced_Tab_Size],*interlaced_tab_V[MAX_MT_THREADS][Interlaced_Tab_Size];
-	bool SSE2_Enable;
+	bool SSE2_Enable,AVX_Enable;
 
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
 	MT_Data_Info_AutoYUY2 MT_Data[MAX_MT_THREADS];
@@ -90,15 +90,19 @@ private:
 
 	void Convert_Progressive_YUY2(uint8_t thread_num);
 	void Convert_Progressive_YUY2_SSE(uint8_t thread_num);
+	void Convert_Progressive_YUY2_AVX(uint8_t thread_num);
 	void Convert_Interlaced_YUY2(uint8_t thread_num);
 	void Convert_Interlaced_YUY2_SSE(uint8_t thread_num);
+	void Convert_Interlaced_YUY2_AVX(uint8_t thread_num);
 	void Convert_Automatic_YUY2(uint8_t thread_num);
 	void Convert_Test_YUY2(uint8_t thread_num);
 
 	void Convert_Progressive_YV16(uint8_t thread_num);
 	void Convert_Progressive_YV16_SSE(uint8_t thread_num);
+	void Convert_Progressive_YV16_AVX(uint8_t thread_num);
 	void Convert_Interlaced_YV16(uint8_t thread_num);
 	void Convert_Interlaced_YV16_SSE(uint8_t thread_num);
+	void Convert_Interlaced_YV16_AVX(uint8_t thread_num);
 	void Convert_Automatic_YV16(uint8_t thread_num);
 	void Convert_Test_YV16(uint8_t thread_num);
 };
