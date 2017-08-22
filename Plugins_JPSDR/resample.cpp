@@ -4464,6 +4464,8 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 	  }
   }
   
+  poolInterface->DeAllocateAllThreads(true);
+
   return result;
 }
 
