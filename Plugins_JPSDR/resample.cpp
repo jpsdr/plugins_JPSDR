@@ -2478,6 +2478,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 	{
 		if (!poolInterface->GetUserId(UserId))
 		{
+			poolInterface->DeAllocateAllThreads(true);
 			FreeData();
 			env->ThrowError("ResizeHMT: Error with the TheadPool while getting UserId!");
 		}
@@ -3071,6 +3072,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 	{
 		if (!poolInterface->GetUserId(UserId))
 		{
+			poolInterface->DeAllocateAllThreads(true);
 			FreeData();
 			env->ThrowError("ResizeVMT: Error with the TheadPool while getting UserId!");
 		}
@@ -3865,23 +3867,6 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
   
   }
 
-	uint8_t threads_number=1;
-
-	if (_threads!=1)
-	{
-		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ResizeMT: Unable to create ThreadPool!");
-
-		threads_number=poolInterface->GetThreadNumber(_threads,_LogicalCores);
-
-		if (threads_number==0) env->ThrowError("ResizeMT: Error with the TheadPool while getting CPU info!");
-
-		if (threads_number>1)
-		{
-			if (!poolInterface->AllocateThreads(threads_number,0,0,_MaxPhysCores,_SetAffinity,true,-1))
-				env->ThrowError("ResizeMT: Error with the TheadPool while allocating threadpool!");
-		}
-	}
-
   double subrange_width = args[2].AsDblDef(vi.width), subrange_height = args[3].AsDblDef(vi.height);
   // Crop style syntax
   if (subrange_width  <= 0.0) subrange_width  = vi.width  - subrange_left + subrange_width;
@@ -4056,6 +4041,22 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 	  }
   }
 
+	uint8_t threads_number=1;
+
+	if ((_threads!=1) && (step1 || step2))
+	{
+		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ResizeMT: Unable to create ThreadPool!");
+
+		threads_number=poolInterface->GetThreadNumber(_threads,_LogicalCores);
+
+		if (threads_number==0) env->ThrowError("ResizeMT: Error with the TheadPool while getting CPU info!");
+
+		if (threads_number>1)
+		{
+			if (!poolInterface->AllocateThreads(threads_number,0,0,_MaxPhysCores,_SetAffinity,true,-1))
+				env->ThrowError("ResizeMT: Error with the TheadPool while allocating threadpool!");
+		}
+	}
 
   if (!fast_resize)
   {
@@ -4464,8 +4465,6 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 	  }
   }
   
-  poolInterface->DeAllocateAllThreads(true);
-
   return result;
 }
 

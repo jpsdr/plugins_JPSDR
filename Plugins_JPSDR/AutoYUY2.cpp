@@ -281,6 +281,7 @@ AutoYUY2::AutoYUY2(PClip _child, int _threshold, int _mode,  int _output, uint8_
 	{
 		if (!poolInterface->GetUserId(UserId))
 		{
+			poolInterface->DeAllocateAllThreads(true);
 			FreeData();
 			env->ThrowError("AutoYUY2: Error with the TheadPool while getting UserId!");
 		}
