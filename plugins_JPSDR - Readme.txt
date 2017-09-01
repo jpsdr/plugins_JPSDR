@@ -1,6 +1,6 @@
-Version 1.1.10
+Version 1.2.0
 
 Merge of :
 AutoYUY2 v3.2.8
 NNEDI3 v0.9.4.47
-ResampleMT v1.5.8
+ResampleMT v2.0.0

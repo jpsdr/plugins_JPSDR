@@ -34,6 +34,7 @@
 
 #include "resample_functions.h"
 #include "./avs/minmax.h"
+#include <stdio.h>
 
 
 /*******************************************
@@ -243,7 +244,7 @@ ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, dou
   double pos_step = crop_size / target_size;
 
   if (source_size <= filter_support) {
-    env->ThrowError("Resize: Source image too small for this resize method. Width=%d, Support=%d", source_size, int(ceil(filter_support)));
+    env->ThrowError("Resize: Source image too small for this resize method. Width=%d, Support=%d",source_size,int(ceil(filter_support)));
   }
 
   if (fir_filter_size == 1) // PointResize
@@ -290,8 +291,175 @@ ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, dou
 	  program->pixel_coefficient_float[i*fir_filter_size + k] = float(new_value - value); // no scaling for float
       value = new_value;
     }
-
     pos += pos_step;
+  }
+  return program;
+}
+
+
+/******************************
+ **** Desampling Patterns  ****
+ *****************************/
+
+ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, double crop_start, double crop_size, int target_size, uint8_t accuracy, IScriptEnvironment* env)
+{
+  double filter_scale = double(target_size) / crop_size;
+  double filter_step = min(filter_scale, 1.0);
+  double filter_support = support() / filter_step;
+  int fir_filter_size = int(ceil(filter_support*2));
+
+  ResamplingProgram *program = new ResamplingProgram(fir_filter_size, source_size, target_size, crop_start, crop_size, env);
+
+  // this variable translates such that the image center remains fixed
+  double pos;
+  double pos_step = crop_size / target_size;
+
+  if ((source_size<=filter_support) || (target_size<=filter_support)) {
+    env->ThrowError("Resize: Source or target image too small for this resize method. Width=%d,%d, Support=%d",source_size,target_size,int(ceil(filter_support)));
+  }
+
+  if (fir_filter_size == 1) // PointResize
+    pos = crop_start;
+  else
+    pos = crop_start + ((crop_size - target_size) / (target_size*2)); // TODO this look wrong, gotta check
+
+  for (int i = 0; i < target_size; ++i) {
+    // Clamp start and end position such that it does not exceed frame size
+    int end_pos = int(pos + filter_support);
+
+    if (end_pos > source_size-1)
+      end_pos = source_size-1;
+
+    int start_pos = end_pos - fir_filter_size + 1;
+
+    if (start_pos < 0)
+      start_pos = 0;
+
+    program->pixel_offset[i] = start_pos;
+
+    // the following code ensures that the coefficients add to exactly FPScale
+    double total = 0.0;
+
+    // Ensure that we have a valid position
+    double ok_pos = clamp(pos, 0.0, (double)(source_size-1));
+
+    // Accumulate all coefficients for weighting
+    for (int j = 0; j < fir_filter_size; ++j) {
+      total += f((start_pos+j - ok_pos) * filter_step);
+    }
+
+    if (total == 0.0) {
+      // Shouldn't happened for valid positions.
+      total = 1.0;
+    }
+
+    double value = 0.0;
+
+    // Now we generate real coefficient
+    for (int k = 0; k < fir_filter_size; ++k) {
+      double new_value = value + f((start_pos+k - ok_pos) * filter_step) / total;
+	  program->pixel_coefficient_float[i*fir_filter_size + k] = float(new_value - value); // no scaling for float
+      value = new_value;
+    }
+    pos += pos_step;
+  }
+
+  Matrix_Compute A(target_size,source_size,DATA_FLOAT),B(source_size,source_size,DATA_FLOAT),C(source_size,target_size,DATA_FLOAT);
+
+  if ((env->GetCPUFlags()&CPUF_SSE2)!=0) A.EnableSSE2();
+  if ((env->GetCPUFlags()&CPUF_SSE2)!=0) B.EnableSSE2();
+  if ((env->GetCPUFlags()&CPUF_SSE2)!=0) C.EnableSSE2();
+
+  if ((env->GetCPUFlags()&CPUF_AVX)!=0) A.EnableAVX();
+  if ((env->GetCPUFlags()&CPUF_AVX)!=0) B.EnableAVX();
+  if ((env->GetCPUFlags()&CPUF_AVX)!=0) C.EnableAVX();
+
+  A.FillZero();
+
+  for (int i=0; i<target_size; i++)
+  {
+	  for (int j=0; j<fir_filter_size; j++)
+		  A.SetF(i,program->pixel_offset[i]+j,program->pixel_coefficient_float[i*fir_filter_size+j]);
+  }
+
+  delete program;
+
+  B.Product_tAA(A);
+  B.Inverse();
+  C.Product_AtB(B,A);
+
+  switch(accuracy)
+  {
+	case 0 :
+		for (int i=0; i<source_size; i++)
+		{
+			for (int j=0; j<target_size; j++)
+				if (((int16_t)floor(0.5+C.GetF(i,j)*16384))==0) C.SetF(i,j,0.0);
+		}
+		break;
+	case 1 :
+		for (int i=0; i<source_size; i++)
+		{
+			float maxf=0.0;
+
+			for (int j=0; j<target_size; j++)
+				if (fabs(C.GetF(i,j))>maxf) maxf=(float)fabs(C.GetF(i,j));
+
+			for (int j=0; j<target_size; j++)
+				if (fabs(C.GetF(i,j)/maxf)<0.001) C.SetF(i,j,0.0);
+		}
+		break;
+	case 2 :
+		for (int i=0; i<source_size; i++)
+		{
+			for (int j=0; j<target_size; j++)
+				if (fabs(C.GetF(i,j))<1e-6) C.SetF(i,j,0.0);
+		}
+		break;
+	default :
+		for (int i=0; i<source_size; i++)
+		{
+			for (int j=0; j<target_size; j++)
+				if (((int16_t)floor(0.5+C.GetF(i,j)*16384))==0) C.SetF(i,j,0.0);
+		}
+		break;
+  }
+
+  fir_filter_size=0;
+  for (int i=0; i<source_size; i++)
+  {
+	  int j1,j2,j=0;
+
+	  while ((j<target_size) && (C.GetF(i,j)==0.0)) j++;
+	  j1=j;
+	  if (j1<target_size)
+	  {
+		  j=target_size-1;
+		  while ((j>0) && (C.GetF(i,j)==0.0)) j--;
+		  j2=j;
+	  }
+	  if ((j1<target_size) && ((j2-j1+1)>fir_filter_size)) fir_filter_size=j2-j1+1;
+  }
+
+  program = new ResamplingProgram(fir_filter_size, target_size, source_size, 0, source_size, env);
+
+  for (int i=0; i<source_size; i++)
+  {
+	  int start_pos=0;
+
+	   while ((start_pos<target_size) && (C.GetF(i,start_pos)==0.0)) start_pos++;
+
+	  int end_pos = start_pos+(fir_filter_size-1);
+
+	  if (end_pos>=target_size) start_pos=target_size-fir_filter_size;
+
+	  program->pixel_offset[i] = start_pos;
+
+	  for (int j=0; j<fir_filter_size; j++)
+	  {
+		  program->pixel_coefficient_float[i*fir_filter_size+j]=C.GetF(i,start_pos+j);
+		  program->pixel_coefficient[i*fir_filter_size+j] = short(int(C.GetF(i,start_pos+j)*FPScale+0.5));
+	  }
   }
 
   return program;

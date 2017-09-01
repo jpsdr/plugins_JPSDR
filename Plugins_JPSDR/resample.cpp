@@ -2375,12 +2375,12 @@ static void resizer_h_avx2_generic_int16_float_16(BYTE* dst8, const BYTE* src8, 
 
 
 
-FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double subrange_width,
-	int target_width, uint8_t _threads,bool _sleep,int range_mode,bool _avsp, ResamplingFunction* func, IScriptEnvironment* env )
+FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double subrange_width,int target_width,
+	uint8_t _threads,bool _sleep,int range_mode,bool desample,int accuracy,bool _avsp, ResamplingFunction* func, IScriptEnvironment* env )
   : GenericVideoFilter(_child),
   resampling_program_luma(NULL), resampling_program_chroma(NULL),
-  filter_storage_luma(NULL), filter_storage_chroma(NULL),
-  threads(_threads),sleep(_sleep),avsp(_avsp)
+  filter_storage_luma(NULL), filter_storage_chroma(NULL),threads(_threads),sleep(_sleep),
+  avsp(_avsp)
 {
   src_width  = vi.width;
   src_height = vi.height;
@@ -2439,16 +2439,16 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 
 	UserId=0;
 	ghMutex=NULL;
-
+	
 	const int shift_w = (!grey && vi.IsPlanar() && !isRGBPfamily) ? vi.GetPlaneWidthSubsampling(PLANAR_U) : 0;
 	const int shift_h = (!grey && vi.IsPlanar() && !isRGBPfamily) ? vi.GetPlaneHeightSubsampling(PLANAR_U) : 0;
 
 	const int src_width = vi.IsPlanar() ? vi.width : vi.BytesFromPixels(vi.width)/pixelsize;
 	const int dst_width = vi.IsPlanar() ? target_width : vi.BytesFromPixels(target_width)/pixelsize;
-	
+
 	if (vi.height<32) threads_number=1;
 	else threads_number=threads;
-
+	
 	threads_number=CreateMTData(threads_number,src_width,vi.height,dst_width,vi.height,shift_w,shift_h);
 
 	ghMutex=CreateMutex(NULL,FALSE,NULL);
@@ -2456,17 +2456,31 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 
   
   // Main resampling program
-  resampling_program_luma = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, env);
+  if (desample) resampling_program_luma = func->GetDesamplingProgram(target_width, subrange_left, subrange_width, vi.width, accuracy, env);
+  else resampling_program_luma = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, env);
   if (vi.IsPlanar() && !grey && !isRGBPfamily)
   {
     const int div   = 1 << shift_w;
 
-    resampling_program_chroma = func->GetResamplingProgram(
-      vi.width       >> shift_w,
-      subrange_left   / div,
-      subrange_width  / div,
-      target_width   >> shift_w,
-	  env);
+	if (desample)
+	{
+	    resampling_program_chroma = func->GetDesamplingProgram(
+		  target_width   >> shift_w,
+	      subrange_left   / div,
+		  subrange_width  / div,
+	      vi.width   >> shift_w,
+		  accuracy,
+		  env);
+	}
+	else
+	{
+	    resampling_program_chroma = func->GetResamplingProgram(
+		  vi.width       >> shift_w,
+	      subrange_left   / div,
+		  subrange_width  / div,
+	      target_width   >> shift_w,
+		  env);
+	}
   }
   
   // Plannar + SSSE3 = use new horizontal resizer routines
@@ -2483,7 +2497,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 			env->ThrowError("ResizeHMT: Error with the TheadPool while getting UserId!");
 		}
 	}
-
+  
   // Change target video info size
   vi.width = target_width;
 }
@@ -2958,7 +2972,7 @@ FilteredResizeH::~FilteredResizeH(void)
  ***************************************/
 
 FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subrange_height, int target_height,
-	uint8_t _threads,bool _sleep,int range_mode, bool _avsp,ResamplingFunction* func, IScriptEnvironment* env )
+	uint8_t _threads,bool _sleep,int range_mode,bool desample,int accuracy, bool _avsp,ResamplingFunction* func, IScriptEnvironment* env )
   : GenericVideoFilter(_child),
     resampling_program_luma(NULL), resampling_program_chroma(NULL),
     src_pitch_table_luma(NULL), src_pitch_table_chromaU(NULL), src_pitch_table_chromaV(NULL),
@@ -3018,15 +3032,15 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 	}
 	UserId=0;
 	ghMutex=NULL;
-
+	
 	const int shift_w = (!grey && vi.IsPlanar() && !isRGBPfamily) ? vi.GetPlaneWidthSubsampling(PLANAR_U) : 0;
 	const int shift_h = (!grey && vi.IsPlanar() && !isRGBPfamily) ? vi.GetPlaneHeightSubsampling(PLANAR_U) : 0;
 
 	const int work_width = vi.IsPlanar() ? vi.width : vi.BytesFromPixels(vi.width)/pixelsize;
-
+	
 	if (vi.height<32) threads_number=1;
 	else threads_number=threads;
-	
+
 	threads_number=CreateMTData(threads_number,work_width,vi.height,work_width,target_height,shift_w,shift_h);
 
 	ghMutex=CreateMutex(NULL,FALSE,NULL);
@@ -3036,7 +3050,8 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
     subrange_top = vi.height - subrange_top - subrange_height; // why?
 
   // Create resampling program and pitch table
-  resampling_program_luma  = func->GetResamplingProgram(vi.height, subrange_top, subrange_height, target_height, env);
+  if (desample) resampling_program_luma  = func->GetDesamplingProgram(target_height, subrange_top, subrange_height, vi.height, accuracy,env);
+  else resampling_program_luma  = func->GetResamplingProgram(vi.height, subrange_top, subrange_height, target_height, env);
   src_pitch_table_luma = (int *)_aligned_malloc(sizeof(int) * vi.height, 16);
   if (src_pitch_table_luma==NULL)
   {
@@ -3051,12 +3066,25 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   {
     const int div   = 1 << shift_h;
 
-    resampling_program_chroma = func->GetResamplingProgram(
-                                  vi.height      >> shift_h,
-                                  subrange_top    / div,
-                                  subrange_height / div,
-                                  target_height  >> shift_h,
-                                  env);
+	if (desample)
+	{
+	    resampling_program_chroma = func->GetDesamplingProgram(
+		                              target_height  >> shift_h,
+			                          subrange_top    / div,
+				                      subrange_height / div,
+					                  vi.height  >> shift_h,
+									  accuracy,
+						              env);
+	}
+	else
+	{
+	    resampling_program_chroma = func->GetResamplingProgram(
+		                              vi.height      >> shift_h,
+			                          subrange_top    / div,
+				                      subrange_height / div,
+					                  target_height  >> shift_h,
+						              env);
+	}
 	src_pitch_table_chromaU = (int *)_aligned_malloc(sizeof(int) * (vi.height >> shift_h), 16);
 	src_pitch_table_chromaV = (int *)_aligned_malloc(sizeof(int) * (vi.height >> shift_h), 16);
 	if ((src_pitch_table_chromaU==NULL) || (src_pitch_table_chromaV==NULL))
@@ -3805,22 +3833,26 @@ FilteredResizeV::~FilteredResizeV(void)
 
 
 PClip FilteredResizeMT::CreateResizeV(PClip clip, double subrange_top, double subrange_height, int target_height,
-                    uint8_t _threads,bool _sleep,int range_mode,bool _avsp,ResamplingFunction* func, IScriptEnvironment* env)
+                    uint8_t _threads,bool _sleep,int range_mode,bool desample,int accuracy,bool _avsp,ResamplingFunction* func,
+					IScriptEnvironment* env)
 {
-  return new FilteredResizeV(clip, subrange_top, subrange_height, target_height,_threads,_sleep,range_mode,_avsp,func, env);
+  return new FilteredResizeV(clip, subrange_top, subrange_height, target_height,_threads,_sleep,range_mode,desample,
+	  accuracy,_avsp,func, env);
 }
 
 
 PClip FilteredResizeMT::CreateResizeH(PClip clip, double subrange_top, double subrange_height, int target_height,
-                    uint8_t _threads,bool _sleep,int range_mode,bool _avsp,ResamplingFunction* func, IScriptEnvironment* env)
+                    uint8_t _threads,bool _sleep,int range_mode,bool desample,int accuracy,bool _avsp,ResamplingFunction* func,
+					IScriptEnvironment* env)
 {
-  return new FilteredResizeH(clip, subrange_top, subrange_height, target_height,_threads,_sleep,range_mode,_avsp,func, env);
+  return new FilteredResizeH(clip, subrange_top, subrange_height, target_height,_threads,_sleep,range_mode,desample,
+	  accuracy,_avsp,func, env);
 }
 
 
 PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_height,int _threads,
 	bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,bool _sleep,int prefetch,
-	int range_mode,const AVSValue* args,ResamplingFunction* f,
+	int range_mode,bool desample,int accuracy,int order,const AVSValue* args,ResamplingFunction* f,
 	IScriptEnvironment* env)
 {
   const VideoInfo& vi = clip->GetVideoInfo();
@@ -3838,6 +3870,8 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
   if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("ResizeMT: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
   if (prefetch==0) prefetch=1;
   if ((_threads<0) || (_threads>MAX_MT_THREADS)) env->ThrowError("ResizeMT: [threads] must be between 0 and %d.",MAX_MT_THREADS);
+  if ((accuracy<0) || (accuracy>2)) env->ThrowError("ResizeMT: [accuracy] must be between 0 and 2.");
+  if ((order<0) || (order>2)) env->ThrowError("ResizeMT: [order] must be between 0 and 2.");
 
   const bool avsp=env->FunctionExists("ConvertBits");  
   const bool isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
@@ -3867,15 +3901,39 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
   
   }
 
-  double subrange_width = args[2].AsDblDef(vi.width), subrange_height = args[3].AsDblDef(vi.height);
+  double subrange_width=(desample)?args[2].AsDblDef(target_width):args[2].AsDblDef(vi.width);
+  double subrange_height=(desample)?args[3].AsDblDef(target_height):args[3].AsDblDef(vi.height);
+
   // Crop style syntax
-  if (subrange_width  <= 0.0) subrange_width  = vi.width  - subrange_left + subrange_width;
-  if (subrange_height <= 0.0) subrange_height = vi.height - subrange_top  + subrange_height;
+  if (desample)
+  {
+	if (subrange_width  <= 0.0) subrange_width  = target_width  - subrange_left + subrange_width;
+	if (subrange_height <= 0.0) subrange_height = target_height - subrange_top  + subrange_height;
+  }
+  else
+  {
+	if (subrange_width  <= 0.0) subrange_width  = vi.width  - subrange_left + subrange_width;
+	if (subrange_height <= 0.0) subrange_height = vi.height - subrange_top  + subrange_height;
+  }
 
   PClip result;
   // ensure that the intermediate area is maximal
-  const double area_FirstH = subrange_height * target_width;
-  const double area_FirstV = subrange_width * target_height;
+  const double area_FirstH = (desample)?subrange_height*vi.width:subrange_height*target_width;
+  const double area_FirstV = (desample)?subrange_width*target_height:subrange_width*vi.height;
+
+  bool VFirst;
+
+  if (desample)
+  {
+	  switch(order)
+	  {
+		case 0 : VFirst=(area_FirstH>=area_FirstV); break;
+		case 1 : VFirst=true; break;
+		case 2 : VFirst=false; break;
+		default : VFirst=(area_FirstH>=area_FirstV); break;
+	  }
+  }
+  else VFirst=(area_FirstH<area_FirstV);
 
   const bool FTurnL=(!avsp) && (env->FunctionExists("FTurnLeft") && ((env->GetCPUFlags() & CPUF_SSE2)!=0)) && (!vi.IsRGB());
   const bool FTurnR=(!avsp) && (env->FunctionExists("FTurnRight") && ((env->GetCPUFlags() & CPUF_SSE2)!=0)) && (!vi.IsRGB());
@@ -3918,128 +3976,65 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 
 	bool step1,step2;
 
-  if (!fast_resize)
+  if (VFirst)
   {
-	  if (area_FirstH < area_FirstV)
-	  {
-		if ((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)) step1=false;
-		else
+	if ((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)) step1=false;
+	else
+	{
+		if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
+		   && (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height) && (!desample))
 		{
-			if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
-			   && (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height))
-			{
-				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
+			const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
 
-				if (((int(subrange_top) | int(subrange_height)) & mask) == 0) step1=false;
-				else step1=true;
-			}
+			if (((int(subrange_top) | int(subrange_height)) & mask) == 0) step1=false;
 			else step1=true;
 		}
-		if (!((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)))
+		else step1=true;
+	}
+	if (!((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)))
+	{
+		if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
+			&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width) && (!desample))
 		{
-			if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
-				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width))
-			{
-				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
+			const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
 
-			    if (((int(subrange_left) | int(subrange_width)) & mask) == 0) step2=false;
-				else step2=true;
-			}
+		    if (((int(subrange_left) | int(subrange_width)) & mask) == 0) step2=false;
 			else step2=true;
 		}
-		else step2=false;
-	  }
-	  else
-	  {
-		if ((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)) step1=false;
-		else
-		{
-			if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
-				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width))
-			{
-				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
-
-			    if (((int(subrange_left) | int(subrange_width)) & mask) == 0) step1=false;
-				else step1=true;
-			}
-			else step1=true;
-		}
-		if (!((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)))
-		{
-			if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
-			&& (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height))
-			{
-				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
-				
-				if (((int(subrange_top) | int(subrange_height)) & mask) == 0) step2=false;
-				else step2=true;
-			}
-			else step2=true;
-		}
-		else step2=false;
-	  }
+		else step2=true;
+	}
+	else step2=false;
   }
   else
-  {	  
-	  if (area_FirstH < area_FirstV)
-	  {
-		if ((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)) step1=false;
-		else
+  {
+	if ((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)) step1=false;
+	else
+	{
+		if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
+			&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width) && (!desample))
 		{
-			if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
-			   && (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height))
-			{
-				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
+			const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
 
-				if (((int(subrange_top) | int(subrange_height)) & mask) == 0) step1=false;
-				else step1=true;
-			}
+		    if (((int(subrange_left) | int(subrange_width)) & mask) == 0) step1=false;
 			else step1=true;
 		}
-		if (!((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)))
+		else step1=true;
+	}
+	if (!((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)))
+	{
+		if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
+		&& (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height) && (!desample))
 		{
-			if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
-				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width))
-			{
-				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
-
-			    if (((int(subrange_left) | int(subrange_width)) & mask) == 0) step2=false;
-				else step2=true;
-			}
-			else step2=true;
-		}
-		else step2=false;
-	  }
-	  else
-	  {
-		if ((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)) step1=false;
-		else
-		{
-			if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
-				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width))
-			{
-				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
-
-			    if (((int(subrange_left) | int(subrange_width)) & mask) == 0) step1=false;
-				else step1=true;
-			}
-			else step1=true;
-		}
-		if (!((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)))
-		{
-			if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
-			&& (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height))
-			{
-				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
+			const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
 				
-				if (((int(subrange_top) | int(subrange_height)) & mask) == 0) step2=false;
-				else step2=true;
-			}
+			if (((int(subrange_top) | int(subrange_height)) & mask) == 0) step2=false;
 			else step2=true;
 		}
-		else step2=false;
-	  }
+		else step2=true;
+	}
+	else step2=false;
   }
+
 
 	uint8_t threads_number=1;
 
@@ -4058,38 +4053,39 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 		}
 	}
 
+
   if (!fast_resize)
   {
-	  if (area_FirstH < area_FirstV)
+	  if (VFirst)
 	  {
 		if ((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)) result=clip;
 		else
 		{
 			if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
-			   && (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height))
+			   && (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height) && (!desample))
 			{
 				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
 
 				if (((int(subrange_top) | int(subrange_height)) & mask) == 0)
 				{
-					  AVSValue sargs[6] = {clip,0,int(subrange_top),vi.width,int(subrange_height),0};
-					  result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
+					AVSValue sargs[6] = {clip,0,int(subrange_top),vi.width,int(subrange_height),0};
+					result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 				}
-				else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,threads_number,_sleep,(step2)?1:range_mode,avsp, f, env);
+				else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,threads_number,_sleep,(step2)?1:range_mode,desample,accuracy,avsp, f, env);
 			}
-			else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,threads_number,_sleep,(step2)?1:range_mode,avsp, f, env);
+			else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,threads_number,_sleep,(step2)?1:range_mode,desample,accuracy,avsp, f, env);
 		}
 		if (!((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)))
 		{
 			if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
-				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width))
+				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width) && (!desample))
 			{
 				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
 
 			    if (((int(subrange_left) | int(subrange_width)) & mask) == 0)
 				{
-				  AVSValue sargs[6] = {result,int(subrange_left),0,int(subrange_width),vi.height,0};
-				  result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
+					AVSValue sargs[6] = {result,int(subrange_left),0,int(subrange_width),vi.height,0};
+					result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 				}
 				else
 				{
@@ -4128,10 +4124,10 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 							vu = env->Invoke(turnRightFunction,vu).AsClip();
 							vv = env->Invoke(turnRightFunction,vv).AsClip();
 							if (isAlphaChannel) va = env->Invoke(turnRightFunction,va).AsClip();
-							v = CreateResizeV(v.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,plane_range[0],avsp, f, env);
-							vu = CreateResizeV(vu.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,plane_range[1],avsp, f, env);
-							vv = CreateResizeV(vv.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,plane_range[2],avsp, f, env);
-							if (isAlphaChannel) va = CreateResizeV(va.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,plane_range[3],avsp, f, env);
+							v = CreateResizeV(v.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,plane_range[0],desample,accuracy,avsp, f, env);
+							vu = CreateResizeV(vu.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,plane_range[1],desample,accuracy,avsp, f, env);
+							vv = CreateResizeV(vv.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,plane_range[2],desample,accuracy,avsp, f, env);
+							if (isAlphaChannel) va = CreateResizeV(va.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,plane_range[3],desample,accuracy,avsp, f, env);
 							v = env->Invoke(turnLeftFunction,v).AsClip();
 							vu = env->Invoke(turnLeftFunction,vu).AsClip();
 							vv = env->Invoke(turnLeftFunction,vv).AsClip();
@@ -4145,14 +4141,14 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 						else
 						{
 							result=env->Invoke(turnRightFunction,result).AsClip();
-							result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,range_mode,avsp, f, env);
+							result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,range_mode,desample,accuracy,avsp, f, env);
 							result=env->Invoke(turnLeftFunction,result).AsClip();
 						}
 					}
 					else
 					{
 						result=env->Invoke(turnLeftFunction,result).AsClip();
-						result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,range_mode,avsp, f, env);
+						result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,range_mode,desample,accuracy,avsp, f, env);
 						result=env->Invoke(turnRightFunction,result).AsClip();
 					}
 				}
@@ -4194,10 +4190,10 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 						vu = env->Invoke(turnRightFunction,vu).AsClip();
 						vv = env->Invoke(turnRightFunction,vv).AsClip();
 						if (isAlphaChannel) va = env->Invoke(turnRightFunction,va).AsClip();
-						v = CreateResizeV(v.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,plane_range[0],avsp, f, env);
-						vu = CreateResizeV(vu.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,plane_range[1],avsp, f, env);
-						vv = CreateResizeV(vv.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,plane_range[2],avsp, f, env);
-						if (isAlphaChannel) va = CreateResizeV(va.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,plane_range[3],avsp, f, env);
+						v = CreateResizeV(v.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,plane_range[0],desample,accuracy,avsp, f, env);
+						vu = CreateResizeV(vu.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,plane_range[1],desample,accuracy,avsp, f, env);
+						vv = CreateResizeV(vv.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,plane_range[2],desample,accuracy,avsp, f, env);
+						if (isAlphaChannel) va = CreateResizeV(va.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,plane_range[3],desample,accuracy,avsp, f, env);
 						v = env->Invoke(turnLeftFunction,v).AsClip();
 						vu = env->Invoke(turnLeftFunction,vu).AsClip();
 						vv = env->Invoke(turnLeftFunction,vv).AsClip();
@@ -4211,14 +4207,14 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 					else
 					{
 						result=env->Invoke(turnRightFunction,result).AsClip();
-						result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,range_mode,avsp, f, env);
+						result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,range_mode,desample,accuracy,avsp, f, env);
 						result=env->Invoke(turnLeftFunction,result).AsClip();
 					}
 				}
 				else
 				{
 					result=env->Invoke(turnLeftFunction,result).AsClip();
-					result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,range_mode,avsp, f, env);
+					result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,range_mode,desample,accuracy,avsp, f, env);
 					result=env->Invoke(turnRightFunction,result).AsClip();
 				}
 			}
@@ -4230,14 +4226,14 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 		else
 		{
 			if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
-				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width))
+				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width) && (!desample))
 			{
 				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
 
 			    if (((int(subrange_left) | int(subrange_width)) & mask) == 0)
 				{
-				  AVSValue sargs[6] = {clip,int(subrange_left),0,int(subrange_width),vi.height,0};
-				  result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
+					AVSValue sargs[6] = {clip,int(subrange_left),0,int(subrange_width),vi.height,0};
+					result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 				}
 				else
 				{
@@ -4276,10 +4272,10 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 							vu = env->Invoke(turnRightFunction,vu).AsClip();
 							vv = env->Invoke(turnRightFunction,vv).AsClip();
 							if (isAlphaChannel) va = env->Invoke(turnRightFunction,va).AsClip();
-							v = CreateResizeV(v.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:plane_range[0],avsp, f, env);
-							vu = CreateResizeV(vu.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,(step2)?1:plane_range[1],avsp, f, env);
-							vv = CreateResizeV(vv.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,(step2)?1:plane_range[2],avsp, f, env);
-							if (isAlphaChannel) va = CreateResizeV(va.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:plane_range[3],avsp, f, env);
+							v = CreateResizeV(v.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:plane_range[0],desample,accuracy,avsp, f, env);
+							vu = CreateResizeV(vu.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,(step2)?1:plane_range[1],desample,accuracy,avsp, f, env);
+							vv = CreateResizeV(vv.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,(step2)?1:plane_range[2],desample,accuracy,avsp, f, env);
+							if (isAlphaChannel) va = CreateResizeV(va.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:plane_range[3],desample,accuracy,avsp, f, env);
 							v = env->Invoke(turnLeftFunction,v).AsClip();
 							vu = env->Invoke(turnLeftFunction,vu).AsClip();
 							vv = env->Invoke(turnLeftFunction,vv).AsClip();
@@ -4293,14 +4289,14 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 						else
 						{
 							result=env->Invoke(turnRightFunction,clip).AsClip();
-							result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:range_mode,avsp, f, env);
+							result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:range_mode,desample,accuracy,avsp, f, env);
 							result=env->Invoke(turnLeftFunction,result).AsClip();
 						}
 					}
 					else
 					{
 						result=env->Invoke(turnLeftFunction,clip).AsClip();
-						result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:range_mode,avsp, f, env);
+						result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:range_mode,desample,accuracy,avsp, f, env);
 						result=env->Invoke(turnRightFunction,result).AsClip();
 					}
 				}
@@ -4342,10 +4338,10 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 						vu = env->Invoke(turnRightFunction,vu).AsClip();
 						vv = env->Invoke(turnRightFunction,vv).AsClip();
 						if (isAlphaChannel) va = env->Invoke(turnRightFunction,va).AsClip();
-						v = CreateResizeV(v.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:plane_range[0],avsp, f, env);
-						vu = CreateResizeV(vu.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,(step2)?1:plane_range[1],avsp, f, env);
-						vv = CreateResizeV(vv.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,(step2)?1:plane_range[2],avsp, f, env);
-						if (isAlphaChannel) va = CreateResizeV(va.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:plane_range[3],avsp, f, env);
+						v = CreateResizeV(v.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:plane_range[0],desample,accuracy,avsp, f, env);
+						vu = CreateResizeV(vu.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,(step2)?1:plane_range[1],desample,accuracy,avsp, f, env);
+						vv = CreateResizeV(vv.AsClip(), subrange_left/div, subrange_width/div, target_width >> shift,threads_number,_sleep,(step2)?1:plane_range[2],desample,accuracy,avsp, f, env);
+						if (isAlphaChannel) va = CreateResizeV(va.AsClip(), subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:plane_range[3],desample,accuracy,avsp, f, env);
 						v = env->Invoke(turnLeftFunction,v).AsClip();
 						vu = env->Invoke(turnLeftFunction,vu).AsClip();
 						vv = env->Invoke(turnLeftFunction,vv).AsClip();
@@ -4359,14 +4355,14 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 					else
 					{
 						result=env->Invoke(turnRightFunction,clip).AsClip();
-						result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:range_mode,avsp, f, env);
+						result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:range_mode,desample,accuracy,avsp, f, env);
 						result=env->Invoke(turnLeftFunction,result).AsClip();
 					}
 				}
 				else
 				{
 					result=env->Invoke(turnLeftFunction,clip).AsClip();
-					result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:range_mode,avsp, f, env);
+					result=CreateResizeV(result, subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:range_mode,desample,accuracy,avsp, f, env);
 					result=env->Invoke(turnRightFunction,result).AsClip();
 				}
 			}
@@ -4374,57 +4370,57 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 		if (!((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)))
 		{
 			if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
-			&& (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height))
+			&& (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height) && (!desample))
 			{
 				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
 				
 				if (((int(subrange_top) | int(subrange_height)) & mask) == 0)
 				{
-					  AVSValue sargs[6] = {result,0,int(subrange_top),vi.width,int(subrange_height),0};
-					  result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
+					AVSValue sargs[6] = {result,0,int(subrange_top),vi.width,int(subrange_height),0};
+					result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 				}
-				else result = CreateResizeV(result, subrange_top, subrange_height, target_height,threads_number,_sleep,range_mode,avsp, f, env);
+				else result = CreateResizeV(result, subrange_top, subrange_height, target_height,threads_number,_sleep,range_mode,desample,accuracy,avsp, f, env);
 			}
-			else result = CreateResizeV(result, subrange_top, subrange_height, target_height,threads_number,_sleep,range_mode,avsp, f, env);
+			else result = CreateResizeV(result, subrange_top, subrange_height, target_height,threads_number,_sleep,range_mode,desample,accuracy,avsp, f, env);
 		}
 	  }
   }
   else
   {	  
-	  if (area_FirstH < area_FirstV)
+	  if (VFirst)
 	  {
 		if ((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)) result=clip;
 		else
 		{
 			if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
-			   && (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height))
+			   && (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height) && (!desample))
 			{
 				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
 
 				if (((int(subrange_top) | int(subrange_height)) & mask) == 0)
 				{
-					  AVSValue sargs[6] = {clip,0,int(subrange_top),vi.width,int(subrange_height),0};
-					  result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
+					AVSValue sargs[6] = {clip,0,int(subrange_top),vi.width,int(subrange_height),0};
+					result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 				}
-				else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,threads_number,_sleep,(step2)?1:range_mode, avsp, f, env);
+				else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,threads_number,_sleep,(step2)?1:range_mode,desample,accuracy, avsp, f, env);
 			}
-			else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,threads_number,_sleep,(step2)?1:range_mode,avsp, f, env);
+			else result = CreateResizeV(clip, subrange_top, subrange_height, target_height,threads_number,_sleep,(step2)?1:range_mode,desample,accuracy,avsp, f, env);
 		}
 		if (!((subrange_left==0) && (subrange_width==target_width) && (subrange_width==vi.width)))
 		{
 			if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
-				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width))
+				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width) && (!desample))
 			{
 				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
 
 			    if (((int(subrange_left) | int(subrange_width)) & mask) == 0)
 				{
-				  AVSValue sargs[6] = {result,int(subrange_left),0,int(subrange_width),vi.height,0};
-				  result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
+					AVSValue sargs[6] = {result,int(subrange_left),0,int(subrange_width),vi.height,0};
+					result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 				}
-				else result = CreateResizeH(result, subrange_left, subrange_width, target_width,threads_number,_sleep,range_mode,avsp, f, env);
+				else result = CreateResizeH(result, subrange_left, subrange_width, target_width,threads_number,_sleep,range_mode,desample,accuracy,avsp, f, env);
 			}
-			else result = CreateResizeH(result, subrange_left, subrange_width, target_width,threads_number,_sleep,range_mode,avsp, f, env);
+			else result = CreateResizeH(result, subrange_left, subrange_width, target_width,threads_number,_sleep,range_mode,desample,accuracy,avsp, f, env);
 		}		
 	  }
 	  else
@@ -4433,34 +4429,34 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 		else
 		{
 			if ((subrange_left==int(subrange_left)) && (subrange_width==target_width)
-				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width))
+				&& (subrange_left>=0) && ((subrange_left+subrange_width)<=vi.width) && (!desample))
 			{
 				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
 
 			    if (((int(subrange_left) | int(subrange_width)) & mask) == 0)
 				{
-				  AVSValue sargs[6] = {clip,int(subrange_left),0,int(subrange_width),vi.height,0};
-				  result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
+					AVSValue sargs[6] = {clip,int(subrange_left),0,int(subrange_width),vi.height,0};
+					result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 				}
-				else result = CreateResizeH(clip, subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:range_mode,avsp, f, env);
+				else result = CreateResizeH(clip, subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:range_mode,desample,accuracy,avsp, f, env);
 			}
-			else result = CreateResizeH(clip, subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:range_mode,avsp, f, env);
+			else result = CreateResizeH(clip, subrange_left, subrange_width, target_width,threads_number,_sleep,(step2)?1:range_mode,desample,accuracy,avsp, f, env);
 		}
 		if (!((subrange_top==0) && (subrange_height==target_height) && (subrange_height==vi.height)))
 		{
 			if ((subrange_top==int(subrange_top)) && (subrange_height==target_height)
-			&& (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height))
+			&& (subrange_top>=0) && ((subrange_top+subrange_height)<= vi.height) && (!desample))
 			{
 				const int mask = (vi.IsPlanar() && !grey && !isRGBPfamily) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
 				
 				if (((int(subrange_top) | int(subrange_height)) & mask) == 0)
 				{
-					  AVSValue sargs[6] = {result,0,int(subrange_top),vi.width,int(subrange_height),0};
-					  result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
+					AVSValue sargs[6] = {result,0,int(subrange_top),vi.width,int(subrange_height),0};
+					result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 				}
-				else result = CreateResizeV(result, subrange_top, subrange_height, target_height,threads_number,_sleep,range_mode,avsp, f, env);
+				else result = CreateResizeV(result, subrange_top, subrange_height, target_height,threads_number,_sleep,range_mode,desample,accuracy,avsp, f, env);
 			}
-			else result = CreateResizeV(result, subrange_top, subrange_height, target_height,threads_number,_sleep,range_mode,avsp, f, env);
+			else result = CreateResizeV(result, subrange_top, subrange_height, target_height,threads_number,_sleep,range_mode,desample,accuracy,avsp, f, env);
 		}
 	  }
   }
@@ -4468,12 +4464,13 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
   return result;
 }
 
+
 AVSValue __cdecl FilteredResizeMT::Create_PointResize(AVSValue args, void*, IScriptEnvironment* env)
 {
   PointFilter f;
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),&args[3],&f, env );
+	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3],&f, env );
 }
 
 
@@ -4482,7 +4479,7 @@ AVSValue __cdecl FilteredResizeMT::Create_BilinearResize(AVSValue args, void*, I
   TriangleFilter f;
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),&args[3],&f, env );
+	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3],&f, env );
 }
 
 
@@ -4491,7 +4488,7 @@ AVSValue __cdecl FilteredResizeMT::Create_BicubicResize(AVSValue args, void*, IS
   MitchellNetravaliFilter f(args[3].AsDblDef(1./3.), args[4].AsDblDef(1./3.));
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[9].AsInt(0),
 	  args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(false),args[13].AsBool(false),
-	  args[14].AsInt(0),args[15].AsInt(1),&args[5],&f, env );
+	  args[14].AsInt(0),args[15].AsInt(1),false,0,0,&args[5],&f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_LanczosResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4499,7 +4496,7 @@ AVSValue __cdecl FilteredResizeMT::Create_LanczosResize(AVSValue args, void*, IS
   LanczosFilter f(args[7].AsInt(3));
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(1),&args[3],&f, env );
+	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,&args[3],&f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4507,7 +4504,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Lanczos4Resize(AVSValue args, void*, I
   LanczosFilter f(4);
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),&args[3], &f, env );
+	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3], &f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_BlackmanResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4515,7 +4512,7 @@ AVSValue __cdecl FilteredResizeMT::Create_BlackmanResize(AVSValue args, void*, I
   BlackmanFilter f(args[7].AsInt(4));
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(1),&args[3],&f, env );
+	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,&args[3],&f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_Spline16Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4523,7 +4520,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Spline16Resize(AVSValue args, void*, I
   Spline16Filter f;
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),&args[3], &f, env );
+	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3], &f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_Spline36Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4531,7 +4528,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Spline36Resize(AVSValue args, void*, I
   Spline36Filter f;
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),&args[3], &f, env );
+	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3], &f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_Spline64Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4539,7 +4536,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Spline64Resize(AVSValue args, void*, I
   Spline64Filter f;
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),&args[3],&f, env );
+	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3],&f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_GaussianResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4547,7 +4544,7 @@ AVSValue __cdecl FilteredResizeMT::Create_GaussianResize(AVSValue args, void*, I
   GaussianFilter f(args[7].AsFloat(30.0f));
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(1),&args[3],&f, env );
+	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,&args[3],&f, env );
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_SincResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -4555,5 +4552,87 @@ AVSValue __cdecl FilteredResizeMT::Create_SincResize(AVSValue args, void*, IScri
   SincFilter f(args[7].AsInt(4));
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(1),&args[3], &f, env );
+	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,&args[3], &f, env );
+}
+
+
+AVSValue __cdecl FilteredResizeMT::Create_DeBilinearResize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  TriangleFilter f;
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
+	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),&args[3],&f, env );
+}
+
+
+AVSValue __cdecl FilteredResizeMT::Create_DeBicubicResize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  MitchellNetravaliFilter f(args[3].AsDblDef(1./3.), args[4].AsDblDef(1./3.));
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[9].AsInt(0),
+	  args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(false),args[13].AsBool(false),
+	  args[14].AsInt(0),args[15].AsInt(1),true,args[16].AsInt(0),args[17].AsInt(0),&args[5],&f, env );
+}
+
+AVSValue __cdecl FilteredResizeMT::Create_DeLanczosResize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  LanczosFilter f(args[7].AsInt(3));
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[8].AsInt(0),
+	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
+	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),&args[3],&f, env );
+}
+
+AVSValue __cdecl FilteredResizeMT::Create_DeLanczos4Resize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  LanczosFilter f(4);
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
+	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),&args[3], &f, env );
+}
+
+AVSValue __cdecl FilteredResizeMT::Create_DeBlackmanResize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  BlackmanFilter f(args[7].AsInt(4));
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[8].AsInt(0),
+	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
+	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),&args[3],&f, env );
+}
+
+AVSValue __cdecl FilteredResizeMT::Create_DeSpline16Resize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  Spline16Filter f;
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
+	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),&args[3], &f, env );
+}
+
+AVSValue __cdecl FilteredResizeMT::Create_DeSpline36Resize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  Spline36Filter f;
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
+	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),&args[3], &f, env );
+}
+
+AVSValue __cdecl FilteredResizeMT::Create_DeSpline64Resize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  Spline64Filter f;
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[7].AsInt(0),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
+	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),&args[3],&f, env );
+}
+
+AVSValue __cdecl FilteredResizeMT::Create_DeGaussianResize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  GaussianFilter f(args[7].AsFloat(30.0f));
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[8].AsInt(0),
+	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
+	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),&args[3],&f, env );
+}
+
+AVSValue __cdecl FilteredResizeMT::Create_DeSincResize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  SincFilter f(args[7].AsInt(4));
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(),args[8].AsInt(0),
+	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
+	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),&args[3], &f, env );
 }
