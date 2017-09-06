@@ -106,7 +106,8 @@ public:
   virtual double support() = 0;
 
   virtual ResamplingProgram* GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, IScriptEnvironment* env);
-  virtual ResamplingProgram* GetDesamplingProgram(int source_size, double crop_start, double crop_size, int target_size, uint8_t accuracy, IScriptEnvironment* env);
+  virtual ResamplingProgram* GetDesamplingProgram(int source_size, double crop_start, double crop_size, int target_size, uint8_t accuracy, int SizeY, uint8_t ShiftC, int &SizeOut,IScriptEnvironment* env);
+  virtual int GetDesamplingData(int source_size, double crop_start, double crop_size, int target_size, uint8_t ShiftC, IScriptEnvironment* env);
 };
 
 class PointFilter : public ResamplingFunction 

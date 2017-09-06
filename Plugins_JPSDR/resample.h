@@ -41,7 +41,7 @@
 #include "resample_functions.h"
 #include "ThreadPoolInterface.h"
 
-#define RESAMPLE_MT_VERSION "ResampleMT 2.0.0 JPSDR"
+#define RESAMPLE_MT_VERSION "ResampleMT 2.0.1 JPSDR"
 
 // Resizer function pointer
 typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2);
@@ -136,7 +136,7 @@ class FilteredResizeV : public GenericVideoFilter
 {
 public:
   FilteredResizeV( PClip _child, double subrange_top, double subrange_height, int target_height, uint8_t _threads,
-	  bool _sleep,int range_mode,bool desample,int accuracy,bool _avsp,ResamplingFunction* func, IScriptEnvironment* env);
+	  bool _sleep,int range_mode,bool desample,int accuracy,int ChromaS,uint8_t ShiftC, bool _avsp,ResamplingFunction* func, IScriptEnvironment* env);
   virtual ~FilteredResizeV(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
@@ -207,7 +207,7 @@ class FilteredResizeMT
 {
 public:
 static PClip CreateResizeV( PClip clip, double subrange_top, double subrange_height, int target_height, uint8_t _threads,
-	                         bool _sleep,int range_mode,bool desample,int accuracy,bool _avsp,ResamplingFunction* func,
+	                         bool _sleep,int range_mode,bool desample,int accuracy,int ChromaS,uint8_t ShiftC,bool _avsp,ResamplingFunction* func,
 							 IScriptEnvironment* env );
 static PClip CreateResizeH( PClip clip, double subrange_top, double subrange_height, int target_height, uint8_t _threads,
 	                         bool _sleep,int range_mode,bool desample,int accuracy,bool _avsp,ResamplingFunction* func,
