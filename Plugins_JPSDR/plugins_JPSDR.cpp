@@ -1,13 +1,16 @@
 #include "resample.h"
 #include "AutoYUY2.h"
 #include "nnedi3.h"
+#include "aWarpSharp.h"
 
 ThreadPoolInterface *poolInterface;
+
+int aWarpSharp_g_cpuid;
 
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 1.2.1"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 2.0.0"
 
 /*
   threshold : int, default value : 4
@@ -804,11 +807,278 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 }
 
 
+static bool is_cplace_mpeg2(const AVSValue &args, int pos)
+{
+  const char *cplace_0=args[pos].AsString("");
+  const bool cplace_mpeg2_flag=(_stricmp(cplace_0, "MPEG2")==0);
+  return (cplace_mpeg2_flag);
+}
+
+
+// thresh: 0..255
+// blur:   0..?
+// type:   0..1
+// depth:  -128..127
+// chroma modes:
+// 0 - zero
+// 1 - don't care
+// 2 - copy
+// 3 - process
+// 4 - guide by luma - warp only
+// remap from MarcFD's aWarpSharp: thresh=_thresh*256, blur=_blurlevel, type= (bm=0)->1, (bm=2)->0, depth=_depth*_blurlevel/2, chroma= 0->2, 1->4, 2->3
+AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnvironment *env)
+{
+	int threads,prefetch;
+	bool LogicalCores,MaxPhysCores,SetAffinity,sleep;
+
+	uint8_t threads_number=1;
+
+	const bool avsp=env->FunctionExists("ConvertBits");
+
+
+  switch ((int)(size_t)user_data)
+  {
+  case 0:
+	  {
+	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aWarpSharp2: SSE2 capable CPU is required");
+
+	  threads=args[14].AsInt(0);
+	  LogicalCores=args[15].AsBool(true);
+	  MaxPhysCores=args[16].AsBool(true);
+	  SetAffinity=args[17].AsBool(false);
+	  sleep = args[18].AsBool(false);
+	  prefetch=args[19].AsInt(0);
+
+	  if ((threads<0) || (threads>MAX_MT_THREADS))
+		  env->ThrowError("aWarpSharp2: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
+	  if (prefetch==0) prefetch=1;
+	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
+		  env->ThrowError("aWarpSharp2: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+
+	  if (threads!=1)
+	  {
+		  if (!poolInterface->CreatePool(prefetch)) env->ThrowError("aWarpSharp2: Unable to create ThreadPool!");
+
+		  threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
+
+		  if (threads_number==0) env->ThrowError("aWarpSharp2: Error with the TheadPool while getting CPU info!");
+
+		  if (threads_number>1)
+		  {
+			  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				  env->ThrowError("aWarpSharp2: Error with the TheadPool while allocating threadpool!");
+		  }
+	  }
+
+    return new aWarpSharp(args[0].AsClip(),args[1].AsInt(0x80),args[2].AsInt(-1),args[3].AsInt(0),
+		args[4].AsInt(16),args[5].AsInt(4),args[6].AsInt(128),is_cplace_mpeg2(args,7),args[8].AsInt(-1),args[9].AsInt(128),
+		args[10].AsInt(128),args[11].AsInt(-1),args[12].AsInt(-1),args[13].AsInt(-1),threads,sleep,avsp,env);
+	break;
+	  }
+  case 1:
+	  {
+	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aWarpSharp: SSE2 capable CPU is required");
+
+    const int type = (args[5].AsInt(2)!=2)?1:0;
+    const int blurlevel = args[2].AsInt(2);
+    const unsigned int cm = args[4].AsInt(1);
+    static const char map[3] = {2,4,3};
+
+	  threads=args[7].AsInt(0);
+	  LogicalCores=args[8].AsBool(true);
+	  MaxPhysCores=args[9].AsBool(true);
+	  SetAffinity=args[10].AsBool(false);
+	  sleep = args[11].AsBool(false);
+	  prefetch=args[12].AsInt(0);
+
+	  if ((threads<0) || (threads>MAX_MT_THREADS))
+		  env->ThrowError("aWarpSharp: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
+	  if (prefetch==0) prefetch=1;
+	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
+		  env->ThrowError("aWarpSharp: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+
+	  if (threads!=1)
+	  {
+		  if (!poolInterface->CreatePool(prefetch)) env->ThrowError("aWarpSharp: Unable to create ThreadPool!");
+
+		  threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
+
+		  if (threads_number==0) env->ThrowError("aWarpSharp: Error with the TheadPool while getting CPU info!");
+
+		  if (threads_number>1)
+		  {
+			  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				  env->ThrowError("aWarpSharp: Error with the TheadPool while allocating threadpool!");
+		  }
+	  }
+
+    return new aWarpSharp(args[0].AsClip(),int(args[3].AsFloat(0.5)*256.0),(type==1)?(blurlevel*3):blurlevel,type,
+		int(args[1].AsFloat(16.0)*blurlevel*0.5),(cm<3)?map[cm]:-1,0,false,-1,128,128,-1,-1,-1,threads,sleep,avsp,env);
+	break;
+	  }
+  case 2:
+	  {
+
+	  threads=args[4].AsInt(0);
+	  LogicalCores=args[5].AsBool(true);
+	  MaxPhysCores=args[6].AsBool(true);
+	  SetAffinity=args[7].AsBool(false);
+	  sleep = args[8].AsBool(false);
+	  prefetch=args[9].AsInt(0);
+
+	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aSobel: SSE2 capable CPU is required");
+
+	  if ((threads<0) || (threads>MAX_MT_THREADS))
+		  env->ThrowError("aSobel: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
+	  if (prefetch==0) prefetch=1;
+	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
+		  env->ThrowError("aSobel: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+
+	  if (threads!=1)
+	  {
+		  if (!poolInterface->CreatePool(prefetch)) env->ThrowError("aSobel: Unable to create ThreadPool!");
+
+		  threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
+
+		  if (threads_number==0) env->ThrowError("aSobel: Error with the TheadPool while getting CPU info!");
+
+		  if (threads_number>1)
+		  {
+			  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				  env->ThrowError("aSobel: Error with the TheadPool while allocating threadpool!");
+		  }
+	  }
+
+    return new aSobel(args[0].AsClip(),args[1].AsInt(0x80),args[2].AsInt(1),args[3].AsInt(-1),threads,sleep,avsp,env);
+	break;
+	  }
+  case 3:
+	  {
+
+	  threads=args[7].AsInt(0);
+	  LogicalCores=args[8].AsBool(true);
+	  MaxPhysCores=args[9].AsBool(true);
+	  SetAffinity=args[10].AsBool(false);
+	  sleep = args[11].AsBool(false);
+	  prefetch=args[12].AsInt(0);
+
+	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aBlur: SSE2 capable CPU is required");
+
+	  if ((threads<0) || (threads>MAX_MT_THREADS))
+		  env->ThrowError("aBlur: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
+	  if (prefetch==0) prefetch=1;
+	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
+		  env->ThrowError("aBlur: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+
+	  if (threads!=1)
+	  {
+		  if (!poolInterface->CreatePool(prefetch)) env->ThrowError("aBlur: Unable to create ThreadPool!");
+
+		  threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
+
+		  if (threads_number==0) env->ThrowError("aBlur: Error with the TheadPool while getting CPU info!");
+
+		  if (threads_number>1)
+		  {
+			  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				  env->ThrowError("aBlur: Error with the TheadPool while allocating threadpool!");
+		  }
+	  }
+
+	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aBlur: SSE2 capable CPU is required");
+
+    return new aBlur(args[0].AsClip(),args[1].AsInt(-1),args[2].AsInt(1),args[3].AsInt(1),args[4].AsInt(-1),
+		args[5].AsInt(-1),args[6].AsInt(-1),threads,sleep,avsp,env);
+	break;
+	  }
+  case 4:
+	  {
+
+	  threads=args[8].AsInt(0);
+	  LogicalCores=args[9].AsBool(true);
+	  MaxPhysCores=args[10].AsBool(true);
+	  SetAffinity=args[11].AsBool(false);
+	  sleep = args[12].AsBool(false);
+	  prefetch=args[13].AsInt(0);
+
+	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aWarp: SSE2 capable CPU is required");
+
+	  if ((threads<0) || (threads>MAX_MT_THREADS))
+		  env->ThrowError("aWarp: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
+	  if (prefetch==0) prefetch=1;
+	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
+		  env->ThrowError("aWarp: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+
+	  if (threads!=1)
+	  {
+		  if (!poolInterface->CreatePool(prefetch)) env->ThrowError("aWarp: Unable to create ThreadPool!");
+
+		  threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
+
+		  if (threads_number==0) env->ThrowError("aWarp: Error with the TheadPool while getting CPU info!");
+
+		  if (threads_number>1)
+		  {
+			  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				  env->ThrowError("aWarp: Error with the TheadPool while allocating threadpool!");
+		  }
+	  }
+
+	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aWarp: SSE2 capable CPU is required");
+
+    return new aWarp(args[0].AsClip(),args[1].AsClip(),args[2].AsInt(3),args[3].AsInt(4),args[4].AsInt(-1),is_cplace_mpeg2(args,5),
+		args[6].AsInt(128),args[7].AsInt(128),threads,sleep,avsp,env);
+	break;
+	  }
+  case 5:
+	  {
+	  threads=args[8].AsInt(0);
+	  LogicalCores=args[9].AsBool(true);
+	  MaxPhysCores=args[10].AsBool(true);
+	  SetAffinity=args[11].AsBool(false);
+	  sleep = args[12].AsBool(false);
+	  prefetch=args[13].AsInt(0);
+
+	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aWarp4: SSE2 capable CPU is required");
+
+	  if ((threads<0) || (threads>MAX_MT_THREADS))
+		  env->ThrowError("aWarp4: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
+	  if (prefetch==0) prefetch=1;
+	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
+		  env->ThrowError("aWarp4: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+
+	  if (threads!=1)
+	  {
+		  if (!poolInterface->CreatePool(prefetch)) env->ThrowError("aWarp4: Unable to create ThreadPool!");
+
+		  threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
+
+		  if (threads_number==0) env->ThrowError("aWarp4: Error with the TheadPool while getting CPU info!");
+
+		  if (threads_number>1)
+		  {
+			  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				  env->ThrowError("aWarp4: Error with the TheadPool while allocating threadpool!");
+		  }
+	  }
+
+    return new aWarp4(args[0].AsClip(),args[1].AsClip(),args[2].AsInt(3),args[3].AsInt(4),args[4].AsInt(-1),is_cplace_mpeg2(args,5),
+		args[6].AsInt(128),args[7].AsInt(128),threads,sleep,avsp,env);
+	break;
+	  }
+  default : break;
+  }
+  return NULL;
+}
+
+
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
 {
 	AVS_linkage = vectors;
 
 	poolInterface=ThreadPoolInterface::Init(0);
+
+	aWarpSharp_g_cpuid = env->GetCPUFlags(); // PF
 
 	if (!poolInterface->GetThreadPoolInterfaceStatus()) env->ThrowError("plugins_JPSDR: Error with the TheadPool status!");
 
@@ -865,6 +1135,19 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 		FilteredResizeMT::Create_DeGaussianResize, 0);
 	env->AddFunction("DeSincResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i",
 		FilteredResizeMT::Create_DeSincResize, 0);
+
+  env->AddFunction("aWarpSharp2", "c[thresh]i[blur]i[type]i[depth]i[chroma]i[depthC]i[cplace]s[blurV]i[depthV]i[depthVC]i" \
+	  "[blurC]i[blurVC]i[threshC]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i", Create_aWarpSharp, (void*)0);
+  env->AddFunction("aWarpSharp", "c[depth]f[blurlevel]i[thresh]f[cm]i[bm]i[show]b" \
+	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i", Create_aWarpSharp, (void*)1);
+  env->AddFunction("aSobel", "c[thresh]i[chroma]i[threshC]i" \
+	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i", Create_aWarpSharp, (void*)2);
+  env->AddFunction("aBlur", "c[blur]i[type]i[chroma]i[blurV]i[blurC]i[blurVC]i" \
+	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i", Create_aWarpSharp, (void*)3);
+  env->AddFunction("aWarp", "cc[depth]i[chroma]i[depthC]i[cplace]s[depthV]i[depthVC]i" \
+	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i", Create_aWarpSharp, (void*)4);
+  env->AddFunction("aWarp4", "cc[depth]i[chroma]i[depthC]i[cplace]s[depthV]i[depthVC]i" \
+	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i", Create_aWarpSharp, (void*)5);
 
 	return "plugins JPSDR";	
 }

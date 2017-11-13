@@ -163,6 +163,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AutoYUY2.cpp" />
+    <ClCompile Include="aWarpSharp.cpp" />
     <ClCompile Include="MatrixClass.cpp" />
     <ClCompile Include="nnedi3.cpp" />
     <ClCompile Include="PlanarFrame.cpp" />
@@ -174,6 +175,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="avisynth.h" />
+    <ClInclude Include="aWarpSharp.h" />
     <ClInclude Include="MatrixClass.h" />
     <ClInclude Include="nnedi3.h" />
     <ClInclude Include="PlanarFrame.h" />
@@ -211,6 +213,18 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </CustomBuild>
+    <MASM Include="aWarpSharp_asm.asm">
+      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</GenerateDebugInformation>
+      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</GenerateDebugInformation>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </MASM>
+    <MASM Include="aWarpSharp_asm_x64.asm">
+      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</GenerateDebugInformation>
+      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</GenerateDebugInformation>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </MASM>
     <MASM Include="MatrixClass_x64.asm">
       <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</GenerateDebugInformation>
       <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</GenerateDebugInformation>
