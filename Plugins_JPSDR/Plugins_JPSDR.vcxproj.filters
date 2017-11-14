@@ -80,6 +80,9 @@
     <ClInclude Include="aWarpSharp.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
+    <ClInclude Include="AutoYUY2.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="AutoYUY2_asm.asm">
