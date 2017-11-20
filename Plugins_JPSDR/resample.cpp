@@ -46,6 +46,7 @@
 // Intrinsics for SSE4.1, SSSE3, SSE3, SSE2, ISSE and MMX
 #include <emmintrin.h>
 #include <smmintrin.h>
+#include <immintrin.h>
 #include <algorithm>
 
 extern ThreadPoolInterface *poolInterface;
