@@ -825,10 +825,10 @@ _AVX_3b_a:
 	vpackuswb xmm1,xmm1,xmm7			;00000000VVVVVVVV
 	vpunpcklbw xmm0,xmm0,xmm1     		;VUVUVUVUVUVUVUVU
 	add eax,2
-	vpunpcklbw xmm4,xmm2,xmm0			;VYUYVYUYVYUYVYUY
-	vpunpckhbw xmm2,xmm2,xmm0			;VYUYVYUYVYUYVYUY
-	vmovdqa XMMWORD ptr[edi],xmm4
-	vmovdqa XMMWORD ptr[edi+16],xmm2
+	vpunpcklbw xmm2,xmm4,xmm0			;VYUYVYUYVYUYVYUY
+	vpunpckhbw xmm4,xmm4,xmm0			;VYUYVYUYVYUYVYUY
+	vmovdqa XMMWORD ptr[edi],xmm2
+	vmovdqa XMMWORD ptr[edi+16],xmm4
 	add edi,32
 	
 	loop _AVX_3b_a
@@ -1133,10 +1133,10 @@ _AVX_4b_a:
 	vpackuswb xmm1,xmm1,xmm7			;00000000VVVVVVVV
 	vpunpcklbw xmm0,xmm0,xmm1     		;VUVUVUVUVUVUVUVU
 	add eax,2
-	vpunpcklbw xmm4,xmm2,xmm0			;VYUYVYUYVYUYVYUY
-	vpunpckhbw xmm2,xmm2,xmm0			;VYUYVYUYVYUYVYUY
-	vmovdqa XMMWORD ptr[edi],xmm4
-	vmovdqa XMMWORD ptr[edi+16],xmm2
+	vpunpcklbw xmm2,xmm4,xmm0			;VYUYVYUYVYUYVYUY
+	vpunpckhbw xmm4,xmm4,xmm0			;VYUYVYUYVYUYVYUY
+	vmovdqa XMMWORD ptr[edi],xmm2
+	vmovdqa XMMWORD ptr[edi+16],xmm4
 	add edi,32
 	
 	loop _AVX_4b_a
