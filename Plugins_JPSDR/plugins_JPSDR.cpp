@@ -10,7 +10,7 @@ int aWarpSharp_g_cpuid;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 2.0.0"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 2.0.2"
 
 /*
   threshold : int, default value : 4
