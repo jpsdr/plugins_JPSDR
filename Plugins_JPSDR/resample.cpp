@@ -2463,10 +2463,11 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 	  SizeH=dst_width;
   }
 
-  if (desample && (SizeH>vi.width))
+  if (desample && ((SizeH>vi.width) || (SizeH==-1)))
   {
 	  FreeData();
-	  env->ThrowError("ResizeHMT: Desampling can only downscale");
+	  if (SizeH>vi.width) env->ThrowError("ResizeHMT: Desampling can only downscale!");
+	  else env->ThrowError("ResizeHMT: Matrix can't be reversed!");
   }
 
   threads_number=CreateMTData(threads_number,src_width,vi.height,SizeH,vi.height,shift_w,shift_h);
@@ -2486,6 +2487,11 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 	      vi.width   >> shift_w,
 		  accuracy,SizeH,shift_w,SizeOut,
 		  env);
+		if (SizeOut==-1)
+		{
+			FreeData();
+			env->ThrowError("ResizeHMT: Matrix can't be reversed!");
+		}		  
 	}
 	else
 	{
@@ -3083,10 +3089,11 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 	  SizeV=target_height;
   }
 
-  if (desample && (SizeV>vi.height))
+  if (desample && ((SizeV>vi.height) || (SizeV==-1)))
   {
 	  FreeData();
-	  env->ThrowError("ResizeVMT: Desampling can only downscale.");
+	  if (SizeV>vi.height) env->ThrowError("ResizeVMT: Desampling can only downscale!");
+	  else env->ThrowError("ResizeVMT: Matrix can't be reversed!");
   }
 
   threads_number=CreateMTData(threads_number,work_width,vi.height,work_width,SizeV,shift_w,shift_h);
@@ -3116,6 +3123,11 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 					                  vi.height  >> shift_h,
 									  accuracy,SizeV,shift_h,SizeOut,
 						              env);
+		if (SizeOut==-1)
+		{
+			FreeData();
+			env->ThrowError("ResizeVMT: Matrix can't be reversed!");
+		}									  
 	}
 	else
 	{

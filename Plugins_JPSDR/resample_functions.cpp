@@ -403,7 +403,11 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
   }
 
   B.Product_tAA(A);
-  B.Inverse();
+  if (B.InverseSafe()!=0)
+  {
+	  SizeOut=-1;
+	  return(NULL);
+  }
   C.Product_AtB(B,A);
 
   switch(accuracy)
