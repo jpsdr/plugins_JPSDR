@@ -833,8 +833,12 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 	uint8_t threads_number=1;
 
+	if (!args[0].IsClip()) env->ThrowError("aWarpSharpMT: arg 0 must be a clip!");
+	VideoInfo vi = args[0].AsClip()->GetVideoInfo();
+
 	const bool avsp=env->FunctionExists("ConvertBits");
 
+	int thresh,blur,blurt,depth,depthC,blurV,depthV,depthVC,blurC,blurVC,threshC;
 
   switch ((int)(size_t)user_data)
   {
@@ -870,16 +874,27 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 		  }
 	  }
 
-    return new aWarpSharp(args[0].AsClip(),args[1].AsInt(0x80),args[2].AsInt(-1),args[3].AsInt(0),
-		args[4].AsInt(16),args[5].AsInt(4),args[6].AsInt(128),is_cplace_mpeg2(args,7),args[8].AsInt(-1),args[9].AsInt(128),
-		args[10].AsInt(128),args[11].AsInt(-1),args[12].AsInt(-1),args[13].AsInt(-1),threads,sleep,avsp,env);
+	  thresh=args[1].AsInt(0x80);
+	  blurt=args[3].AsInt(0);
+	  args[2].Defined() ? blur=args[2].AsInt(-1) : blur=((blurt==0) ? 2:3);
+	  depth=args[4].AsInt(16);
+	  args[6].Defined() ? depthC=args[6].AsInt(128) : depthC=(vi.Is444() ? depth:(depth>>1));
+	  args[8].Defined() ? blurV=args[8].AsInt(-1) : blurV=blur;
+	  args[9].Defined() ? depthV=args[9].AsInt(128) : depthV=depth;
+	  args[10].Defined() ? depthVC=args[10].AsInt(128) : depthVC=depthC;
+	  args[11].Defined() ? blurC=args[11].AsInt(-1) : blurC=(blur+1)>>1;
+	  args[12].Defined() ? blurVC=args[12].AsInt(-1) : blurVC=blurC;
+	  args[13].Defined() ? threshC=args[13].AsInt(-1) : threshC=thresh;
+
+    return new aWarpSharp(args[0].AsClip(),thresh,blur,blurt,depth,args[5].AsInt(4),depthC,is_cplace_mpeg2(args,7),
+		blurV,depthV,depthVC,blurC,blurVC,threshC,threads,sleep,avsp,env);
 	break;
 	  }
   case 1:
 	  {
 	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aWarpSharp: SSE2 capable CPU is required");
 
-    const int type = (args[5].AsInt(2)!=2)?1:0;
+	blurt = (args[5].AsInt(2)!=2)?1:0;
     const int blurlevel = args[2].AsInt(2);
     const unsigned int cm = args[4].AsInt(1);
 	static const char map[4] = {1,4,3,2};
@@ -912,8 +927,19 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 		  }
 	  }
 
-    return new aWarpSharp(args[0].AsClip(),int(args[3].AsFloat(0.5)*256.0),(type==1)?(blurlevel*3):blurlevel,type,
-		int(args[1].AsFloat(16.0)*blurlevel*0.5),(cm<4)?map[cm]:-1,128,false,-1,128,128,-1,-1,-1,threads,sleep,avsp,env);
+	  thresh=int(args[3].AsFloat(0.5)*256.0);
+	  blur=(blurt==1)?(blurlevel*3):blurlevel;
+	  depth=int(args[1].AsFloat(16.0)*blurlevel*0.5);
+	  depthC=vi.Is444() ? depth:(depth>>1);
+	  blurV=blur;
+	  depthV=depth;
+	  depthVC=depthC;
+	  blurC=(blur+1)>>1;
+	  blurVC=blurC;
+	  threshC=thresh;
+
+    return new aWarpSharp(args[0].AsClip(),thresh,blur,blurt,depth,(cm<4)?map[cm]:-1,depthC,false,
+		blurV,depthV,depthVC,blurC,blurVC,threshC,threads,sleep,avsp,env);
 	break;
 	  }
   case 2:
@@ -949,7 +975,10 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 		  }
 	  }
 
-    return new aSobel(args[0].AsClip(),args[1].AsInt(0x80),args[2].AsInt(1),args[3].AsInt(-1),threads,sleep,avsp,env);
+	  thresh=args[1].AsInt(0x80);
+	  args[3].Defined() ? threshC=args[3].AsInt(-1) : threshC=thresh;
+
+	return new aSobel(args[0].AsClip(),thresh,args[2].AsInt(1),threshC,threads,sleep,avsp,env);
 	break;
 	  }
   case 3:
@@ -987,8 +1016,13 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aBlur: SSE2 capable CPU is required");
 
-    return new aBlur(args[0].AsClip(),args[1].AsInt(-1),args[2].AsInt(1),args[3].AsInt(1),args[4].AsInt(-1),
-		args[5].AsInt(-1),args[6].AsInt(-1),threads,sleep,avsp,env);
+	  blurt=args[2].AsInt(1);
+	  args[1].Defined() ? blur=args[1].AsInt(-1) : blur=((blurt==0) ? 2:3);
+	  args[4].Defined() ? blurV=args[4].AsInt(-1) : blurV=blur;
+	  args[5].Defined() ? blurC=args[5].AsInt(-1) : blurC=(blur+1)>>1;
+	  args[6].Defined() ? blurVC=args[6].AsInt(-1) : blurVC=blurC;
+
+	return new aBlur(args[0].AsClip(),blur,blurt,args[3].AsInt(1),blurV,blurC,blurVC,threads,sleep,avsp,env);
 	break;
 	  }
   case 4:
@@ -1026,8 +1060,13 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aWarp: SSE2 capable CPU is required");
 
-    return new aWarp(args[0].AsClip(),args[1].AsClip(),args[2].AsInt(3),args[3].AsInt(4),args[4].AsInt(128),is_cplace_mpeg2(args,5),
-		args[6].AsInt(128),args[7].AsInt(128),threads,sleep,avsp,env);
+	  depth=args[2].AsInt(3);
+	  args[4].Defined() ? depthC=args[4].AsInt(128) : depthC=(vi.Is444() ? depth:(depth>>1));
+	  args[6].Defined() ? depthV=args[6].AsInt(128) : depthV=depth;
+	  args[7].Defined() ? depthVC=args[7].AsInt(128) : depthVC=depthC;
+
+    return new aWarp(args[0].AsClip(),args[1].AsClip(),depth,args[3].AsInt(4),depthC,is_cplace_mpeg2(args,5),
+		depthV,depthVC,threads,sleep,avsp,env);
 	break;
 	  }
   case 5:
@@ -1062,8 +1101,13 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 		  }
 	  }
 
-    return new aWarp4(args[0].AsClip(),args[1].AsClip(),args[2].AsInt(3),args[3].AsInt(4),args[4].AsInt(128),is_cplace_mpeg2(args,5),
-		args[6].AsInt(128),args[7].AsInt(128),threads,sleep,avsp,env);
+	  depth=args[2].AsInt(3);
+	  args[4].Defined() ? depthC=args[4].AsInt(128) : depthC=(vi.Is444() ? depth:(depth>>1));
+	  args[6].Defined() ? depthV=args[6].AsInt(128) : depthV=depth;
+	  args[7].Defined() ? depthVC=args[7].AsInt(128) : depthVC=depthC;
+
+    return new aWarp4(args[0].AsClip(),args[1].AsClip(),depth,args[3].AsInt(4),depthC,is_cplace_mpeg2(args,5),
+		depthV,depthVC,threads,sleep,avsp,env);
 	break;
 	  }
   default : break;
