@@ -46,6 +46,11 @@ protected :
 	uint16_t length;
 	size_t size;
 	COEFF_DATA_TYPE data_type;
+
+private :
+	Vector& operator = (const Vector &other);
+	bool operator == (const Vector &other) const;
+	bool operator != (const Vector &other) const;
 };
 
 class Matrix;
@@ -73,6 +78,11 @@ protected :
 
 	void ProductF_AX(const Matrix &ma,const Vector &x);
 	void ProductD_AX(const Matrix &ma,const Vector &x);
+
+private :
+	Vector_Compute& operator = (const Vector_Compute &other);
+	bool operator == (const Vector_Compute &other) const;
+	bool operator != (const Vector_Compute &other) const;
 };
 
 
@@ -119,6 +129,10 @@ protected :
 	COEFF_DATA_TYPE data_type;
 
 	Matrix& operator=(const Matrix&){return(*this);}
+
+private :
+	bool operator == (const Matrix &other) const;
+	bool operator != (const Matrix &other) const;
 };
 
 
@@ -185,6 +199,10 @@ protected :
 	void TransposeI8(const Matrix &ma);
 
 	Matrix_Compute& operator=(const Matrix_Compute&){return(*this);}
+
+private :
+	bool operator == (const Matrix_Compute &other) const;
+	bool operator != (const Matrix_Compute &other) const;
 };
 
 #endif

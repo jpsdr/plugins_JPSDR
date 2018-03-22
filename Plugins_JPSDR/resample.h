@@ -41,7 +41,7 @@
 #include "resample_functions.h"
 #include "ThreadPoolInterface.h"
 
-#define RESAMPLE_MT_VERSION "ResampleMT 2.0.3 JPSDR"
+#define RESAMPLE_MT_VERSION "ResampleMT 2.1.0 JPSDR"
 
 // Resizer function pointer
 typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2);
@@ -81,7 +81,8 @@ public:
 
   int __stdcall SetCacheHints(int cachehints, int frame_range);
 
-  static ResamplerH GetResampler(int CPU, bool aligned, int pixelsize, int bits_per_pixel, ResamplingProgram* program, IScriptEnvironment* env);
+  //static ResamplerH GetResampler(int CPU, bool aligned, int pixelsize, int bits_per_pixel, ResamplingProgram* program, IScriptEnvironment* env);
+  ResamplerH GetResampler(bool aligned, ResamplingProgram* program, IScriptEnvironment* env);
 
 private:
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
@@ -89,7 +90,6 @@ private:
 	uint8_t threads,threads_number;
 	bool sleep;
 	uint16_t UserId;
-	HANDLE ghMutex;
 	
 	ThreadPoolFunction ResampleH_MT;
 
@@ -122,6 +122,7 @@ private:
   uint8_t bits_per_pixel;
   uint8_t plane_range[4];
   bool mode_YUY2;
+  bool Enable_MMX,Enable_SSE2,Enable_SSE3,Enable_SSSE3,Enable_SSE4_1,Enable_AVX2;
 
   ResamplerH resampler_h_luma;
   ResamplerH resampler_h_chroma;
@@ -142,7 +143,8 @@ public:
 
 	int __stdcall SetCacheHints(int cachehints, int frame_range);
 
-  static ResamplerV GetResampler(int CPU, bool aligned,int pixelsize, int bits_per_pixel, void*& storage, ResamplingProgram* program);
+  //static ResamplerV GetResampler(int CPU, bool aligned,int pixelsize, int bits_per_pixel, void*& storage, ResamplingProgram* program);
+  ResamplerV GetResampler(bool aligned,void*& storage, ResamplingProgram* program);
 
 private:
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
@@ -150,7 +152,6 @@ private:
 	uint8_t threads,threads_number;
 	bool sleep;
 	uint16_t UserId;
-	HANDLE ghMutex;
 
 	ThreadPoolFunction ResampleV_MT;
 
@@ -178,6 +179,7 @@ private:
   uint8_t bits_per_pixel;
   uint8_t plane_range[4];
   bool mode_YUY2;
+  bool Enable_MMX,Enable_SSE2,Enable_SSE3,Enable_SSSE3,Enable_SSE4_1,Enable_AVX2;
 	
   ResamplingProgram *resampling_program_luma;
   ResamplingProgram *resampling_program_chroma;

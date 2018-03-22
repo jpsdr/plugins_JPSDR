@@ -39,13 +39,19 @@
 #include <math.h>
 #include "avisynth.h"
 #include "MatrixClass.h"
+#include "./avs/alignment.h"
 
 #define myalignedfree(ptr) if (ptr!=NULL) { _aligned_free(ptr); ptr=NULL;}
 
 // Original value: 65536
 // 2 bits sacrificed because of 16 bit signed MMX multiplication
 // NOTE: Don't change this value. It's hard-coded in SIMD code.
-const int FPScale = 16384; // fixed point scaler
+const int FPScale = 16384; // fixed point scaler (1<<14)
+// for 16 bits: one bit less
+const int FPScale16bits = 13;
+const int FPScale16 = 1 << FPScale16bits; // fixed point scaler for 10-16 bit SIMD signed operation
+const int ALIGN_RESIZER_TARGET_SIZE = 8;
+const int ALIGN_RESIZER_COEFF_SIZE = 8; // simd friendly
 
 // 09-14-2002 - Vlad59 - Lanczos3Resize - Constant added
 #define M_PI 3.14159265358979323846
@@ -58,19 +64,36 @@ struct ResamplingProgram {
   // Array of Integer indicate starting point of sampling
   int* pixel_offset;
 
+  int bits_per_pixel;
+
   // Array of array of coefficient for each pixel
   // {{pixel[0]_coeff}, {pixel[1]_coeff}, ...}
   short* pixel_coefficient;
   float* pixel_coefficient_float;
 
-  ResamplingProgram(int filter_size, int source_size, int target_size, double crop_start, double crop_size, IScriptEnvironment* env)
-    : filter_size(filter_size), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size),
-      pixel_offset(NULL), pixel_coefficient(NULL), pixel_coefficient_float(NULL)
+  // anti-overread helpers for float resizer simd code reading 8 pixels from a given offset
+  bool overread_possible;
+  int source_overread_offset; // offset from where reading 8 bytes requires masking garbage on the right side
+  int source_overread_beyond_targetx;
+
+  ResamplingProgram(int filter_size, int source_size, int target_size, double crop_start, double crop_size, int bits_per_pixel, IScriptEnvironment* env)
+    : filter_size(filter_size), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size), bits_per_pixel(bits_per_pixel),
+    pixel_offset(NULL), pixel_coefficient(NULL), pixel_coefficient_float(NULL)
   {
-    pixel_offset = (int*) _aligned_malloc(sizeof(int) * target_size, 64); // 64-byte alignment
-    pixel_coefficient = (short*) _aligned_malloc(sizeof(short) * target_size * filter_size, 64);
-	pixel_coefficient_float = (float*) _aligned_malloc(sizeof(float) * target_size * filter_size, 64);
-    if ((pixel_offset==NULL) || (pixel_coefficient==NULL) || (pixel_coefficient_float==NULL)) {
+    overread_possible = false;
+    source_overread_offset = -1;
+    source_overread_beyond_targetx = -1;
+
+	// align target_size to 8 units to allow safe 8 pixels/cycle in resizers
+    pixel_offset = (int*) _aligned_malloc(sizeof(int) * AlignNumber(target_size, ALIGN_RESIZER_TARGET_SIZE), 64); // 64-byte alignment
+	if (bits_per_pixel<32)
+		pixel_coefficient = (short*) _aligned_malloc(sizeof(short) * AlignNumber(target_size, ALIGN_RESIZER_COEFF_SIZE) * filter_size, 64);
+	else
+		pixel_coefficient_float = (float*) _aligned_malloc(sizeof(float) * AlignNumber(target_size, ALIGN_RESIZER_COEFF_SIZE) * filter_size, 64);
+
+    if ((pixel_offset==NULL) || ((pixel_coefficient==NULL) && (bits_per_pixel<32)) || 
+		((pixel_coefficient_float==NULL) && (bits_per_pixel==32)))
+	{
 	  myalignedfree(pixel_coefficient_float);
 	  myalignedfree(pixel_coefficient);
       myalignedfree(pixel_offset);
@@ -105,9 +128,9 @@ public:
   virtual double f(double x) = 0;
   virtual double support() = 0;
 
-  virtual ResamplingProgram* GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, IScriptEnvironment* env);
-  virtual ResamplingProgram* GetDesamplingProgram(int source_size, double crop_start, double crop_size, int target_size, uint8_t accuracy, int SizeY, uint8_t ShiftC, int &SizeOut,IScriptEnvironment* env);
-  virtual int GetDesamplingData(int source_size, double crop_start, double crop_size, int target_size, uint8_t ShiftC, IScriptEnvironment* env);
+  virtual ResamplingProgram* GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, IScriptEnvironment* env);
+  virtual ResamplingProgram* GetDesamplingProgram(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, uint8_t accuracy, int SizeY, uint8_t ShiftC, int &SizeOut,IScriptEnvironment* env);
+  virtual int GetDesamplingData(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, uint8_t ShiftC, IScriptEnvironment* env);
 };
 
 class PointFilter : public ResamplingFunction 

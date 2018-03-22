@@ -230,41 +230,56 @@ double SincFilter::f(double value) {
  **** Resampling Patterns  ****
  *****************************/
 
-ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, IScriptEnvironment* env)
+ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, IScriptEnvironment* env)
 {
   double filter_scale = double(target_size) / crop_size;
   double filter_step = min(filter_scale, 1.0);
   double filter_support = support() / filter_step;
   int fir_filter_size = int(ceil(filter_support*2));
 
-  ResamplingProgram *program = new ResamplingProgram(fir_filter_size, source_size, target_size, crop_start, crop_size, env);
+  ResamplingProgram *program = new ResamplingProgram(fir_filter_size, source_size, target_size, crop_start, crop_size,bits_per_pixel, env);
 
   // this variable translates such that the image center remains fixed
   double pos;
-  double pos_step = crop_size / target_size;
+  double pos_step = crop_size/target_size;
 
-  if (source_size <= filter_support) {
+  if (source_size <= filter_support)
     env->ThrowError("Resize: Source image too small for this resize method. Width=%d, Support=%d",source_size,int(ceil(filter_support)));
-  }
 
   if (fir_filter_size == 1) // PointResize
     pos = crop_start;
   else
-    pos = crop_start + ((crop_size - target_size) / (target_size*2)); // TODO this look wrong, gotta check
+    pos = crop_start+((crop_size-target_size)/(target_size*2)); // TODO this look wrong, gotta check
 
-  for (int i = 0; i < target_size; ++i) {
+  const int current_FPScale = ((bits_per_pixel>8) && (bits_per_pixel<=16)) ? FPScale16 : FPScale;
+
+  for (int i=0; i<target_size; i++)
+  {
     // Clamp start and end position such that it does not exceed frame size
-    int end_pos = int(pos + filter_support);
+    int end_pos = int(pos+filter_support);
 
-    if (end_pos > source_size-1)
+    if (end_pos>(source_size-1))
       end_pos = source_size-1;
 
-    int start_pos = end_pos - fir_filter_size + 1;
+    int start_pos = end_pos-fir_filter_size+1;
 
     if (start_pos < 0)
       start_pos = 0;
 
     program->pixel_offset[i] = start_pos;
+
+    // check the simd-optimized (8 pixels and filter coefficients at a time) limit to not reach beyond the last pixel
+    // in order not to have NaN floats
+    if ((start_pos+AlignNumber(fir_filter_size,ALIGN_RESIZER_COEFF_SIZE)-1)>(source_size-1))
+    {
+      if (!program->overread_possible)
+	  {
+        // register the first occurance
+        program->overread_possible = true;
+        program->source_overread_offset = start_pos;
+        program->source_overread_beyond_targetx = i;
+      }
+    }
 
     // the following code ensures that the coefficients add to exactly FPScale
     double total = 0.0;
@@ -273,26 +288,43 @@ ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, dou
     double ok_pos = clamp(pos, 0.0, (double)(source_size-1));
 
     // Accumulate all coefficients for weighting
-    for (int j = 0; j < fir_filter_size; ++j) {
-      total += f((start_pos+j - ok_pos) * filter_step);
-    }
+    for (int j = 0; j < fir_filter_size; j++)
+      total += f((start_pos+j-ok_pos)*filter_step);
 
-    if (total == 0.0) {
-      // Shouldn't happened for valid positions.
+    if (total == 0.0) // Shouldn't happened for valid positions.
       total = 1.0;
-    }
 
     double value = 0.0;
 
     // Now we generate real coefficient
-    for (int k = 0; k < fir_filter_size; ++k) {
-      double new_value = value + f((start_pos+k - ok_pos) * filter_step) / total;
-      program->pixel_coefficient[i*fir_filter_size+k] = short(int(new_value*FPScale+0.5) - int(value*FPScale+0.5)); // to make it round across pixels
-	  program->pixel_coefficient_float[i*fir_filter_size + k] = float(new_value - value); // no scaling for float
-      value = new_value;
+    if (bits_per_pixel==32)
+	{
+      // float
+      for (int k=0; k<fir_filter_size; k++)
+	  {
+        double new_value = value+f((start_pos+k-ok_pos)*filter_step)/total;
+        program->pixel_coefficient_float[i*fir_filter_size+k] = float(new_value-value); // no scaling for float
+        value = new_value;
+      }
     }
+    else
+	{
+      for (int k=0; k<fir_filter_size; k++)
+	  {
+        double new_value = value+f((start_pos+k-ok_pos)*filter_step)/total;
+        // FIXME: is it correct to round negative values upwards?
+        program->pixel_coefficient[i*fir_filter_size+k] = short(int(new_value*current_FPScale+0.5)-int(value*current_FPScale+0.5)); // to make it round across pixels
+        value = new_value;
+      }
+    }
+
     pos += pos_step;
   }
+
+  // aligned as 8, now fill with safe values for 8 pixels/cycle simd loop
+  for (int i=target_size; i<AlignNumber(target_size,ALIGN_RESIZER_TARGET_SIZE); i++)
+    program->pixel_offset[i] = source_size-fir_filter_size;
+
   return program;
 }
 
@@ -301,36 +333,36 @@ ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, dou
  **** Desampling Patterns  ****
  *****************************/
 
-ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, double crop_start, double crop_size, int target_size, uint8_t accuracy, int SizeY, uint8_t ShiftC, int &SizeOut, IScriptEnvironment* env)
+ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, uint8_t accuracy, int SizeY, uint8_t ShiftC, int &SizeOut, IScriptEnvironment* env)
 {
   double filter_scale = double(target_size) / crop_size;
   double filter_step = min(filter_scale, 1.0);
   double filter_support = support() / filter_step;
   int fir_filter_size = int(ceil(filter_support*2));
 
-  ResamplingProgram *program = new ResamplingProgram(fir_filter_size, source_size, target_size, crop_start, crop_size, env);
+  ResamplingProgram *program = new ResamplingProgram(fir_filter_size, source_size, target_size, crop_start, crop_size, 32, env);
 
   // this variable translates such that the image center remains fixed
   double pos;
-  double pos_step = crop_size / target_size;
+  double pos_step = crop_size/target_size;
 
-  if ((source_size<=filter_support) || (target_size<=filter_support)) {
+  if ((source_size<=filter_support) || (target_size<=filter_support))
     env->ThrowError("Resize: Source or target image too small for this resize method. Width=%d,%d, Support=%d",source_size,target_size,int(ceil(filter_support)));
-  }
 
   if (fir_filter_size == 1) // PointResize
     pos = crop_start;
   else
-    pos = crop_start + ((crop_size - target_size) / (target_size*2)); // TODO this look wrong, gotta check
+    pos = crop_start+((crop_size-target_size)/(target_size*2)); // TODO this look wrong, gotta check
 
-  for (int i = 0; i < target_size; ++i) {
+  for (int i=0; i<target_size; i++)
+  {
     // Clamp start and end position such that it does not exceed frame size
-    int end_pos = int(pos + filter_support);
+    int end_pos = int(pos+filter_support);
 
-    if (end_pos > source_size-1)
+    if (end_pos>(source_size-1))
       end_pos = source_size-1;
 
-    int start_pos = end_pos - fir_filter_size + 1;
+    int start_pos = end_pos-fir_filter_size+1;
 
     if (start_pos < 0)
       start_pos = 0;
@@ -344,21 +376,19 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
     double ok_pos = clamp(pos, 0.0, (double)(source_size-1));
 
     // Accumulate all coefficients for weighting
-    for (int j = 0; j < fir_filter_size; ++j) {
-      total += f((start_pos+j - ok_pos) * filter_step);
-    }
+    for (int j = 0; j < fir_filter_size; ++j)
+      total += f((start_pos+j-ok_pos)*filter_step);
 
-    if (total == 0.0) {
-      // Shouldn't happened for valid positions.
+    if (total == 0.0) // Shouldn't happened for valid positions.
       total = 1.0;
-    }
 
     double value = 0.0;
 
     // Now we generate real coefficient
-    for (int k = 0; k < fir_filter_size; ++k) {
-      double new_value = value + f((start_pos+k - ok_pos) * filter_step) / total;
-	  program->pixel_coefficient_float[i*fir_filter_size + k] = float(new_value - value); // no scaling for float
+    for (int k=0; k<fir_filter_size; k++)
+	{
+      double new_value = value+f((start_pos+k-ok_pos)*filter_step)/total;
+	  program->pixel_coefficient_float[i*fir_filter_size+k] = float(new_value-value); // no scaling for float
       value = new_value;
     }
     pos += pos_step;
@@ -476,10 +506,12 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
 
   SizeOut=SizeS;
 
-  program = new ResamplingProgram(fir_filter_size, target_size, SizeS, 0, SizeS, env);
+  program = new ResamplingProgram(fir_filter_size, target_size, SizeS, 0, SizeS, bits_per_pixel, env);
 
   if (SizeS0<SizeS) SizeM=SizeS0;
   else SizeM=SizeS;
+
+  const int current_FPScale = ((bits_per_pixel>8) && (bits_per_pixel<=16)) ? FPScale16 : FPScale;
 
   for (int i=0; i<SizeM; i++)
   {
@@ -493,11 +525,30 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
 
 	  program->pixel_offset[i] = start_pos;
 
-	  for (int j=0; j<fir_filter_size; j++)
+    // check the simd-optimized (8 pixels and filter coefficients at a time) limit to not reach beyond the last pixel
+    // in order not to have NaN floats
+    if ((start_pos+AlignNumber(fir_filter_size,ALIGN_RESIZER_COEFF_SIZE)-1)>(target_size-1))
+    {
+      if (!program->overread_possible)
 	  {
-		  program->pixel_coefficient_float[i*fir_filter_size+j]=C.GetF(i,start_pos+j);
-		  program->pixel_coefficient[i*fir_filter_size+j] = short(int(C.GetF(i,start_pos+j)*FPScale+0.5));
-	  }
+        // register the first occurance
+        program->overread_possible = true;
+        program->source_overread_offset = start_pos;
+        program->source_overread_beyond_targetx = i;
+      }
+    }
+
+
+	if (bits_per_pixel==32)
+	{
+		for (int j=0; j<fir_filter_size; j++)
+			program->pixel_coefficient_float[i*fir_filter_size+j]=C.GetF(i,start_pos+j);
+	}
+	else
+	{
+		for (int j=0; j<fir_filter_size; j++)
+			program->pixel_coefficient[i*fir_filter_size+j] = short(int(C.GetF(i,start_pos+j)*current_FPScale+0.5));
+	}
   }
 
   for (int i=SizeM; i<SizeS; i++)
@@ -513,55 +564,79 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
 
 	  program->pixel_offset[i] = start_pos;
 
-	  for (int j=0; j<fir_filter_size; j++)
+    // check the simd-optimized (8 pixels and filter coefficients at a time) limit to not reach beyond the last pixel
+    // in order not to have NaN floats
+    if ((start_pos+AlignNumber(fir_filter_size,ALIGN_RESIZER_COEFF_SIZE)-1)>(target_size-1))
+    {
+      if (!program->overread_possible)
 	  {
-		  if ((start_pos+j)==Pos1)
-		  {
-			  program->pixel_coefficient_float[i*fir_filter_size+j]=1.0;
-			  program->pixel_coefficient[i*fir_filter_size+j] = short(int(1.0*FPScale+0.5));
-		  }
-		  else
-		  {
-			  program->pixel_coefficient_float[i*fir_filter_size+j]=0.0;
-			  program->pixel_coefficient[i*fir_filter_size+j] = 0;
-		  }
-	  }
+        // register the first occurance
+        program->overread_possible = true;
+        program->source_overread_offset = start_pos;
+        program->source_overread_beyond_targetx = i;
+      }
+    }
+
+	if (bits_per_pixel==32)
+	{
+		for (int j=0; j<fir_filter_size; j++)
+		{
+			if ((start_pos+j)==Pos1)
+				program->pixel_coefficient_float[i*fir_filter_size+j]=1.0;
+			else
+				program->pixel_coefficient_float[i*fir_filter_size+j]=0.0;
+		}
+	}
+	else
+	{
+		for (int j=0; j<fir_filter_size; j++)
+		{
+			if ((start_pos+j)==Pos1)
+				program->pixel_coefficient[i*fir_filter_size+j] = short(int(1.0*current_FPScale+0.5));
+			else
+				program->pixel_coefficient[i*fir_filter_size+j] = 0;
+		}
+	}
   }
+
+  // aligned as 8, now fill with safe values for 8 pixels/cycle simd loop
+  for (int i=SizeS; i<AlignNumber(SizeS,ALIGN_RESIZER_TARGET_SIZE); i++)
+    program->pixel_offset[i] = target_size-fir_filter_size;
 
   return program;
 }
 
 
-int ResamplingFunction::GetDesamplingData(int source_size, double crop_start, double crop_size, int target_size, uint8_t ShiftC, IScriptEnvironment* env)
+int ResamplingFunction::GetDesamplingData(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, uint8_t ShiftC, IScriptEnvironment* env)
 {
   double filter_scale = double(target_size) / crop_size;
   double filter_step = min(filter_scale, 1.0);
   double filter_support = support() / filter_step;
   int fir_filter_size = int(ceil(filter_support*2));
 
-  ResamplingProgram *program = new ResamplingProgram(fir_filter_size, source_size, target_size, crop_start, crop_size, env);
+  ResamplingProgram *program = new ResamplingProgram(fir_filter_size, source_size, target_size, crop_start, crop_size, 32, env);
 
   // this variable translates such that the image center remains fixed
   double pos;
-  double pos_step = crop_size / target_size;
+  double pos_step = crop_size/target_size;
 
-  if ((source_size<=filter_support) || (target_size<=filter_support)) {
+  if ((source_size<=filter_support) || (target_size<=filter_support))
     env->ThrowError("Resize: Source or target image too small for this resize method. Width=%d,%d, Support=%d",source_size,target_size,int(ceil(filter_support)));
-  }
 
   if (fir_filter_size == 1) // PointResize
     pos = crop_start;
   else
-    pos = crop_start + ((crop_size - target_size) / (target_size*2)); // TODO this look wrong, gotta check
+    pos = crop_start+((crop_size-target_size)/(target_size*2)); // TODO this look wrong, gotta check
 
-  for (int i = 0; i < target_size; ++i) {
+  for (int i=0; i<target_size; i++)
+  {
     // Clamp start and end position such that it does not exceed frame size
-    int end_pos = int(pos + filter_support);
+    int end_pos = int(pos+filter_support);
 
-    if (end_pos > source_size-1)
+    if (end_pos>(source_size-1))
       end_pos = source_size-1;
 
-    int start_pos = end_pos - fir_filter_size + 1;
+    int start_pos = end_pos-fir_filter_size+1;
 
     if (start_pos < 0)
       start_pos = 0;
@@ -575,21 +650,19 @@ int ResamplingFunction::GetDesamplingData(int source_size, double crop_start, do
     double ok_pos = clamp(pos, 0.0, (double)(source_size-1));
 
     // Accumulate all coefficients for weighting
-    for (int j = 0; j < fir_filter_size; ++j) {
-      total += f((start_pos+j - ok_pos) * filter_step);
-    }
+    for (int j = 0; j < fir_filter_size; ++j)
+      total += f((start_pos+j-ok_pos)*filter_step);
 
-    if (total == 0.0) {
-      // Shouldn't happened for valid positions.
+    if (total == 0.0) // Shouldn't happened for valid positions.
       total = 1.0;
-    }
 
     double value = 0.0;
 
     // Now we generate real coefficient
-    for (int k = 0; k < fir_filter_size; ++k) {
-      double new_value = value + f((start_pos+k - ok_pos) * filter_step) / total;
-	  program->pixel_coefficient_float[i*fir_filter_size + k] = float(new_value - value); // no scaling for float
+    for (int k=0; k<fir_filter_size; k++)
+	{
+      double new_value = value+f((start_pos+k-ok_pos)*filter_step)/total;
+	  program->pixel_coefficient_float[i*fir_filter_size+k] = float(new_value-value); // no scaling for float
       value = new_value;
     }
     pos += pos_step;

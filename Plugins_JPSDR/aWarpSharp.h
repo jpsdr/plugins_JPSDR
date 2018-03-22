@@ -14,16 +14,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-#define NOMINMAX
-#include <stdint.h>
-#include <windows.h>
 #include "avisynth.h"
 #include "ThreadPoolInterface.h"
 
-#define AWARPSHARP_VERSION "aWarpSharpMT 1.0.4 JPSDR"
+#define AWARPSHARP_VERSION "aWarpSharpMT 2.0.0 JPSDR"
 
 #define myfree(ptr) if (ptr!=NULL) { free(ptr); ptr=NULL;}
-#define myCloseHandle(ptr) if (ptr!=NULL) { CloseHandle(ptr); ptr=NULL;}
+#define myAlignedFree(ptr) if (ptr!=NULL) { _aligned_free(ptr); ptr=NULL;}
 
 typedef struct _MT_Data_Info_WarpSharp
 {
@@ -80,19 +77,18 @@ private:
   bool cplace_mpeg2_flag;
 
   bool grey,avsp,isRGBPfamily,isAlphaChannel;
+  uint8_t pixelsize; // AVS16
+  uint8_t bits_per_pixel;
 
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
 	MT_Data_Info_WarpSharp MT_Data[MAX_MT_THREADS];
 	uint8_t threads,threads_number;
 	bool sleep;
 	uint16_t UserId;
-	HANDLE ghMutex;
 	
 	ThreadPoolFunction StaticThreadpoolF;
 
 	static void StaticThreadpool(void *ptr);
-
-	void FreeData(void);
 };
 
 
@@ -110,19 +106,18 @@ private:
   int chroma;
 
   bool grey,avsp,isRGBPfamily,isAlphaChannel;
+  uint8_t pixelsize; // AVS16
+  uint8_t bits_per_pixel;
 
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
 	MT_Data_Info_WarpSharp MT_Data[MAX_MT_THREADS];
 	uint8_t threads,threads_number;
 	bool sleep;
 	uint16_t UserId;
-	HANDLE ghMutex;
 	
 	ThreadPoolFunction StaticThreadpoolF;
 
 	static void StaticThreadpool(void *ptr);
-
-	void FreeData(void);
 };
 
 
@@ -143,19 +138,18 @@ private:
   int chroma;
 
   bool grey,avsp,isRGBPfamily,isAlphaChannel;
+  uint8_t pixelsize; // AVS16
+  uint8_t bits_per_pixel;
 
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
 	MT_Data_Info_WarpSharp MT_Data[MAX_MT_THREADS];
 	uint8_t threads,threads_number;
 	bool sleep;
 	uint16_t UserId;
-	HANDLE ghMutex;
 	
 	ThreadPoolFunction StaticThreadpoolF;
 
 	static void StaticThreadpool(void *ptr);
-
-	void FreeData(void);
 };
 
 
@@ -177,19 +171,18 @@ private:
   bool cplace_mpeg2_flag;
 
   bool grey,avsp,isRGBPfamily,isAlphaChannel;
+  uint8_t pixelsize; // AVS16
+  uint8_t bits_per_pixel;
 
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
 	MT_Data_Info_WarpSharp MT_Data[MAX_MT_THREADS];
 	uint8_t threads,threads_number;
 	bool sleep;
 	uint16_t UserId;
-	HANDLE ghMutex;
 	
 	ThreadPoolFunction StaticThreadpoolF;
 
 	static void StaticThreadpool(void *ptr);
-
-	void FreeData(void);
 };
 
 
@@ -211,17 +204,16 @@ private:
   bool cplace_mpeg2_flag;
 
   bool grey,avsp,isRGBPfamily,isAlphaChannel;
+  uint8_t pixelsize; // AVS16
+  uint8_t bits_per_pixel;
 
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
 	MT_Data_Info_WarpSharp MT_Data[MAX_MT_THREADS];
 	uint8_t threads,threads_number;
 	bool sleep;
 	uint16_t UserId;
-	HANDLE ghMutex;
 	
 	ThreadPoolFunction StaticThreadpoolF;
 
 	static void StaticThreadpool(void *ptr);
-
-	void FreeData(void);
 };

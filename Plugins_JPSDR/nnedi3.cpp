@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.48 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.49 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -50,8 +50,8 @@ extern "C" void e0_m16_FMA4(float *s, const int n);
 extern "C" void e0_m16_AVX2(float *s,const int n);
 extern "C" void e1_m16_AVX2(float *s,const int n);
 extern "C" void e2_m16_AVX2(float *s,const int n);
-extern "C" int processLine0_AVX2_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const int16_t val_min,const int16_t val_max);
-extern "C" int processLine0_AVX2_ASM_16(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t val_min,const uint16_t val_max);
+extern "C" int processLine0_AVX2_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t *val_min_max);
+extern "C" int processLine0_AVX2_ASM_16(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t *val_min_max);
 extern "C" int processLine0_AVX2_ASM_32(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch);
 extern "C" void weightedAvgElliottMul5_m16_AVX2(const float *w,const int n,float *mstd);
 extern "C" void weightedAvgElliottMul5_m16_FMA3(const float *w,const int n,float *mstd);
@@ -68,8 +68,6 @@ extern "C" void extract_m8_FMA4_16(const uint8_t *srcp, const int stride, const 
 extern "C" void extract_m8_AVX2_32(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
 extern "C" void extract_m8_FMA3_32(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
 extern "C" void extract_m8_FMA4_32(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
-extern "C" void castScale_AVX2(const float *val,const float *scale,uint8_t *dstp,const uint32_t val_min,const uint32_t val_max);
-extern "C" void castScale_AVX2_16(const float *val, const float *scale, uint16_t *dstp,const uint32_t val_min,const uint32_t val_max);
 #endif
 
 extern "C" void computeNetwork0_SSE2(const float *input,const float *weights,uint8_t *d);
@@ -77,8 +75,8 @@ extern "C" void computeNetwork0_i16_SSE2(const float *inputf,const float *weight
 extern "C" void uc2f48_SSE2(const uint8_t *t,const int pitch,float *p);
 extern "C" void uc2f48_SSE2_16(const uint8_t *t, const int pitch, float *p);
 extern "C" void uc2s48_SSE2(const uint8_t *t,const int pitch,float *pf);
-extern "C" int processLine0_SSE2_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const int16_t val_min,const int16_t val_max);
-extern "C" int processLine0_SSE2_ASM_16(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t val_min,const uint16_t val_max);
+extern "C" int processLine0_SSE2_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t *val_min_max);
+extern "C" int processLine0_SSE2_ASM_16(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t *val_min_max);
 extern "C" int processLine0_SSE2_ASM_32(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch);
 extern "C" void extract_m8_SSE2(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input);
 extern "C" void extract_m8_SSE2_16(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
@@ -106,8 +104,8 @@ extern "C" void castScale_AVX_16(const float *val, const float *scale, uint16_t 
 extern "C" void uc2f48_AVX(const uint8_t *t,const int pitch,float *p);
 extern "C" void uc2f48_AVX_16(const uint8_t *t, const int pitch, float *p);
 extern "C" void uc2s48_AVX(const uint8_t *t,const int pitch,float *pf);
-extern "C" int processLine0_AVX_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const int16_t val_min,const int16_t val_max);
-extern "C" int processLine0_AVX_ASM_16(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t val_min,const uint16_t val_max);
+extern "C" int processLine0_AVX_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t *val_min_max);
+extern "C" int processLine0_AVX_ASM_16(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t *val_min_max);
 extern "C" int processLine0_AVX_ASM_32(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch);
 extern "C" void extract_m8_AVX(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input);
 extern "C" void extract_m8_AVX_16(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
@@ -126,11 +124,9 @@ extern "C" void weightedAvgElliottMul5_m16_AVX(const float *w,const int n,float 
 extern "C" void uc2s64_AVX(const uint8_t *t,const int pitch,float *p);
 extern "C" void computeNetwork0new_AVX(const float *datai,const float *weights,uint8_t *d);
 
-
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
 #define myfree(ptr) if (ptr!=NULL) { free(ptr); ptr=NULL;}
-#define myCloseHandle(ptr) if (ptr!=NULL) { CloseHandle(ptr); ptr=NULL;}
 #define myalignedfree(ptr) if (ptr!=NULL) { _aligned_free(ptr); ptr=NULL;}
 #define mydelete(ptr) if (ptr!=NULL) { delete ptr; ptr=NULL;}
 
@@ -173,17 +169,61 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	GenericVideoFilter(_child),field(_field),dh(_dh),Y(_Y),U(_U),V(_V),A(_A),nsize(_nsize),nns(_nns),qual(_qual),
 	etype(_etype),pscrn(_pscrn),threads(_threads),opt(_opt),fapprox(_fapprox),sleep(_sleep),avsp(_avsp)
 {
-	if ((field<-2) || (field>3)) env->ThrowError("nnedi3: field must be set to -2, -1, 0, 1, 2, or 3!");
-	if ((threads<0) || (threads>MAX_MT_THREADS)) env->ThrowError("nnedi3: threads must be between 0 and %d inclusive!",MAX_MT_THREADS);
-	if (dh && ((field<-1) || (field>1))) env->ThrowError("nnedi3: field must be set to -1, 0, or 1 when dh=true!");
-	if ((nsize<0) || (nsize>=NUM_NSIZE)) env->ThrowError("nnedi3: nsize must be in [0,%d]!\n",NUM_NSIZE-1);
-	if ((nns<0) || (nns>=NUM_NNS)) env->ThrowError("nnedi3: nns must be in [0,%d]!\n",NUM_NNS-1);
-	if ((qual<1) || (qual>2)) env->ThrowError("nnedi3: qual must be set to 1 or 2!\n");
-	if ((opt<0) || (opt>7)) env->ThrowError("nnedi3: opt must be in [0,7]!");
-	if ((fapprox<0) || (fapprox>15)) env->ThrowError("nnedi3: fapprox must be [0,15]!\n");
-	if ((pscrn<0) || (pscrn>4)) env->ThrowError("nnedi3: pscrn must be [0,4]!\n");
-	if ((etype<0) || (etype>1)) env->ThrowError("nnedi3: etype must be [0,1]!\n");
-	if ((range_mode<0) || (range_mode>4)) env->ThrowError("nnedi3: range must be [0,4]!\n");
+	if ((field<-2) || (field>3))
+	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
+		env->ThrowError("nnedi3: field must be set to -2, -1, 0, 1, 2, or 3!");
+	}
+	if ((threads<0) || (threads>MAX_MT_THREADS))
+	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
+		env->ThrowError("nnedi3: threads must be between 0 and %d inclusive!",MAX_MT_THREADS);
+	}
+	if (dh && ((field<-1) || (field>1)))
+	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
+		env->ThrowError("nnedi3: field must be set to -1, 0, or 1 when dh=true!");
+	}
+	if ((nsize<0) || (nsize>=NUM_NSIZE))
+	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
+		env->ThrowError("nnedi3: nsize must be in [0,%d]!\n",NUM_NSIZE-1);
+	}
+	if ((nns<0) || (nns>=NUM_NNS))
+	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
+		env->ThrowError("nnedi3: nns must be in [0,%d]!\n",NUM_NNS-1);
+	}
+	if ((qual<1) || (qual>2))
+	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
+		env->ThrowError("nnedi3: qual must be set to 1 or 2!\n");
+	}
+	if ((opt<0) || (opt>7))
+	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
+		env->ThrowError("nnedi3: opt must be in [0,7]!");
+	}
+	if ((fapprox<0) || (fapprox>15))
+	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
+		env->ThrowError("nnedi3: fapprox must be [0,15]!\n");
+	}
+	if ((pscrn<0) || (pscrn>4))
+	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
+		env->ThrowError("nnedi3: pscrn must be [0,4]!\n");
+	}
+	if ((etype<0) || (etype>1))
+	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
+		env->ThrowError("nnedi3: etype must be [0,1]!\n");
+	}
+	if ((range_mode<0) || (range_mode>4))
+	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
+		env->ThrowError("nnedi3: range must be [0,4]!\n");
+	}
 	
 	grey = vi.IsY();
 	isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
@@ -267,8 +307,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 		pssInfo[i].input=NULL;
 		pssInfo[i].temp=NULL;
+		pssInfo[i].val_min_max=NULL;
 	}
-	ghMutex=NULL;
 	UserId=0;
 
 	if (vi.height<32) threads_number=1;
@@ -276,11 +316,15 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 	srcPF = new PlanarFrame();
 	if (srcPF==NULL)
+	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		env->ThrowError("nnedi3: Error while creating srcPF!");
+	}
 	if (vi.Is420())
 	{
 		if (!srcPF->createPlanar(vi.height+12,(vi.height>>1)+12,vi.width+64,(vi.width>>1)+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 		{
+			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			FreeData();
 			env->ThrowError("nnedi3: Error while creating planar for srcPF!");
 		}
@@ -291,6 +335,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		{
 			if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>2)+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 			{
+				if (threads>1) poolInterface->DeAllocateAllThreads(true);
 				FreeData();
 				env->ThrowError("nnedi3: Error while creating planar for srcPF!");
 			}
@@ -301,6 +346,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			{
 				if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>1)+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 				{
+					if (threads>1) poolInterface->DeAllocateAllThreads(true);
 					FreeData();
 					env->ThrowError("nnedi3: Error while creating planar for srcPF!");
 				}
@@ -311,6 +357,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				{
 					if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,vi.width+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 					{
+						if (threads>1) poolInterface->DeAllocateAllThreads(true);
 						FreeData();
 						env->ThrowError("nnedi3: Error while creating planar for srcPF!");
 					}
@@ -321,6 +368,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 					{
 						if (!srcPF->createPlanar(vi.height+12,0,vi.width+64,0,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 						{
+							if (threads>1) poolInterface->DeAllocateAllThreads(true);
 							FreeData();
 							env->ThrowError("nnedi3: Error while creating planar for srcPF!");
 						}
@@ -336,11 +384,13 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	dstPF = new PlanarFrame(vi);
 	if (dstPF==NULL)
 	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		FreeData();
 		env->ThrowError("nnedi3: Error while creating dstPF!");
 	}
 	if (!dstPF->GetAllocStatus())
 	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		FreeData();
 		env->ThrowError("nnedi3: Error while allocating planar dstPF!");
 	}
@@ -348,7 +398,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if (opt==0)
 	{
 		const int CPUF=env->GetCPUFlags();
-/*
+
 		if (((CPUF & CPUF_FMA4)!=0) && ((CPUF & CPUF_AVX2)!=0)) opt=7;
 		else
 		{
@@ -358,7 +408,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				if ((CPUF & CPUF_AVX2)!=0) opt=5;
 				else
 				{
-					if ((CPUF & CPUF_AVX) != 0) opt = 4;
+					if ((CPUF & CPUF_AVX)!= 0) opt = 4;
 					else
 					{
 						if ((CPUF & CPUF_SSE4_1)!=0) opt=3;
@@ -368,21 +418,6 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 							else opt=1;
 						}
 					}
-				}
-			}
-		}*/
-
-		if ((CPUF & CPUF_AVX2) != 0) opt = 5;
-		else
-		{
-			if ((CPUF & CPUF_AVX) != 0) opt = 4;
-			else
-			{
-				if ((CPUF & CPUF_SSE4_1) != 0) opt = 3;
-				else
-				{
-					if ((CPUF & CPUF_SSE2) != 0) opt = 2;
-					else opt = 1;
 				}
 			}
 		}
@@ -410,6 +445,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	weights0 = (float *)_aligned_malloc(max(dims0,dims0new)*sizeof(float),64);
 	if (weights0==NULL)
 	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		FreeData();
 		env->ThrowError("nnedi3: Error while allocating weights0!");
 	}
@@ -418,6 +454,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		weights1[i] = (float *)_aligned_malloc(dims1*sizeof(float),64);
 		if (weights1[i]==NULL)
 		{
+			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			FreeData();
 			env->ThrowError("nnedi3: Error while allocating weights1[%d]!",i);
 		}
@@ -427,6 +464,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		lcount[i] = (int *)_aligned_malloc(dstPF->GetHeight(i)*sizeof(int),64);
 		if (lcount[i]==NULL)
 		{
+			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			FreeData();
 			env->ThrowError("nnedi3: Error while allocating lcount[%d]!",i);
 		}
@@ -436,6 +474,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	HMODULE hmod = GetModuleHandle(nbuf);
 	if (hmod==NULL)
 	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		FreeData();
 		env->ThrowError("nnedi3: unable to get module handle!");
 	}
@@ -445,6 +484,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	DWORD dwSize = SizeofResource(hmod,hrsrc);
 	if ((hmod==NULL) || (hrsrc==NULL) || (hglob==NULL) || (lplock==NULL) || (dwSize!=(dims0+dims0new*3+dims1tsize*2)*sizeof(float)))
 	{
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		FreeData();
 		env->ThrowError("nnedi3: error loading resource (%x,%x,%x,%x,%d,%d)!",hmod,hrsrc,hglob,lplock,dwSize,
 		(dims0+dims0new*3+dims1tsize*2)*sizeof(float));
@@ -583,6 +623,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 				if (rs==NULL)
 				{
+					if (threads>1) poolInterface->DeAllocateAllThreads(true);
 					FreeData();
 					env->ThrowError("nnedi3: Error while allocating rs!");
 				}
@@ -638,6 +679,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				float *rf = (float*)malloc(dims0*sizeof(float));
 				if (rf==NULL)
 				{
+					if (threads>1) poolInterface->DeAllocateAllThreads(true);
 					FreeData();
 					env->ThrowError("nnedi3: Error while allocating rf!");
 				}
@@ -682,6 +724,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		double *mean = (double *)calloc(asize+1+nnst2,sizeof(double));
 		if (mean==NULL)
 		{
+			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			FreeData();
 			env->ThrowError("nnedi3: Error while allocating mean!");
 		}
@@ -764,6 +807,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				int16_t *rs = (int16_t *)malloc(nnst2*asize*sizeof(int16_t));
 				if (rs==NULL)
 				{
+					if (threads>1) poolInterface->DeAllocateAllThreads(true);
 					free(mean);
 					FreeData();
 					env->ThrowError("nnedi3: Error while allocating rs!");
@@ -870,13 +914,6 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		hremain[i] = height%(int)threads_number;
 	}
 
-	ghMutex=CreateMutex(NULL,FALSE,NULL);
-	if (ghMutex==NULL)
-	{
-		FreeData();
-		env->ThrowError("nnedi3: Unable to create Mutex!");
-	}
-
 	int NNPixels_pitch[PLANE_MAX];
 	size_t NNPixels_Size[PLANE_MAX];
 
@@ -891,6 +928,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	{
 		if (NNPixels[i]==NULL)
 		{
+			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			FreeData();
 			env->ThrowError("nnedi3: Unable to create NNPixels[%d]!",i);
 		}
@@ -902,8 +940,10 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	{
 		pssInfo[i].input = (float *)_aligned_malloc(512*sizeof(float),64);
 		pssInfo[i].temp = (float *)_aligned_malloc(512*sizeof(float),64);
-		if ((pssInfo[i].input==NULL) || (pssInfo[i].temp==NULL))
+		pssInfo[i].val_min_max=(uint16_t *)_aligned_malloc(64*sizeof(uint16_t),64);
+		if ((pssInfo[i].input==NULL) || (pssInfo[i].temp==NULL) || (pssInfo[i].val_min_max==NULL))
 		{
+			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			FreeData();
 			env->ThrowError("nnedi3: Error while allocating pssInfo[%d]!",i);
 		}
@@ -972,12 +1012,12 @@ void nnedi3::FreeData(void)
 {
 	for (int8_t i=threads_number-1; i>=0; i--)
 	{
+		myalignedfree(pssInfo[i].val_min_max);
 		myalignedfree(pssInfo[i].temp);
 		myalignedfree(pssInfo[i].input);
 	}
 	for (int8_t i=PLANE_MAX-1; i>=0; i--)
 		myalignedfree(NNPixels[i]);
-	myCloseHandle(ghMutex);
 	for (int8_t i=PLANE_MAX-1; i>=0; i--)
 		myalignedfree(lcount[i]);
 	for (int8_t i=1; i>=0; i--)
@@ -990,11 +1030,8 @@ void nnedi3::FreeData(void)
 
 nnedi3::~nnedi3()
 {
-	if (threads_number>1)
-	{
-		poolInterface->RemoveUserId(UserId);
-		poolInterface->DeAllocateAllThreads(true);
-	}
+	if (threads_number>1) poolInterface->RemoveUserId(UserId);
+	if (threads>1) poolInterface->DeAllocateAllThreads(true);
 	FreeData();
 }
 
@@ -1071,10 +1108,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	if (threads_number>1)
 	{
 		if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,-1,false))
-		{
-			ReleaseMutex(ghMutex);
 			env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool !");
-		}
 
 		for (uint8_t b=0; b<PlaneMax; b++)
 		{
@@ -1162,8 +1196,6 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	
 	if (!vi.IsPlanar()) dstPF->copyTo(dst, vi);
 
-	ReleaseMutex(ghMutex);
-
 	return dst;
 }
 
@@ -1172,8 +1204,6 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 {
 	const int off = 1-fn;
 	PVideoFrame src = child->GetFrame(n, env);
-	
-	WaitForSingleObject(ghMutex,INFINITE);
 	
 	const uint8_t PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
 	int plane[4];
@@ -1526,12 +1556,13 @@ void uc2s48_C(const uint8_t *t, const int pitch, float *pf)
 }
 
 
-int processLine0_C(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const int16_t val_min,const int16_t val_max)
+int processLine0_C(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t *val_min_max)
 {
 	int count = 0;
 	const uint8_t *src2 = src3p+(src_pitch << 1);
 	const uint8_t *src4 = src3p+(src_pitch << 2);
 	const uint8_t *src6 = src3p+(src_pitch*6);
+	const int16_t val_min=(int16_t)val_min_max[0],val_max=(int16_t)val_min_max[32];
 
 	for (int x=0; x<width; x++)
 	{
@@ -1542,35 +1573,35 @@ int processLine0_C(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t
 }
 
 
-int processLine0_SSE2(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const int16_t val_min,const int16_t val_max)
+int processLine0_SSE2(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t *val_min_max)
 {
 	int count;
 	const int width_m = ((width+15) >> 4) << 4;
 
-	if (width_m!=0) count=processLine0_SSE2_ASM(tempu,width_m,dstp,src3p,src_pitch,val_min,val_max);
+	if (width_m!=0) count=processLine0_SSE2_ASM(tempu,width_m,dstp,src3p,src_pitch,val_min_max);
 	else count=0;
 	return count;
 }
 
 
-int processLine0_AVX(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const int16_t val_min,const int16_t val_max)
+int processLine0_AVX(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t *val_min_max)
 {
 	int count;
 	const int width_m = ((width+15) >> 4) << 4;
 
-	if (width_m!=0) count=processLine0_AVX_ASM(tempu,width_m,dstp,src3p,src_pitch,val_min,val_max);
+	if (width_m!=0) count=processLine0_AVX_ASM(tempu,width_m,dstp,src3p,src_pitch,val_min_max);
 	else count=0;
 	return count;
 }
 
 
 #ifdef AVX2_BUILD_POSSIBLE
-int processLine0_AVX2(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const int16_t val_min,const int16_t val_max)
+int processLine0_AVX2(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t *val_min_max)
 {
 	int count;
 	const int width_m = ((width+31) >> 5) << 5;
 
-	if (width_m!=0) count=processLine0_AVX2_ASM(tempu,width_m,dstp,src3p,src_pitch,val_min,val_max);
+	if (width_m!=0) count=processLine0_AVX2_ASM(tempu,width_m,dstp,src3p,src_pitch,val_min_max);
 	else count=0;
 	return count;
 }
@@ -1647,7 +1678,8 @@ void evalFunc_1(void *ps)
 	const bool int16_prescreener = pss->int16_prescreener;
 	void (*uc2s)(const uint8_t*,const int,float*);
 	void (*computeNetwork0)(const float*,const float*,uint8_t*);
-	int (*processLine0)(const uint8_t*,int,uint8_t*,const uint8_t*,const int,const int16_t,const int16_t);
+	int (*processLine0)(const uint8_t*,int,uint8_t*,const uint8_t*,const int,const uint16_t*);
+	uint16_t *data16=pss->val_min_max;
 
 #ifdef AVX2_BUILD_POSSIBLE
 	if (opt==1) processLine0=processLine0_C;
@@ -1725,6 +1757,7 @@ void evalFunc_1(void *ps)
 		else
 		{
 			if (opt>=5) uc2s=uc2s64_AVX2;
+			else
 			{
 				if (opt>=4) uc2s=uc2s64_AVX;
 				else uc2s=uc2s64_SSE2;
@@ -1734,6 +1767,7 @@ void evalFunc_1(void *ps)
 		else
 		{
 			if (opt>=5) computeNetwork0=computeNetwork0new_AVX2;
+			else
 			{
 				if (opt>=4) computeNetwork0=computeNetwork0new_AVX;
 				else computeNetwork0=computeNetwork0new_SSE2;
@@ -1821,8 +1855,8 @@ void evalFunc_1(void *ps)
 		const int ystop = pss->eheight[b];
 		const int src_pitch2=src_pitch << 1;
 		const int dst_pitch2=dst_pitch << 1;
-
-		uint8_t val_min,val_max;
+		
+		uint16_t val_min,val_max;
 
 		switch(range_mode)
 		{
@@ -1843,6 +1877,11 @@ void evalFunc_1(void *ps)
 				break;
 		}
 
+		for(uint8_t i=0; i<32; i++)
+			data16[i]=val_min;
+		for(uint8_t i=32; i<64; i++)
+			data16[i]=val_max;
+
 		srcp+=ystart*src_pitch;
 		dstp+=(ystart-6)*dst_pitch-32;
 		NNPixels+=(ystart-6)*NNPixels_pitch;
@@ -1861,7 +1900,7 @@ void evalFunc_1(void *ps)
 					uc2s(src0+x,src_pitch,input);
 					computeNetwork0(input,weights0,NNPixels+x);
 				}
-				lcount[y]+=processLine0(NNPixels+32,width_64,dstp+32,src3p+32,src_pitch,val_min,val_max);
+				lcount[y]+=processLine0(NNPixels+32,width_64,dstp+32,src3p+32,src_pitch,data16);
 				src3p+=src_pitch2;
 				dstp+=dst_pitch2;
 				NNPixels+=NNPixels_pitch_2;
@@ -1880,7 +1919,7 @@ void evalFunc_1(void *ps)
 						uc2s(src0+x,src_pitch,input);
 						computeNetwork0(input,weights0,NNPixels+x);
 					}
-					lcount[y]+=processLine0(NNPixels+32,width_64,dstp+32,src3p+32,src_pitch,val_min,val_max);
+					lcount[y]+=processLine0(NNPixels+32,width_64,dstp+32,src3p+32,src_pitch,data16);
 					src3p+=src_pitch2;
 					dstp+=dst_pitch2;
 					NNPixels+=NNPixels_pitch_2;
@@ -1901,7 +1940,7 @@ void evalFunc_1(void *ps)
 }
 
 
-int processLine0_C_16(const uint8_t *tempu,int width, uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t val_min,const uint16_t val_max)
+int processLine0_C_16(const uint8_t *tempu,int width, uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t *val_min_max)
 {
 	int count = 0;
 	const uint16_t *src0 = (uint16_t *)src3p;
@@ -1909,6 +1948,7 @@ int processLine0_C_16(const uint8_t *tempu,int width, uint8_t *dstp,const uint8_
 	const uint16_t *src4 = (uint16_t *)(src3p+(src_pitch << 2));
 	const uint16_t *src6 = (uint16_t *)(src3p+(src_pitch*6));
 	uint16_t *dst0 = (uint16_t *)dstp;
+	const uint16_t val_min=val_min_max[0],val_max=val_min_max[32];
 
 	for (int x=0; x<width; x++)
 	{
@@ -2047,24 +2087,24 @@ void computeNetwork0new_C_16(const float *datai, const float *weights, uint8_t *
 }
 
 
-int processLine0_SSE2_16(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t val_min,const uint16_t val_max)
+int processLine0_SSE2_16(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t *val_min_max)
 {
 	int count;
 	const int width_m = ((width+7) >> 3) << 3;
 
-	if (width_m!=0) count=processLine0_SSE2_ASM_16(tempu,width_m,dstp,src3p,src_pitch,val_min,val_max);
+	if (width_m!=0) count=processLine0_SSE2_ASM_16(tempu,width_m,dstp,src3p,src_pitch,val_min_max);
 	else count=0;
 
 	return count;
 }
 
 
-int processLine0_AVX_16(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t val_min,const uint16_t val_max)
+int processLine0_AVX_16(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t *val_min_max)
 {
 	int count;
 	const int width_m = ((width+7) >> 3) << 3;
 
-	if (width_m!=0) count=processLine0_AVX_ASM_16(tempu,width_m,dstp,src3p,src_pitch,val_min,val_max);
+	if (width_m!=0) count=processLine0_AVX_ASM_16(tempu,width_m,dstp,src3p,src_pitch,val_min_max);
 	else count=0;
 
 	return count;
@@ -2072,12 +2112,12 @@ int processLine0_AVX_16(const uint8_t *tempu, int width, uint8_t *dstp, const ui
 
 
 #ifdef AVX2_BUILD_POSSIBLE
-int processLine0_AVX2_16(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t val_min,const uint16_t val_max)
+int processLine0_AVX2_16(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t *val_min_max)
 {
 	int count;
 	const int width_m = ((width+15) >> 4) << 4;
 
-	if (width_m!=0) count=processLine0_AVX2_ASM_16(tempu,width_m,dstp,src3p,src_pitch,val_min,val_max);
+	if (width_m!=0) count=processLine0_AVX2_ASM_16(tempu,width_m,dstp,src3p,src_pitch,val_min_max);
 	else count=0;
 
 	return count;
@@ -2097,7 +2137,8 @@ void evalFunc_1_16(void *ps)
 	const uint8_t bits_per_pixel = pss->bits_per_pixel;
 	void(*uc2s)(const uint8_t*, const int, float*);
 	void(*computeNetwork0)(const float*, const float*, uint8_t*);
-	int(*processLine0)(const uint8_t*, int, uint8_t*, const uint8_t*, const int,const uint16_t,const uint16_t);
+	int(*processLine0)(const uint8_t*, int, uint8_t*, const uint8_t*, const int,const uint16_t *);
+	uint16_t *data16=pss->val_min_max;
 
 #ifdef AVX2_BUILD_POSSIBLE
 	if (opt<3) processLine0=processLine0_C_16;
@@ -2268,6 +2309,11 @@ void evalFunc_1_16(void *ps)
 				break;
 		}
 
+		for(uint8_t i=0; i<32; i++)
+			data16[i]=val_min;
+		for(uint8_t i=32; i<64; i++)
+			data16[i]=val_max;
+
 		srcp += ystart*src_pitch;
 		dstp += (ystart-6)*dst_pitch-64;
 		NNPixels+=(ystart-6)*NNPixels_pitch;
@@ -2286,7 +2332,7 @@ void evalFunc_1_16(void *ps)
 					uc2s(src0+(x<<1),src_pitch,input);
 					computeNetwork0(input,weights0,NNPixels+x);
 				}
-				lcount[y]+=processLine0(NNPixels+32,width_64,dstp+64,src3p+64,src_pitch,val_min,val_max);
+				lcount[y]+=processLine0(NNPixels+32,width_64,dstp+64,src3p+64,src_pitch,data16);
 
 				src3p += src_pitch2;
 				dstp += dst_pitch2;
@@ -2306,7 +2352,7 @@ void evalFunc_1_16(void *ps)
 						uc2s(src0+(x<<1),src_pitch,input);
 						computeNetwork0(input,weights0,NNPixels+x);
 					}
-					lcount[y] += processLine0(NNPixels+32,width_64,dstp+64,src3p+64,src_pitch,val_min,val_max);
+					lcount[y] += processLine0(NNPixels+32,width_64,dstp+64,src3p+64,src_pitch,data16);
 					src3p += src_pitch2;
 					dstp += dst_pitch2;
 					NNPixels+=NNPixels_pitch_2;

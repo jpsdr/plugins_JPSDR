@@ -10,7 +10,7 @@ int aWarpSharp_g_cpuid;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 2.0.5"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 2.1.0"
 
 /*
   threshold : int, default value : 4
@@ -49,7 +49,7 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 	const int threads=args[4].AsInt(0);
 	const bool LogicalCores=args[5].AsBool(true);
 	const bool MaxPhysCores=args[6].AsBool(true);
-	const bool SetAffinity=args[7].AsBool(false);
+	const bool SetAffinity=args[7].AsBool(true);
 	const bool sleep = args[8].AsBool(false);
 	int prefetch=args[9].AsInt(0);
 
@@ -84,7 +84,6 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 }
 
 
-
 AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
 	if (!args[0].IsClip())
@@ -110,7 +109,7 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 	const int threads=args[11].AsInt(0);
 	const bool LogicalCores=args[14].AsBool(true);
 	const bool MaxPhysCores=args[15].AsBool(true);
-	const bool SetAffinity=args[16].AsBool(false);
+	const bool SetAffinity=args[16].AsBool(true);
 	const bool sleep = args[18].AsBool(false);
 	int prefetch = args[19].AsInt(0);
 
@@ -163,20 +162,19 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 		else return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
 				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),args[17].AsBool(true),
 				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),args[10].AsInt(2),
-				threads_number,args[12].AsInt(0),args[13].AsInt(15),args[18].AsBool(false),args[20].AsInt(1),avsp,env);
-			
+				threads_number,args[12].AsInt(0),args[13].AsInt(15),args[18].AsBool(false),args[20].AsInt(1),avsp,env);			
 	}
 	else
 		return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
-				args[3].AsBool(true),false,false,false,args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
-				args[10].AsInt(2),threads_number,args[12].AsInt(0),args[13].AsInt(15),args[18].AsBool(false),
+				args[3].AsBool(true),false,false,false,args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),
+				args[9].AsInt(0),args[10].AsInt(2),threads_number,args[12].AsInt(0),args[13].AsInt(15),args[18].AsBool(false),
 				args[20].AsInt(1),avsp,env);
 }
 
 
 AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvironment *env)
 {
-	if (!args[0].IsClip()) env->ThrowError("nnedi3_rpow2:  arg 0 must be a clip!");
+	if (!args[0].IsClip()) env->ThrowError("nnedi3_rpow2: arg 0 must be a clip!");
 	VideoInfo vi = args[0].AsClip()->GetVideoInfo();
 
   const bool avsp=env->FunctionExists("ConvertBits");  
@@ -219,11 +217,11 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	const bool mpeg2_chroma = args[16].AsBool(true);
 	const bool LogicalCores = args[17].AsBool(true);
 	const bool MaxPhysCores = args[18].AsBool(true);
-	const bool SetAffinity = args[19].AsBool(false);
+	const bool SetAffinity = args[19].AsBool(true);
 	const int threads_rs = args[20].AsInt(0);
 	const bool LogicalCores_rs = args[21].AsBool(true);
 	const bool MaxPhysCores_rs = args[22].AsBool(true);
-	const bool SetAffinity_rs = args[23].AsBool(false);
+	const bool SetAffinity_rs = args[23].AsBool(true);
 	const bool sleep = args[24].AsBool(false);
 	int prefetch = args[25].AsInt(0);
 	int range_mode = args[26].AsInt(1);
@@ -256,11 +254,6 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 	if ((range_mode<0) || (range_mode>4)) env->ThrowError("nnedi3_rpow2: [range] must be between 0 and 4!");
 
-	if ((threads<0) || (threads>MAX_MT_THREADS))
-		env->ThrowError("nnedi3_rpow2: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
-	if ((threads_rs<0) || (threads_rs>MAX_MT_THREADS))
-		env->ThrowError("nnedi3_rpow2: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
-
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("nnedi3_rpow2: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
 
@@ -273,7 +266,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
 
 		if (threads_number==0) env->ThrowError("nnedi3_rpow2: Error with the TheadPool while getting CPU info!");
-
+		
 		if (threads_number>1)
 		{
 			if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
@@ -842,14 +835,14 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
   switch ((int)(size_t)user_data)
   {
-  case 0:
+  case 0 :
 	  {
 	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aWarpSharp2: SSE2 capable CPU is required");
 
 	  threads=args[14].AsInt(0);
 	  LogicalCores=args[15].AsBool(true);
 	  MaxPhysCores=args[16].AsBool(true);
-	  SetAffinity=args[17].AsBool(false);
+	  SetAffinity=args[17].AsBool(true);
 	  sleep = args[18].AsBool(false);
 	  prefetch=args[19].AsInt(0);
 
@@ -887,22 +880,22 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  args[13].Defined() ? threshC=args[13].AsInt(-1) : threshC=thresh;
 
     return new aWarpSharp(args[0].AsClip(),thresh,blur,blurt,depth,args[5].AsInt(4),depthC,is_cplace_mpeg2(args,7),
-		blurV,depthV,depthVC,blurC,blurVC,threshC,threads,sleep,avsp,env);
+		blurV,depthV,depthVC,blurC,blurVC,threshC,threads_number,sleep,avsp,env);
 	break;
 	  }
-  case 1:
+  case 1 :
 	  {
 	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aWarpSharp: SSE2 capable CPU is required");
 
-	blurt = (args[5].AsInt(2)!=2)?1:0;
+    blurt = (args[5].AsInt(2)!=2)?1:0;
     const int blurlevel = args[2].AsInt(2);
     const unsigned int cm = args[4].AsInt(1);
-	static const char map[4] = {1,4,3,2};
+    static const char map[4] = {1,4,3,2};
 
 	  threads=args[7].AsInt(0);
 	  LogicalCores=args[8].AsBool(true);
 	  MaxPhysCores=args[9].AsBool(true);
-	  SetAffinity=args[10].AsBool(false);
+	  SetAffinity=args[10].AsBool(true);
 	  sleep = args[11].AsBool(false);
 	  prefetch=args[12].AsInt(0);
 
@@ -939,16 +932,16 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  threshC=thresh;
 
     return new aWarpSharp(args[0].AsClip(),thresh,blur,blurt,depth,(cm<4)?map[cm]:-1,depthC,false,
-		blurV,depthV,depthVC,blurC,blurVC,threshC,threads,sleep,avsp,env);
+		blurV,depthV,depthVC,blurC,blurVC,threshC,threads_number,sleep,avsp,env);
 	break;
 	  }
-  case 2:
+  case 2 :
 	  {
 
 	  threads=args[4].AsInt(0);
 	  LogicalCores=args[5].AsBool(true);
 	  MaxPhysCores=args[6].AsBool(true);
-	  SetAffinity=args[7].AsBool(false);
+	  SetAffinity=args[7].AsBool(true);
 	  sleep = args[8].AsBool(false);
 	  prefetch=args[9].AsInt(0);
 
@@ -978,16 +971,16 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  thresh=args[1].AsInt(0x80);
 	  args[3].Defined() ? threshC=args[3].AsInt(-1) : threshC=thresh;
 
-	return new aSobel(args[0].AsClip(),thresh,args[2].AsInt(1),threshC,threads,sleep,avsp,env);
+	return new aSobel(args[0].AsClip(),thresh,args[2].AsInt(1),threshC,threads_number,sleep,avsp,env);
 	break;
 	  }
-  case 3:
+  case 3 :
 	  {
 
 	  threads=args[7].AsInt(0);
 	  LogicalCores=args[8].AsBool(true);
 	  MaxPhysCores=args[9].AsBool(true);
-	  SetAffinity=args[10].AsBool(false);
+	  SetAffinity=args[10].AsBool(true);
 	  sleep = args[11].AsBool(false);
 	  prefetch=args[12].AsInt(0);
 
@@ -1022,16 +1015,16 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  args[5].Defined() ? blurC=args[5].AsInt(-1) : blurC=(blur+1)>>1;
 	  args[6].Defined() ? blurVC=args[6].AsInt(-1) : blurVC=blurC;
 
-	return new aBlur(args[0].AsClip(),blur,blurt,args[3].AsInt(1),blurV,blurC,blurVC,threads,sleep,avsp,env);
+    return new aBlur(args[0].AsClip(),blur,blurt,args[3].AsInt(1),blurV,blurC,blurVC,threads_number,sleep,avsp,env);
 	break;
 	  }
-  case 4:
+  case 4 :
 	  {
 
 	  threads=args[8].AsInt(0);
 	  LogicalCores=args[9].AsBool(true);
 	  MaxPhysCores=args[10].AsBool(true);
-	  SetAffinity=args[11].AsBool(false);
+	  SetAffinity=args[11].AsBool(true);
 	  sleep = args[12].AsBool(false);
 	  prefetch=args[13].AsInt(0);
 
@@ -1066,15 +1059,15 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  args[7].Defined() ? depthVC=args[7].AsInt(128) : depthVC=depthC;
 
     return new aWarp(args[0].AsClip(),args[1].AsClip(),depth,args[3].AsInt(4),depthC,is_cplace_mpeg2(args,5),
-		depthV,depthVC,threads,sleep,avsp,env);
+		depthV,depthVC,threads_number,sleep,avsp,env);
 	break;
 	  }
-  case 5:
+  case 5 :
 	  {
 	  threads=args[8].AsInt(0);
 	  LogicalCores=args[9].AsBool(true);
 	  MaxPhysCores=args[10].AsBool(true);
-	  SetAffinity=args[11].AsBool(false);
+	  SetAffinity=args[11].AsBool(true);
 	  sleep = args[12].AsBool(false);
 	  prefetch=args[13].AsInt(0);
 
@@ -1107,7 +1100,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  args[7].Defined() ? depthVC=args[7].AsInt(128) : depthVC=depthC;
 
     return new aWarp4(args[0].AsClip(),args[1].AsClip(),depth,args[3].AsInt(4),depthC,is_cplace_mpeg2(args,5),
-		depthV,depthVC,threads,sleep,avsp,env);
+		depthV,depthVC,threads_number,sleep,avsp,env);
 	break;
 	  }
   default : break;

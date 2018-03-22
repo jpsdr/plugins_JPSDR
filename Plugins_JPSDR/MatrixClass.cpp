@@ -4,6 +4,7 @@
 #include "MatrixClass.h"
 
 #include <memory.h>
+#include <algorithm>
 
 #if _MSC_VER >= 1900
 #define AVX2_BUILD_POSSIBLE
@@ -72,7 +73,15 @@ Vector::Vector(const uint16_t l,const COEFF_DATA_TYPE data)
 
 	const size_t n0=(size_t)l*coeff_size,n=p0-n0;
 
-	if (n>0) memset(((uint8_t *)Coeff)+n0,0,n);
+	if (n>0)
+	{
+		switch(data_type)
+		{
+			case DATA_FLOAT : std::fill_n((float *)(((uint8_t *)Coeff)+n0),n>>2,0.0f); break;
+			case DATA_DOUBLE : std::fill_n((double *)(((uint8_t *)Coeff)+n0),n>>3,0.0); break;
+			default : memset(((uint8_t *)Coeff)+n0,0,n); break;
+		}
+	}
 }
 
 
@@ -118,7 +127,15 @@ Vector::Vector(const Vector &x)
 
 	const size_t n0=(size_t)l*coeff_size,n=p0-n0;
 
-	if (n>0) memset(((uint8_t *)Coeff)+n0,0,n);
+	if (n>0)
+	{
+		switch(data_type)
+		{
+			case DATA_FLOAT : std::fill_n((float *)(((uint8_t *)Coeff)+n0),n>>2,0.0f); break;
+			case DATA_DOUBLE : std::fill_n((double *)(((uint8_t *)Coeff)+n0),n>>3,0.0); break;
+			default : memset(((uint8_t *)Coeff)+n0,0,n); break;
+		}
+	}
 
 	CopyStrict(x);
 }
@@ -161,7 +178,15 @@ bool Vector::Create(void)
 
 	const size_t n0=(size_t)length*coeff_size,n=p0-n0;
 
-	if (n>0) memset(((uint8_t *)Coeff)+n0,0,n);
+	if (n>0)
+	{
+		switch(data_type)
+		{
+			case DATA_FLOAT : std::fill_n((float *)(((uint8_t *)Coeff)+n0),n>>2,0.0f); break;
+			case DATA_DOUBLE : std::fill_n((double *)(((uint8_t *)Coeff)+n0),n>>3,0.0); break;
+			default : memset(((uint8_t *)Coeff)+n0,0,n); break;
+		}
+	}
 
 	return(true);
 }
@@ -200,7 +225,15 @@ bool Vector::Create(const uint16_t l,const COEFF_DATA_TYPE data)
 
 	const size_t n0=(size_t)l*coeff_size,n=p0-n0;
 
-	if (n>0) memset(((uint8_t *)Coeff)+n0,0,n);
+	if (n>0)
+	{
+		switch(data_type)
+		{
+			case DATA_FLOAT : std::fill_n((float *)(((uint8_t *)Coeff)+n0),n>>2,0.0f); break;
+			case DATA_DOUBLE : std::fill_n((double *)(((uint8_t *)Coeff)+n0),n>>3,0.0); break;
+			default : memset(((uint8_t *)Coeff)+n0,0,n); break;
+		}
+	}
 
 	return(true);
 }
@@ -243,7 +276,15 @@ bool Vector::Create(const Vector &x)
 
 	const size_t n0=(size_t)l*coeff_size,n=p0-n0;
 
-	if (n>0) memset(((uint8_t *)Coeff)+n0,0,n);
+	if (n>0)
+	{
+		switch(data_type)
+		{
+			case DATA_FLOAT : std::fill_n((float *)(((uint8_t *)Coeff)+n0),n>>2,0.0f); break;
+			case DATA_DOUBLE : std::fill_n((double *)(((uint8_t *)Coeff)+n0),n>>3,0.0); break;
+			default : memset(((uint8_t *)Coeff)+n0,0,n); break;
+		}
+	}
 
 	CopyStrict(x);
 
@@ -300,12 +341,9 @@ bool Vector::CopyStrict(const Vector &x)
 
 bool Vector::FillD(const double data)
 {
-	if ((Coeff==NULL) || (length==0)) return(false);
+	if ((Coeff==NULL) || (length==0) || (data_type!=DATA_DOUBLE)) return(false);
 
-	double *a=(double *)Coeff;
-
-	for (uint16_t i=0; i<length; i++)
-		*a++=data;
+	std::fill_n((double *)Coeff,length,data);
 
 	return(true);
 }
@@ -313,12 +351,9 @@ bool Vector::FillD(const double data)
 
 bool Vector::FillF(const float data)
 {
-	if ((Coeff==NULL) || (length==0)) return(false);
+	if ((Coeff==NULL) || (length==0) || (data_type!=DATA_FLOAT)) return(false);
 
-	float *a=(float *)Coeff;
-
-	for (uint16_t i=0; i<length; i++)
-		*a++=data;
+	std::fill_n((float *)Coeff,length,data);
 
 	return(true);
 }
@@ -328,7 +363,12 @@ bool Vector::FillZero(void)
 {
 	if ((Coeff==NULL) || (length==0)) return(false);
 
-	memset(Coeff,0,size);
+	switch(data_type)
+	{
+		case DATA_FLOAT : std::fill_n((float *)Coeff,length,0.0f); break;
+		case DATA_DOUBLE : std::fill_n((double *)Coeff,length,0.0); break;
+		default : memset(Coeff,0,size); break;
+	}
 
 	return(true);
 }
@@ -629,10 +669,29 @@ Matrix::Matrix(const uint16_t l,const uint16_t c,const COEFF_DATA_TYPE data)
 	{
 		uint8_t *a=(uint8_t *)Coeff;
 
-		for(uint16_t i=0; i<l; i++)
+		switch(data_type)
 		{
-			memset(a+n0,0,n);
-			a+=p0;
+			case DATA_FLOAT :
+				for(uint16_t i=0; i<l; i++)
+				{
+					std::fill_n((float *)(a+n0),n>>2,0.0f);
+					a+=p0;
+				}
+				break;
+			case DATA_DOUBLE :
+				for(uint16_t i=0; i<l; i++)
+				{
+					std::fill_n((double *)(a+n0),n>>3,0.0);
+					a+=p0;
+				}
+				break;
+			default :
+				for(uint16_t i=0; i<l; i++)
+				{
+					memset(a+n0,0,n);
+					a+=p0;
+				}
+				break;
 		}
 	}
 }
@@ -686,10 +745,29 @@ Matrix::Matrix(const Matrix &m)
 	{
 		uint8_t *a=(uint8_t *)Coeff;
 
-		for(uint16_t i=0; i<l; i++)
+		switch(data_type)
 		{
-			memset(a+n0,0,n);
-			a+=p0;
+			case DATA_FLOAT :
+				for(uint16_t i=0; i<l; i++)
+				{
+					std::fill_n((float *)(a+n0),n>>2,0.0f);
+					a+=p0;
+				}
+				break;
+			case DATA_DOUBLE :
+				for(uint16_t i=0; i<l; i++)
+				{
+					std::fill_n((double *)(a+n0),n>>3,0.0);
+					a+=p0;
+				}
+				break;
+			default :
+				for(uint16_t i=0; i<l; i++)
+				{
+					memset(a+n0,0,n);
+					a+=p0;
+				}
+				break;
 		}
 	}
 
@@ -739,10 +817,29 @@ bool Matrix::Create(void)
 	{
 		uint8_t *a=(uint8_t *)Coeff;
 
-		for(uint16_t i=0; i<lines; i++)
+		switch(data_type)
 		{
-			memset(a+n0,0,n);
-			a+=p0;
+			case DATA_FLOAT :
+				for(uint16_t i=0; i<lines; i++)
+				{
+					std::fill_n((float *)(a+n0),n>>2,0.0f);
+					a+=p0;
+				}
+				break;
+			case DATA_DOUBLE :
+				for(uint16_t i=0; i<lines; i++)
+				{
+					std::fill_n((double *)(a+n0),n>>3,0.0);
+					a+=p0;
+				}
+				break;
+			default :
+				for(uint16_t i=0; i<lines; i++)
+				{
+					memset(a+n0,0,n);
+					a+=p0;
+				}
+				break;
 		}
 	}
 
@@ -792,10 +889,29 @@ bool Matrix::Create(const Matrix &m)
 	{
 		uint8_t *a=(uint8_t *)Coeff;
 
-		for(uint16_t i=0; i<l; i++)
+		switch(data_type)
 		{
-			memset(a+n0,0,n);
-			a+=p0;
+			case DATA_FLOAT :
+				for(uint16_t i=0; i<l; i++)
+				{
+					std::fill_n((float *)(a+n0),n>>2,0.0f);
+					a+=p0;
+				}
+				break;
+			case DATA_DOUBLE :
+				for(uint16_t i=0; i<l; i++)
+				{
+					std::fill_n((double *)(a+n0),n>>3,0.0);
+					a+=p0;
+				}
+				break;
+			default :
+				for(uint16_t i=0; i<l; i++)
+				{
+					memset(a+n0,0,n);
+					a+=p0;
+				}
+				break;
 		}
 	}
 
@@ -840,10 +956,29 @@ bool Matrix::Create(const uint16_t l,const uint16_t c,const COEFF_DATA_TYPE data
 	{
 		uint8_t *a=(uint8_t *)Coeff;
 
-		for(uint16_t i=0; i<l; i++)
+		switch(data_type)
 		{
-			memset(a+n0,0,n);
-			a+=p0;
+			case DATA_FLOAT :
+				for(uint16_t i=0; i<l; i++)
+				{
+					std::fill_n((float *)(a+n0),n>>2,0.0f);
+					a+=p0;
+				}
+				break;
+			case DATA_DOUBLE :
+				for(uint16_t i=0; i<l; i++)
+				{
+					std::fill_n((double *)(a+n0),n>>3,0.0);
+					a+=p0;
+				}
+				break;
+			default :
+				for(uint16_t i=0; i<l; i++)
+				{
+					memset(a+n0,0,n);
+					a+=p0;
+				}
+				break;
 		}
 	}
 
@@ -875,11 +1010,7 @@ bool Matrix::FillD(const double data)
 
 	for (uint16_t i=0; i<l; i++)
 	{
-		double *a0=(double *)a;
-
-		for (uint16_t j=0; j<c; j++)
-			*a0++=data;
-
+		std::fill_n((double *)a,c,data);
 		a+=pitch;
 	}
 
@@ -897,11 +1028,7 @@ bool Matrix::FillF(const float data)
 
 	for (uint16_t i=0; i<l; i++)
 	{
-		float *a0=(float *)a;
-
-		for (uint16_t j=0; j<c; j++)
-			*a0++=data;
-
+		std::fill_n((float *)a,c,data);
 		a+=pitch;
 	}
 
@@ -913,7 +1040,26 @@ bool Matrix::FillZero(void)
 {
 	if ((Coeff==NULL) || (columns==0) || (lines==0)) return(false);
 
-	memset(Coeff,0,size);
+	uint8_t *a=(uint8_t *)Coeff;
+
+	switch(data_type)
+	{
+		case DATA_FLOAT :
+			for(uint16_t i=0; i<lines; i++)
+			{
+				std::fill_n((float *)a,columns,0.0f);
+				a+=pitch;
+			}
+			break;
+		case DATA_DOUBLE :
+			for(uint16_t i=0; i<lines; i++)
+			{
+				std::fill_n((double *)a,columns,0.0);
+				a+=pitch;
+			}
+			break;
+		default : memset(Coeff,0,size); break;
+	}
 
 	return(true);
 }
