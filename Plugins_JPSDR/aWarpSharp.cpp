@@ -26,7 +26,6 @@
 #define _mm_undefined_si128 _mm_setzero_si128
 #endif
 
-
 extern int aWarpSharp_g_cpuid;
 
 extern ThreadPoolInterface *poolInterface;
@@ -3693,7 +3692,8 @@ void aWarpSharp::StaticThreadpool(void *ptr)
 	const aWarpSharp *ptrClass=(aWarpSharp *)data->pClass;
 
 	const uint8_t thread_num=data->thread_Id;
-	const MT_Data_Info_WarpSharp mt_data_inf=ptrClass->MT_Data[thread_num];
+	const MT_Data_Info_WarpSharp *MT_DataGF=(const MT_Data_Info_WarpSharp *)data->pData;
+	const MT_Data_Info_WarpSharp mt_data_inf=MT_DataGF[thread_num];
 	
 	switch(data->f_process)
 	{
@@ -4166,9 +4166,17 @@ PVideoFrame __stdcall aWarpSharp::GetFrame(int n, IScriptEnvironment *env)
   const int cblurLr=std::max(blur_levelC,blur_levelVC)-cblurL;
   const bool cprocessH=blur_levelC>cblurL,cprocessV=blur_levelVC>cblurL;
 
+  Public_MT_Data_Thread MT_ThreadGF[MAX_MT_THREADS];
+  MT_Data_Info_WarpSharp MT_DataGF[MAX_MT_THREADS];
+
+  memcpy(MT_ThreadGF,MT_Thread,sizeof(MT_Thread));
+  memcpy(MT_DataGF,MT_Data,sizeof(MT_Data));
+
+  MT_ThreadGF->pData=MT_DataGF;
+
   if (threads_number>1)
   {
-	  if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,-1,false))
+	  if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,-1,false))
 		  env->ThrowError("aWarpSharp: Error with the TheadPool while requesting threadpool!");
   }
 
@@ -4177,53 +4185,53 @@ PVideoFrame __stdcall aWarpSharp::GetFrame(int n, IScriptEnvironment *env)
 
 	for(uint8_t i=0; i<threads_number; i++)
 	{
-		MT_Data[i].src_Y1=(void *)psrc_Y;
-		MT_Data[i].src_Y2=(void *)ptmp_Y;
-		MT_Data[i].src_pitch_Y1=src_pitch_Y;
-		MT_Data[i].src_pitch_Y2=tmp_pitch_Y;
-		MT_Data[i].row_size_Y1=src_row_size_Y;
-		MT_Data[i].row_size_Y2=tmp_row_size_Y;
-		MT_Data[i].row_size_Y3=dst_row_size_Y;
-		MT_Data[i].dst_Y1=dptmp_Y;
-		MT_Data[i].dst_Y2=pdst_Y;
-		MT_Data[i].dst_pitch_Y1=tmp_pitch_Y;
-		MT_Data[i].dst_pitch_Y2=dst_pitch_Y;
+		MT_DataGF[i].src_Y1=(void *)psrc_Y;
+		MT_DataGF[i].src_Y2=(void *)ptmp_Y;
+		MT_DataGF[i].src_pitch_Y1=src_pitch_Y;
+		MT_DataGF[i].src_pitch_Y2=tmp_pitch_Y;
+		MT_DataGF[i].row_size_Y1=src_row_size_Y;
+		MT_DataGF[i].row_size_Y2=tmp_row_size_Y;
+		MT_DataGF[i].row_size_Y3=dst_row_size_Y;
+		MT_DataGF[i].dst_Y1=dptmp_Y;
+		MT_DataGF[i].dst_Y2=pdst_Y;
+		MT_DataGF[i].dst_pitch_Y1=tmp_pitch_Y;
+		MT_DataGF[i].dst_pitch_Y2=dst_pitch_Y;
 
-		MT_Data[i].src_U1=(void *)psrc_U;
-		MT_Data[i].src_U2=(void *)ptmp_U;
-		MT_Data[i].src_pitch_U1=src_pitch_U;
-		MT_Data[i].src_pitch_U2=tmp_pitch_U;
-		MT_Data[i].row_size_U1=tmp_row_size_U;
-		MT_Data[i].row_size_U2=dst_row_size_U;
-		MT_Data[i].dst_U1=dptmp_U;
-		MT_Data[i].dst_U2=pdst_U;
-		MT_Data[i].dst_pitch_U1=tmp_pitch_U;
-		MT_Data[i].dst_pitch_U2=dst_pitch_U;
+		MT_DataGF[i].src_U1=(void *)psrc_U;
+		MT_DataGF[i].src_U2=(void *)ptmp_U;
+		MT_DataGF[i].src_pitch_U1=src_pitch_U;
+		MT_DataGF[i].src_pitch_U2=tmp_pitch_U;
+		MT_DataGF[i].row_size_U1=tmp_row_size_U;
+		MT_DataGF[i].row_size_U2=dst_row_size_U;
+		MT_DataGF[i].dst_U1=dptmp_U;
+		MT_DataGF[i].dst_U2=pdst_U;
+		MT_DataGF[i].dst_pitch_U1=tmp_pitch_U;
+		MT_DataGF[i].dst_pitch_U2=dst_pitch_U;
 
-		MT_Data[i].src_V1=(void *)psrc_V;
-		MT_Data[i].src_V2=(void *)ptmp_V;
-		MT_Data[i].src_pitch_V1=src_pitch_V;
-		MT_Data[i].src_pitch_V2=tmp_pitch_V;
-		MT_Data[i].row_size_V1=tmp_row_size_V;
-		MT_Data[i].row_size_V2=dst_row_size_V;
-		MT_Data[i].dst_V1=dptmp_V;
-		MT_Data[i].dst_V2=pdst_V;
-		MT_Data[i].dst_pitch_V1=tmp_pitch_V;
-		MT_Data[i].dst_pitch_V2=dst_pitch_V;
+		MT_DataGF[i].src_V1=(void *)psrc_V;
+		MT_DataGF[i].src_V2=(void *)ptmp_V;
+		MT_DataGF[i].src_pitch_V1=src_pitch_V;
+		MT_DataGF[i].src_pitch_V2=tmp_pitch_V;
+		MT_DataGF[i].row_size_V1=tmp_row_size_V;
+		MT_DataGF[i].row_size_V2=dst_row_size_V;
+		MT_DataGF[i].dst_V1=dptmp_V;
+		MT_DataGF[i].dst_V2=pdst_V;
+		MT_DataGF[i].dst_pitch_V1=tmp_pitch_V;
+		MT_DataGF[i].dst_pitch_V2=dst_pitch_V;
 
-		MT_Data[i].src_Y_h=src_height_Y;
-		MT_Data[i].src_U_h=src_height_U;
-		MT_Data[i].src_V_h=src_height_V;
-		MT_Data[i].dst_Y_h=dst_height_Y;
-		MT_Data[i].dst_U_h=dst_height_U;
-		MT_Data[i].dst_V_h=dst_height_V;
+		MT_DataGF[i].src_Y_h=src_height_Y;
+		MT_DataGF[i].src_U_h=src_height_U;
+		MT_DataGF[i].src_V_h=src_height_V;
+		MT_DataGF[i].dst_Y_h=dst_height_Y;
+		MT_DataGF[i].dst_U_h=dst_height_U;
+		MT_DataGF[i].dst_V_h=dst_height_V;
 
-		MT_Data[i].processH=processH;
-		MT_Data[i].processV=processV;
-		MT_Data[i].cprocessH=cprocessH;
-		MT_Data[i].cprocessV=cprocessV;
-		MT_Data[i].SubW_U=SubW_U;
-		MT_Data[i].SubH_U=SubH_U;
+		MT_DataGF[i].processH=processH;
+		MT_DataGF[i].processV=processV;
+		MT_DataGF[i].cprocessH=cprocessH;
+		MT_DataGF[i].cprocessV=cprocessV;
+		MT_DataGF[i].SubW_U=SubW_U;
+		MT_DataGF[i].SubH_U=SubH_U;
 	}
 
 		uint8_t f_proc;
@@ -4235,7 +4243,7 @@ PVideoFrame __stdcall aWarpSharp::GetFrame(int n, IScriptEnvironment *env)
 	  f_proc=1+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
@@ -4244,11 +4252,11 @@ PVideoFrame __stdcall aWarpSharp::GetFrame(int n, IScriptEnvironment *env)
 	for (int i=0; i<blurL; i++)
 	{
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process++;
+			MT_ThreadGF[i].f_process++;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
 
@@ -4257,11 +4265,11 @@ PVideoFrame __stdcall aWarpSharp::GetFrame(int n, IScriptEnvironment *env)
 	for (int i=0; i<blurLr; i++)
 	{
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process++;
+			MT_ThreadGF[i].f_process++;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
 
@@ -4270,7 +4278,7 @@ PVideoFrame __stdcall aWarpSharp::GetFrame(int n, IScriptEnvironment *env)
 		f_proc=10+offs_16b;
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
@@ -4306,7 +4314,7 @@ PVideoFrame __stdcall aWarpSharp::GetFrame(int n, IScriptEnvironment *env)
 		  f_proc=11+offs_16b;
 
 		  for(uint8_t i=0; i<threads_number; i++)
-			  MT_Thread[i].f_process=f_proc;
+			  MT_ThreadGF[i].f_process=f_proc;
 
 		  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
@@ -4315,11 +4323,11 @@ PVideoFrame __stdcall aWarpSharp::GetFrame(int n, IScriptEnvironment *env)
 	for (int i=0; i<cblurL; i++)
 	{
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process++;
+			MT_ThreadGF[i].f_process++;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
 
@@ -4328,25 +4336,25 @@ PVideoFrame __stdcall aWarpSharp::GetFrame(int n, IScriptEnvironment *env)
 	for (int i=0; i<cblurLr; i++)
 	{
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process++;
+			MT_ThreadGF[i].f_process++;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
 
 	f_proc=20+offs_16b;
 
 	for(uint8_t i=0; i<threads_number; i++)
-		MT_Thread[i].f_process=f_proc;
+		MT_ThreadGF[i].f_process=f_proc;
 
 	if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 	f_proc=21+offs_16b;
 
 	for(uint8_t i=0; i<threads_number; i++)
-		MT_Thread[i].f_process=f_proc;
+		MT_ThreadGF[i].f_process=f_proc;
 
 	if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
@@ -4355,11 +4363,11 @@ PVideoFrame __stdcall aWarpSharp::GetFrame(int n, IScriptEnvironment *env)
 	for (int i=0; i<cblurL; i++)
 	{
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process++;
+			MT_ThreadGF[i].f_process++;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
 
@@ -4368,18 +4376,18 @@ PVideoFrame __stdcall aWarpSharp::GetFrame(int n, IScriptEnvironment *env)
 	for (int i=0; i<cblurLr; i++)
 	{
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process++;
+			MT_ThreadGF[i].f_process++;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
 
 	f_proc=30+offs_16b;
 
 	for(uint8_t i=0; i<threads_number; i++)
-		MT_Thread[i].f_process=f_proc;
+		MT_ThreadGF[i].f_process=f_proc;
 
 	if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
@@ -4400,21 +4408,21 @@ PVideoFrame __stdcall aWarpSharp::GetFrame(int n, IScriptEnvironment *env)
 	  f_proc=31+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 	  f_proc=32+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 	  f_proc=33+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
     }
@@ -4423,14 +4431,14 @@ PVideoFrame __stdcall aWarpSharp::GetFrame(int n, IScriptEnvironment *env)
 	  f_proc=34+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 	  f_proc=35+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
     }
@@ -4445,7 +4453,7 @@ PVideoFrame __stdcall aWarpSharp::GetFrame(int n, IScriptEnvironment *env)
   }
 
   for(uint8_t i=0; i<threads_number; i++)
-	  MT_Thread[i].f_process=0;
+	  MT_ThreadGF[i].f_process=0;
 
   poolInterface->ReleaseThreadPool(UserId,sleep);
 
@@ -4740,7 +4748,8 @@ void aSobel::StaticThreadpool(void *ptr)
 	const aSobel *ptrClass=(aSobel *)data->pClass;
 
 	const uint8_t thread_num=data->thread_Id;
-	const MT_Data_Info_WarpSharp mt_data_inf=ptrClass->MT_Data[thread_num];
+	const MT_Data_Info_WarpSharp *MT_DataGF=(const MT_Data_Info_WarpSharp *)data->pData;
+	const MT_Data_Info_WarpSharp mt_data_inf=MT_DataGF[thread_num];
 	
 	switch(data->f_process)
 	{
@@ -4814,9 +4823,17 @@ PVideoFrame __stdcall aSobel::GetFrame(int n, IScriptEnvironment *env)
   const int32_t dst_row_size_U = dst->GetRowSize() >> SubW_U;
   const int32_t dst_row_size_V = dst->GetRowSize() >> SubW_V;
 
+  Public_MT_Data_Thread MT_ThreadGF[MAX_MT_THREADS];
+  MT_Data_Info_WarpSharp MT_DataGF[MAX_MT_THREADS];
+
+  memcpy(MT_ThreadGF,MT_Thread,sizeof(MT_Thread));
+  memcpy(MT_DataGF,MT_Data,sizeof(MT_Data));
+
+  MT_ThreadGF->pData=MT_DataGF;
+
   if (threads_number>1)
   {
-	  if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,-1,false))
+	  if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,-1,false))
 		  env->ThrowError("aSobel: Error with the TheadPool while requesting threadpool!");
   }
 
@@ -4825,27 +4842,27 @@ PVideoFrame __stdcall aSobel::GetFrame(int n, IScriptEnvironment *env)
 
 	for(uint8_t i=0; i<threads_number; i++)
 	{
-		MT_Data[i].src_Y1=(void *)psrc_Y;
-		MT_Data[i].src_pitch_Y1=src_pitch_Y;
-		MT_Data[i].row_size_Y1=dst_row_size_Y;
-		MT_Data[i].dst_Y1=pdst_Y;
-		MT_Data[i].dst_pitch_Y1=dst_pitch_Y;
+		MT_DataGF[i].src_Y1=(void *)psrc_Y;
+		MT_DataGF[i].src_pitch_Y1=src_pitch_Y;
+		MT_DataGF[i].row_size_Y1=dst_row_size_Y;
+		MT_DataGF[i].dst_Y1=pdst_Y;
+		MT_DataGF[i].dst_pitch_Y1=dst_pitch_Y;
 
-		MT_Data[i].src_U1=(void *)psrc_U;
-		MT_Data[i].src_pitch_U1=src_pitch_U;
-		MT_Data[i].row_size_U1=dst_row_size_U;
-		MT_Data[i].dst_U1=pdst_U;
-		MT_Data[i].dst_pitch_U1=dst_pitch_U;
+		MT_DataGF[i].src_U1=(void *)psrc_U;
+		MT_DataGF[i].src_pitch_U1=src_pitch_U;
+		MT_DataGF[i].row_size_U1=dst_row_size_U;
+		MT_DataGF[i].dst_U1=pdst_U;
+		MT_DataGF[i].dst_pitch_U1=dst_pitch_U;
 
-		MT_Data[i].src_V1=(void *)psrc_V;
-		MT_Data[i].src_pitch_V1=src_pitch_V;
-		MT_Data[i].row_size_V1=dst_row_size_V;
-		MT_Data[i].dst_V1=pdst_V;
-		MT_Data[i].dst_pitch_V1=dst_pitch_V;
+		MT_DataGF[i].src_V1=(void *)psrc_V;
+		MT_DataGF[i].src_pitch_V1=src_pitch_V;
+		MT_DataGF[i].row_size_V1=dst_row_size_V;
+		MT_DataGF[i].dst_V1=pdst_V;
+		MT_DataGF[i].dst_pitch_V1=dst_pitch_V;
 
-		MT_Data[i].src_Y_h=src_height_Y;
-		MT_Data[i].src_U_h=src_height_U;
-		MT_Data[i].src_V_h=src_height_V;
+		MT_DataGF[i].src_Y_h=src_height_Y;
+		MT_DataGF[i].src_U_h=src_height_U;
+		MT_DataGF[i].src_V_h=src_height_V;
 	}
 
 	uint8_t f_proc;
@@ -4856,7 +4873,7 @@ PVideoFrame __stdcall aSobel::GetFrame(int n, IScriptEnvironment *env)
 	  f_proc=1+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
   }
@@ -4886,21 +4903,21 @@ PVideoFrame __stdcall aSobel::GetFrame(int n, IScriptEnvironment *env)
 	  f_proc=2+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 	  f_proc=3+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
     break;
   }
 
 	for(uint8_t i=0; i<threads_number; i++)
-		MT_Thread[i].f_process=0;
+		MT_ThreadGF[i].f_process=0;
 
     poolInterface->ReleaseThreadPool(UserId,sleep);
   }
@@ -5067,7 +5084,8 @@ void aBlur::StaticThreadpool(void *ptr)
 	const aBlur *ptrClass=(aBlur *)data->pClass;
 
 	const uint8_t thread_num=data->thread_Id;
-	const MT_Data_Info_WarpSharp mt_data_inf=ptrClass->MT_Data[thread_num];
+	const MT_Data_Info_WarpSharp *MT_DataGF=(const MT_Data_Info_WarpSharp *)data->pData;
+	const MT_Data_Info_WarpSharp mt_data_inf=MT_DataGF[thread_num];
 	
 	switch(data->f_process)
 	{
@@ -5361,9 +5379,17 @@ PVideoFrame __stdcall aBlur::GetFrame(int n, IScriptEnvironment *env)
   const int cblurLr=std::max(blur_levelC,blur_levelVC)-cblurL;
   const bool cprocessH=blur_levelC>cblurL,cprocessV=blur_levelVC>cblurL;
 
+  Public_MT_Data_Thread MT_ThreadGF[MAX_MT_THREADS];
+  MT_Data_Info_WarpSharp MT_DataGF[MAX_MT_THREADS];
+
+  memcpy(MT_ThreadGF,MT_Thread,sizeof(MT_Thread));
+  memcpy(MT_DataGF,MT_Data,sizeof(MT_Data));
+
+  MT_ThreadGF->pData=MT_DataGF;
+
   if (threads_number>1)
   {
-	  if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,-1,false))
+	  if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,-1,false))
 		  env->ThrowError("aBlur: Error with the TheadPool while requesting threadpool!");
   }
 
@@ -5372,32 +5398,32 @@ PVideoFrame __stdcall aBlur::GetFrame(int n, IScriptEnvironment *env)
 
 	for(uint8_t i=0; i<threads_number; i++)
 	{
-		MT_Data[i].src_Y1=wpsrc_Y;
-		MT_Data[i].src_pitch_Y1=src_pitch_Y;
-		MT_Data[i].row_size_Y1=src_row_size_Y;
-		MT_Data[i].dst_Y1=wptmp_Y;
-		MT_Data[i].dst_pitch_Y1=tmp_pitch_Y;
+		MT_DataGF[i].src_Y1=wpsrc_Y;
+		MT_DataGF[i].src_pitch_Y1=src_pitch_Y;
+		MT_DataGF[i].row_size_Y1=src_row_size_Y;
+		MT_DataGF[i].dst_Y1=wptmp_Y;
+		MT_DataGF[i].dst_pitch_Y1=tmp_pitch_Y;
 
-		MT_Data[i].src_U1=wpsrc_U;
-		MT_Data[i].src_pitch_U1=src_pitch_U;
-		MT_Data[i].row_size_U1=src_row_size_U;
-		MT_Data[i].dst_U1=wptmp_U;
-		MT_Data[i].dst_pitch_U1=tmp_pitch_U;
+		MT_DataGF[i].src_U1=wpsrc_U;
+		MT_DataGF[i].src_pitch_U1=src_pitch_U;
+		MT_DataGF[i].row_size_U1=src_row_size_U;
+		MT_DataGF[i].dst_U1=wptmp_U;
+		MT_DataGF[i].dst_pitch_U1=tmp_pitch_U;
 
-		MT_Data[i].src_V1=wpsrc_V;
-		MT_Data[i].src_pitch_V1=src_pitch_V;
-		MT_Data[i].row_size_V1=src_row_size_V;
-		MT_Data[i].dst_V1=wptmp_V;
-		MT_Data[i].dst_pitch_V1=tmp_pitch_V;
+		MT_DataGF[i].src_V1=wpsrc_V;
+		MT_DataGF[i].src_pitch_V1=src_pitch_V;
+		MT_DataGF[i].row_size_V1=src_row_size_V;
+		MT_DataGF[i].dst_V1=wptmp_V;
+		MT_DataGF[i].dst_pitch_V1=tmp_pitch_V;
 
-		MT_Data[i].src_Y_h=src_height_Y;
-		MT_Data[i].src_U_h=src_height_U;
-		MT_Data[i].src_V_h=src_height_V;
+		MT_DataGF[i].src_Y_h=src_height_Y;
+		MT_DataGF[i].src_U_h=src_height_U;
+		MT_DataGF[i].src_V_h=src_height_V;
 
-		MT_Data[i].processH=processH;
-		MT_Data[i].processV=processV;
-		MT_Data[i].cprocessH=cprocessH;
-		MT_Data[i].cprocessV=cprocessV;
+		MT_DataGF[i].processH=processH;
+		MT_DataGF[i].processV=processV;
+		MT_DataGF[i].cprocessH=cprocessH;
+		MT_DataGF[i].cprocessV=cprocessV;
 	}
 
 	  uint8_t f_proc;
@@ -5410,11 +5436,11 @@ PVideoFrame __stdcall aBlur::GetFrame(int n, IScriptEnvironment *env)
 	for (int i=0; i<blurL; i++)
 	{
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process++;
+			MT_ThreadGF[i].f_process++;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
 
@@ -5423,11 +5449,11 @@ PVideoFrame __stdcall aBlur::GetFrame(int n, IScriptEnvironment *env)
 	for (int i=0; i<blurLr; i++)
 	{
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process++;
+			MT_ThreadGF[i].f_process++;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
   }
@@ -5454,11 +5480,11 @@ PVideoFrame __stdcall aBlur::GetFrame(int n, IScriptEnvironment *env)
 	for (int i=0; i<cblurL; i++)
 	{
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process++;
+			MT_ThreadGF[i].f_process++;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
 
@@ -5467,27 +5493,27 @@ PVideoFrame __stdcall aBlur::GetFrame(int n, IScriptEnvironment *env)
 	for (int i=0; i<cblurLr; i++)
 	{
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process++;
+			MT_ThreadGF[i].f_process++;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
 
 	  f_proc=(blur_type==1) ? (17+offs_16b):(19+offs_16b);
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	for (int i=0; i<cblurL; i++)
 	{
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process++;
+			MT_ThreadGF[i].f_process++;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
 
@@ -5496,18 +5522,18 @@ PVideoFrame __stdcall aBlur::GetFrame(int n, IScriptEnvironment *env)
 	for (int i=0; i<cblurLr; i++)
 	{
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process++;
+			MT_ThreadGF[i].f_process++;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
     break;
   }
 
 	for(uint8_t i=0; i<threads_number; i++)
-		MT_Thread[i].f_process=0;
+		MT_ThreadGF[i].f_process=0;
 
     poolInterface->ReleaseThreadPool(UserId,sleep);
   }
@@ -5743,7 +5769,8 @@ void aWarp::StaticThreadpool(void *ptr)
 	const aWarp *ptrClass=(aWarp *)data->pClass;
 
 	const uint8_t thread_num=data->thread_Id;
-	const MT_Data_Info_WarpSharp mt_data_inf=ptrClass->MT_Data[thread_num];
+	const MT_Data_Info_WarpSharp *MT_DataGF=(const MT_Data_Info_WarpSharp *)data->pData;
+	const MT_Data_Info_WarpSharp mt_data_inf=MT_DataGF[thread_num];
 	
 	switch(data->f_process)
 	{
@@ -5895,9 +5922,17 @@ PVideoFrame __stdcall aWarp::GetFrame(int n, IScriptEnvironment *env)
   const int32_t edg_height_UV = edg->GetHeight() >> SubH_U;
   const int32_t edg_width_UV = edg->GetRowSize() >> SubW_U;
 
+  Public_MT_Data_Thread MT_ThreadGF[MAX_MT_THREADS];
+  MT_Data_Info_WarpSharp MT_DataGF[MAX_MT_THREADS];
+
+  memcpy(MT_ThreadGF,MT_Thread,sizeof(MT_Thread));
+  memcpy(MT_DataGF,MT_Data,sizeof(MT_Data));
+
+  MT_ThreadGF->pData=MT_DataGF;
+
   if (threads_number>1)
   {
-	  if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,-1,false))
+	  if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,-1,false))
 		  env->ThrowError("aWarp: Error with the TheadPool while requesting threadpool!");
   }
 
@@ -5907,39 +5942,39 @@ PVideoFrame __stdcall aWarp::GetFrame(int n, IScriptEnvironment *env)
 
 	for(uint8_t i=0; i<threads_number; i++)
 	{
-		MT_Data[i].src_Y1=(void *)psrc_Y;
-		MT_Data[i].src_Y2=(void *)pedg_Y;
-		MT_Data[i].src_pitch_Y1=src_pitch_Y;
-		MT_Data[i].src_pitch_Y2=edg_pitch_Y;
-		MT_Data[i].row_size_Y1=dst_row_size_Y;
-		MT_Data[i].dst_Y1=pdst_Y;
-		MT_Data[i].dst_pitch_Y1=dst_pitch_Y;
+		MT_DataGF[i].src_Y1=(void *)psrc_Y;
+		MT_DataGF[i].src_Y2=(void *)pedg_Y;
+		MT_DataGF[i].src_pitch_Y1=src_pitch_Y;
+		MT_DataGF[i].src_pitch_Y2=edg_pitch_Y;
+		MT_DataGF[i].row_size_Y1=dst_row_size_Y;
+		MT_DataGF[i].dst_Y1=pdst_Y;
+		MT_DataGF[i].dst_pitch_Y1=dst_pitch_Y;
 
-		MT_Data[i].src_U1=(void *)psrc_U;
-		MT_Data[i].src_U2=(void *)pedg_U;
-		MT_Data[i].src_pitch_U1=src_pitch_U;
-		MT_Data[i].src_pitch_U2=edg_pitch_U;
-		MT_Data[i].row_size_U1=dst_row_size_U;
-		MT_Data[i].row_size_U2=edg_width_UV;
-		MT_Data[i].dst_U1=dpedg_U;
-		MT_Data[i].dst_U2=pdst_U;
-		MT_Data[i].dst_pitch_U1=dst_pitch_U;
+		MT_DataGF[i].src_U1=(void *)psrc_U;
+		MT_DataGF[i].src_U2=(void *)pedg_U;
+		MT_DataGF[i].src_pitch_U1=src_pitch_U;
+		MT_DataGF[i].src_pitch_U2=edg_pitch_U;
+		MT_DataGF[i].row_size_U1=dst_row_size_U;
+		MT_DataGF[i].row_size_U2=edg_width_UV;
+		MT_DataGF[i].dst_U1=dpedg_U;
+		MT_DataGF[i].dst_U2=pdst_U;
+		MT_DataGF[i].dst_pitch_U1=dst_pitch_U;
 
-		MT_Data[i].src_V1=(void *)psrc_V;
-		MT_Data[i].src_V2=(void *)pedg_V;
-		MT_Data[i].src_pitch_V1=src_pitch_V;
-		MT_Data[i].src_pitch_V2=edg_pitch_V;
-		MT_Data[i].row_size_V1=dst_row_size_V;
-		MT_Data[i].dst_V1=pdst_V;
-		MT_Data[i].dst_pitch_V1=dst_pitch_V;
+		MT_DataGF[i].src_V1=(void *)psrc_V;
+		MT_DataGF[i].src_V2=(void *)pedg_V;
+		MT_DataGF[i].src_pitch_V1=src_pitch_V;
+		MT_DataGF[i].src_pitch_V2=edg_pitch_V;
+		MT_DataGF[i].row_size_V1=dst_row_size_V;
+		MT_DataGF[i].dst_V1=pdst_V;
+		MT_DataGF[i].dst_pitch_V1=dst_pitch_V;
 
-		MT_Data[i].src_U_h=edg_height_UV;
-		MT_Data[i].dst_Y_h=dst_height_Y;
-		MT_Data[i].dst_U_h=dst_height_U;
-		MT_Data[i].dst_V_h=dst_height_V;
+		MT_DataGF[i].src_U_h=edg_height_UV;
+		MT_DataGF[i].dst_Y_h=dst_height_Y;
+		MT_DataGF[i].dst_U_h=dst_height_U;
+		MT_DataGF[i].dst_V_h=dst_height_V;
 
-		MT_Data[i].SubW_U=SubW_U;
-		MT_Data[i].SubH_U=SubH_U;
+		MT_DataGF[i].SubW_U=SubW_U;
+		MT_DataGF[i].SubH_U=SubH_U;
 	}
 
 	uint8_t f_proc;
@@ -5950,7 +5985,7 @@ PVideoFrame __stdcall aWarp::GetFrame(int n, IScriptEnvironment *env)
 	  f_proc=1+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
   }
@@ -5983,14 +6018,14 @@ PVideoFrame __stdcall aWarp::GetFrame(int n, IScriptEnvironment *env)
 		  f_proc=2+offs_16b;
 
 		  for(uint8_t i=0; i<threads_number; i++)
-			  MT_Thread[i].f_process=f_proc;
+			  MT_ThreadGF[i].f_process=f_proc;
 
 		  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		  f_proc=3+offs_16b;
 
 		  for(uint8_t i=0; i<threads_number; i++)
-			  MT_Thread[i].f_process=f_proc;
+			  MT_ThreadGF[i].f_process=f_proc;
 
 		  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	  }
@@ -6013,7 +6048,7 @@ PVideoFrame __stdcall aWarp::GetFrame(int n, IScriptEnvironment *env)
 		  f_proc=4+offs_16b;
 
 		  for(uint8_t i=0; i<threads_number; i++)
-			  MT_Thread[i].f_process=f_proc;
+			  MT_ThreadGF[i].f_process=f_proc;
 
 		  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	  }
@@ -6030,11 +6065,11 @@ PVideoFrame __stdcall aWarp::GetFrame(int n, IScriptEnvironment *env)
 
 		for(uint8_t i=0; i<threads_number; i++)
 		{
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 
-			MT_Data[i].dst_U1=dptmp_U;
-			MT_Data[i].src_U2=(void *)pedg_U;
-			MT_Data[i].src_pitch_U2=edg_pitch_U;
+			MT_DataGF[i].dst_U1=dptmp_U;
+			MT_DataGF[i].src_U2=(void *)pedg_U;
+			MT_DataGF[i].src_pitch_U2=edg_pitch_U;
 		}
 
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
@@ -6043,14 +6078,14 @@ PVideoFrame __stdcall aWarp::GetFrame(int n, IScriptEnvironment *env)
 	  f_proc=5+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 	  f_proc=6+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
     }
@@ -6059,14 +6094,14 @@ PVideoFrame __stdcall aWarp::GetFrame(int n, IScriptEnvironment *env)
 	  f_proc=7+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 	  f_proc=8+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
     }
@@ -6081,7 +6116,7 @@ PVideoFrame __stdcall aWarp::GetFrame(int n, IScriptEnvironment *env)
   }
 
 	for(uint8_t i=0; i<threads_number; i++)
-		MT_Thread[i].f_process=0;
+		MT_ThreadGF[i].f_process=0;
 
     poolInterface->ReleaseThreadPool(UserId,sleep);
   }
@@ -6339,7 +6374,8 @@ void aWarp4::StaticThreadpool(void *ptr)
 	const aWarp4 *ptrClass=(aWarp4 *)data->pClass;
 
 	const uint8_t thread_num=data->thread_Id;
-	const MT_Data_Info_WarpSharp mt_data_inf=ptrClass->MT_Data[thread_num];
+	const MT_Data_Info_WarpSharp *MT_DataGF=(const MT_Data_Info_WarpSharp *)data->pData;
+	const MT_Data_Info_WarpSharp mt_data_inf=MT_DataGF[thread_num];
 	
 	switch(data->f_process)
 	{
@@ -6492,9 +6528,17 @@ PVideoFrame __stdcall aWarp4::GetFrame(int n, IScriptEnvironment *env)
   const int32_t edg_height_UV = edg->GetHeight() >> SubH_U;
   const int32_t edg_width_UV = edg->GetRowSize() >> SubW_U;
 
+  Public_MT_Data_Thread MT_ThreadGF[MAX_MT_THREADS];
+  MT_Data_Info_WarpSharp MT_DataGF[MAX_MT_THREADS];
+
+  memcpy(MT_ThreadGF,MT_Thread,sizeof(MT_Thread));
+  memcpy(MT_DataGF,MT_Data,sizeof(MT_Data));
+
+  MT_ThreadGF->pData=MT_DataGF;
+
   if (threads_number>1)
   {
-	  if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,-1,false))
+	  if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,-1,false))
 		  env->ThrowError("aWarp4: Error with the TheadPool while requesting threadpool!");
   }
 
@@ -6503,39 +6547,39 @@ PVideoFrame __stdcall aWarp4::GetFrame(int n, IScriptEnvironment *env)
 
 	for(uint8_t i=0; i<threads_number; i++)
 	{
-		MT_Data[i].src_Y1=(void *)psrc_Y;
-		MT_Data[i].src_Y2=(void *)pedg_Y;
-		MT_Data[i].src_pitch_Y1=src_pitch_Y;
-		MT_Data[i].src_pitch_Y2=edg_pitch_Y;
-		MT_Data[i].row_size_Y1=dst_row_size_Y;
-		MT_Data[i].dst_Y1=pdst_Y;
-		MT_Data[i].dst_pitch_Y1=dst_pitch_Y;
+		MT_DataGF[i].src_Y1=(void *)psrc_Y;
+		MT_DataGF[i].src_Y2=(void *)pedg_Y;
+		MT_DataGF[i].src_pitch_Y1=src_pitch_Y;
+		MT_DataGF[i].src_pitch_Y2=edg_pitch_Y;
+		MT_DataGF[i].row_size_Y1=dst_row_size_Y;
+		MT_DataGF[i].dst_Y1=pdst_Y;
+		MT_DataGF[i].dst_pitch_Y1=dst_pitch_Y;
 
-		MT_Data[i].src_U1=(void *)psrc_U;
-		MT_Data[i].src_U2=(void *)pedg_U;
-		MT_Data[i].src_pitch_U1=src_pitch_U;
-		MT_Data[i].src_pitch_U2=edg_pitch_U;
-		MT_Data[i].row_size_U1=dst_row_size_U;
-		MT_Data[i].row_size_U2=edg_width_UV;
-		MT_Data[i].dst_U1=dpedg_U;
-		MT_Data[i].dst_U2=pdst_U;
-		MT_Data[i].dst_pitch_U1=dst_pitch_U;
+		MT_DataGF[i].src_U1=(void *)psrc_U;
+		MT_DataGF[i].src_U2=(void *)pedg_U;
+		MT_DataGF[i].src_pitch_U1=src_pitch_U;
+		MT_DataGF[i].src_pitch_U2=edg_pitch_U;
+		MT_DataGF[i].row_size_U1=dst_row_size_U;
+		MT_DataGF[i].row_size_U2=edg_width_UV;
+		MT_DataGF[i].dst_U1=dpedg_U;
+		MT_DataGF[i].dst_U2=pdst_U;
+		MT_DataGF[i].dst_pitch_U1=dst_pitch_U;
 
-		MT_Data[i].src_V1=(void *)psrc_V;
-		MT_Data[i].src_V2=(void *)pedg_V;
-		MT_Data[i].src_pitch_V1=src_pitch_V;
-		MT_Data[i].src_pitch_V2=edg_pitch_V;
-		MT_Data[i].row_size_V1=dst_row_size_V;
-		MT_Data[i].dst_V1=pdst_V;
-		MT_Data[i].dst_pitch_V1=dst_pitch_V;
+		MT_DataGF[i].src_V1=(void *)psrc_V;
+		MT_DataGF[i].src_V2=(void *)pedg_V;
+		MT_DataGF[i].src_pitch_V1=src_pitch_V;
+		MT_DataGF[i].src_pitch_V2=edg_pitch_V;
+		MT_DataGF[i].row_size_V1=dst_row_size_V;
+		MT_DataGF[i].dst_V1=pdst_V;
+		MT_DataGF[i].dst_pitch_V1=dst_pitch_V;
 
-		MT_Data[i].src_U_h=edg_height_UV;
-		MT_Data[i].dst_Y_h=dst_height_Y;
-		MT_Data[i].dst_U_h=dst_height_U;
-		MT_Data[i].dst_V_h=dst_height_V;
+		MT_DataGF[i].src_U_h=edg_height_UV;
+		MT_DataGF[i].dst_Y_h=dst_height_Y;
+		MT_DataGF[i].dst_U_h=dst_height_U;
+		MT_DataGF[i].dst_V_h=dst_height_V;
 
-		MT_Data[i].SubW_U=SubW_U;
-		MT_Data[i].SubH_U=SubH_U;
+		MT_DataGF[i].SubW_U=SubW_U;
+		MT_DataGF[i].SubH_U=SubH_U;
 	}
 
 	uint8_t f_proc;
@@ -6546,7 +6590,7 @@ PVideoFrame __stdcall aWarp4::GetFrame(int n, IScriptEnvironment *env)
 	  f_proc=1+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
   }
@@ -6573,14 +6617,14 @@ PVideoFrame __stdcall aWarp4::GetFrame(int n, IScriptEnvironment *env)
 		  f_proc=2+offs_16b;
 
 		  for(uint8_t i=0; i<threads_number; i++)
-			  MT_Thread[i].f_process=f_proc;
+			  MT_ThreadGF[i].f_process=f_proc;
 
 		  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		  f_proc=3+offs_16b;
 
 		  for(uint8_t i=0; i<threads_number; i++)
-			  MT_Thread[i].f_process=f_proc;
+			  MT_ThreadGF[i].f_process=f_proc;
 
 		  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
     break;
@@ -6595,7 +6639,7 @@ PVideoFrame __stdcall aWarp4::GetFrame(int n, IScriptEnvironment *env)
 		  f_proc=4+offs_16b;
 
 		  for(uint8_t i=0; i<threads_number; i++)
-			  MT_Thread[i].f_process=f_proc;
+			  MT_ThreadGF[i].f_process=f_proc;
 
 		  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	  }
@@ -6612,11 +6656,11 @@ PVideoFrame __stdcall aWarp4::GetFrame(int n, IScriptEnvironment *env)
 
 		for(uint8_t i=0; i<threads_number; i++)
 		{
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 
-			MT_Data[i].dst_U1=dptmp_U;
-			MT_Data[i].src_U2=(void *)pedg_U;
-			MT_Data[i].src_pitch_U2=edg_pitch_U;
+			MT_DataGF[i].dst_U1=dptmp_U;
+			MT_DataGF[i].src_U2=(void *)pedg_U;
+			MT_DataGF[i].src_pitch_U2=edg_pitch_U;
 		}
 
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
@@ -6625,14 +6669,14 @@ PVideoFrame __stdcall aWarp4::GetFrame(int n, IScriptEnvironment *env)
 	  f_proc=5+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 	  f_proc=6+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
     }
@@ -6641,14 +6685,14 @@ PVideoFrame __stdcall aWarp4::GetFrame(int n, IScriptEnvironment *env)
 	  f_proc=7+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 	  f_proc=8+offs_16b;
 
 	  for(uint8_t i=0; i<threads_number; i++)
-		  MT_Thread[i].f_process=f_proc;
+		  MT_ThreadGF[i].f_process=f_proc;
 
 	  if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
     }
@@ -6657,7 +6701,7 @@ PVideoFrame __stdcall aWarp4::GetFrame(int n, IScriptEnvironment *env)
   }
 
 	for(uint8_t i=0; i<threads_number; i++)
-		MT_Thread[i].f_process=0;
+		MT_ThreadGF[i].f_process=0;
 
     poolInterface->ReleaseThreadPool(UserId,sleep);
   }

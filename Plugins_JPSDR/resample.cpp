@@ -1599,9 +1599,8 @@ __forceinline static void resize_v_create_pitch_table(int* table, int pitch, int
 	case 4 : pitch>>=2; break;
 	default : ;
   }
-  table[0] = 0;
-  for (int i = 1; i < height; i++)
-    table[i] = table[i-1]+pitch;
+  for (int i=0; i<height; i++)
+    table[i]=i*pitch;
 }
 
 
@@ -1633,18 +1632,20 @@ static void resize_h_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int 
 
 
 // make the resampling coefficient array mod8 friendly for simd, padding non-used coeffs with zeros
-static void resize_h_prepare_coeff_8(ResamplingProgram* p,IScriptEnvironment* env)
+static void resize_h_prepare_coeff_8or16(ResamplingProgram* p,IScriptEnvironment* env,int alignFilterSize8or16)
 {
-  const int filter_size = AlignNumber(p->filter_size,ALIGN_RESIZER_COEFF_SIZE);
   const int im0=p->target_size;
   const int im1=p->filter_size;
+	const int filter_size = AlignNumber(im1,alignFilterSize8or16);
+	const int target_size = AlignNumber(im0,ALIGN_RESIZER_TARGET_SIZE);
+  p->filter_size_alignment = alignFilterSize8or16;
 
   if (p->bits_per_pixel==32)
   {
-	  float *new_coeff_float = (float *)_aligned_malloc(sizeof(float)*im0*filter_size,64);
+	  float *new_coeff_float = (float *)_aligned_malloc(sizeof(float)*target_size*filter_size,64);
 
 	  if (new_coeff_float==NULL) env->ThrowError("ResizeHMT: Could not reserve memory in a resampler.");
-	  std::fill_n(new_coeff_float,im0*filter_size,0.0f);
+	  std::fill_n(new_coeff_float,target_size*filter_size,0.0f);
 
 	  float *dst_f=new_coeff_float,*src_f=p->pixel_coefficient_float;
 
@@ -1661,10 +1662,10 @@ static void resize_h_prepare_coeff_8(ResamplingProgram* p,IScriptEnvironment* en
   }
   else
   {
-	  short *new_coeff = (short*)_aligned_malloc(sizeof(short)*im0*filter_size,64);
+	  short *new_coeff = (short*)_aligned_malloc(sizeof(short)*target_size*filter_size,64);
 
 	  if (new_coeff==NULL) env->ThrowError("ResizeHMT: Could not reserve memory in a resampler.");
-	  memset(new_coeff,0,sizeof(short)*im0*filter_size);
+	  memset(new_coeff,0,sizeof(short)*target_size*filter_size);
 
 	  short *dst=new_coeff,*src=p->pixel_coefficient;
 
@@ -1689,6 +1690,7 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
   
 	const int val_min = (range==1) ? 0 : 16;
 	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
+	const int Offset = 1 << (FPScale8bits-1);
 
   // external loop y is much faster
 
@@ -1708,7 +1710,7 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
 				for (int i = 0; i < filter_size; i++)
 	    			result+=(src+y_src_pitch)[(begin+i)]*current_coeff[i];
 		
-				result = (result + 8192) >> 14;
+				result = (result + Offset) >> FPScale8bits;
 				result = (result>TabMax[x & 0x03]) ? TabMax[x & 0x03] : (result<16) ? 16 : result;
 				(dst + y_dst_pitch)[x] = (BYTE)result;		  		  
 				current_coeff+=filter_size;
@@ -1731,7 +1733,7 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
 				for (int i = 0; i < filter_size; i++)
 	    			result+=(src+y_src_pitch)[(begin+i)]*current_coeff[i];
 		
-				result = (result + 8192) >> 14;
+				result = (result + Offset) >> FPScale8bits;
 				result = (result>val_max) ? val_max : (result<val_min) ? val_min : result;
 				(dst + y_dst_pitch)[x] = (BYTE)result;		  		  
 				current_coeff+=filter_size;
@@ -1755,6 +1757,9 @@ static void resize_h_c_planar_s(BYTE* dst, const BYTE* src, int dst_pitch, int s
 	const __int64 val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ?
 		((int)235 << (bits_per_pixel-8)) : ((int)240 << (bits_per_pixel-8));
 
+	const __int64 Offset = 1 << (FPScale16bits-1);
+
+
   src_pitch>>=1;
   dst_pitch>>=1;
   
@@ -1770,7 +1775,7 @@ static void resize_h_c_planar_s(BYTE* dst, const BYTE* src, int dst_pitch, int s
 			for (int i = 0; i < filter_size; i++)
 				result+=(src0+y_src_pitch)[(begin+i)]*current_coeff[i];
 		  
-			result = (result + 8192) >> 14;
+			result = (result + Offset) >> FPScale16bits;
 			result = (result>val_max) ? val_max : (result<val_min) ? val_min : result;
 			(dst0 + y_dst_pitch)[x] = (uint16_t)result;
 			current_coeff+=filter_size;
@@ -2343,36 +2348,26 @@ static void resizer_h_ssse3_8(BYTE* dst, const BYTE* src, int dst_pitch, int src
 
 //-------- 256 bit uint8_t Horizontals
 
-__forceinline static void process_two_16pixels_h_uint8_t(const uint8_t *src, int begin1, int begin2, int i_8, short *&current_coeff, int filter_size_numOfBlk8_8, __m256i &result1, __m256i &result2)
+__forceinline static void process_two_16pixels_h_uint8_t(const uint8_t *src, int begin1, int begin2, int i_16, short *&current_coeff, int filter_size_numOfBlk16_16, __m256i &result1, __m256i &result2)
 {
-  __m256i data_1 = _mm256_cvtepu8_epi16(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin1 + i_8)));
-  __m256i data_2 = _mm256_cvtepu8_epi16(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin2 + i_8)));
+  __m256i data_1 = _mm256_cvtepu8_epi16(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin1 + i_16)));
+  __m256i data_2 = _mm256_cvtepu8_epi16(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src + begin2 + i_16)));
   __m256i coeff_1 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(current_coeff)); // 16 coeffs
-  __m256i coeff_2 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(current_coeff + filter_size_numOfBlk8_8)); // 16 coeffs
+  __m256i coeff_2 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(current_coeff + filter_size_numOfBlk16_16)); // 16 coeffs
   result1 = _mm256_add_epi32(result1, _mm256_madd_epi16(data_1, coeff_1));
   result2 = _mm256_add_epi32(result2, _mm256_madd_epi16(data_2, coeff_2));
   current_coeff += 16;
 }
 
-__forceinline static void process_two_8pixels_h_uint8_t(const uint8_t *src, int begin1, int begin2, int i_8, short *&current_coeff, int filter_size_numOfBlk8_8, __m256i &result1, __m256i &result2)
-{
-  __m128i data_1 = _mm_cvtepu8_epi16(_mm_loadl_epi64(reinterpret_cast<const __m128i*>(src + begin1 + i_8)));
-  __m128i data_2 = _mm_cvtepu8_epi16(_mm_loadl_epi64(reinterpret_cast<const __m128i*>(src + begin2 + i_8)));
-  __m128i coeff_1 = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff)); // 8 coeffs
-  __m128i coeff_2 = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff + filter_size_numOfBlk8_8));
-  result1 = _mm256_add_epi32(result1, _mm256_set_m128i(_mm_setzero_si128(), _mm_madd_epi16(data_1, coeff_1)));
-  result2 = _mm256_add_epi32(result2, _mm256_set_m128i(_mm_setzero_si128(), _mm_madd_epi16(data_2, coeff_2)));
-  current_coeff += 8;
-}
 
 // filtersizealigned8: special: 1, 2. Generic: -1
-template<int filtersizealigned8>
+template<int filtersizealigned16>
 static void internal_resizer_h_avx2_generic_uint8_t(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
 {
-  const int filter_size_numOfBlk8 = (filtersizealigned8 >= 1) ? filtersizealigned8 : (AlignNumber(program->filter_size,8) >> 3);
+  const int filter_size_numOfBlk16 = (filtersizealigned16 >= 1) ? filtersizealigned16 : (AlignNumber(program->filter_size,16) >> 4);
   __m256i zero = _mm256_setzero_si256();
 
-  __m256i rounder256_1 = _mm256_setr_epi32(1 << (14 - 1), 0, 0, 0, 0, 0, 0, 0);
+  __m256i rounder256_1 = _mm256_setr_epi32(1 << (FPScale8bits - 1), 0, 0, 0, 0, 0, 0, 0);
 
 	const int val_min = (range==1) ? 0 : 16;
 	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
@@ -2380,7 +2375,7 @@ static void internal_resizer_h_avx2_generic_uint8_t(BYTE* dst, const BYTE* src, 
 	__m128i val_min_m128 = _mm_set1_epi16((short)((val_min << 8)|val_min));
 	__m128i val_max_m128 = (mode_YUY2 && ((range>=2) && (range<=3))) ? _mm_set1_epi16((short)(((int)240 << 8)|235)) : _mm_set1_epi16((short)((val_max << 8)|val_max));
 
-	const int filter_size_numOfBlk8_8 = filter_size_numOfBlk8 << 3;
+	const int filter_size_numOfBlk16_16 = filter_size_numOfBlk16 << 4;
 
   for (int y = 0; y < height; y++)
   {
@@ -2400,18 +2395,14 @@ static void internal_resizer_h_avx2_generic_uint8_t(BYTE* dst, const BYTE* src, 
       int begin4 = program->pixel_offset[x + 3];
 
       // begin1, begin2
-      for (int i = 0; i < filter_size_numOfBlk8 - 1; i += 2)
-        process_two_16pixels_h_uint8_t(src, begin1, begin2, i << 3, current_coeff, filter_size_numOfBlk8_8, result1, result2);
-      if ((filter_size_numOfBlk8 & 1)!=0) // rest odd
-        process_two_8pixels_h_uint8_t(src, begin1, begin2, (filter_size_numOfBlk8 - 1) << 3, current_coeff, filter_size_numOfBlk8_8, result1, result2);
-      current_coeff += filter_size_numOfBlk8_8; // because of dual pixel processing
+      for (int i = 0; i < filter_size_numOfBlk16; i++)
+        process_two_16pixels_h_uint8_t(src, begin1, begin2, i << 4, current_coeff, filter_size_numOfBlk16_16, result1, result2);
+      current_coeff += filter_size_numOfBlk16_16; // because of dual pixel processing
 
       // begin3, begin4
-      for (int i = 0; i < filter_size_numOfBlk8 - 1; i += 2)
-        process_two_16pixels_h_uint8_t(src, begin3, begin4, i << 3, current_coeff, filter_size_numOfBlk8_8, result3, result4);
-      if ((filter_size_numOfBlk8 & 1)!=0) // rest odd
-        process_two_8pixels_h_uint8_t(src, begin3, begin4, (filter_size_numOfBlk8 - 1) << 3, current_coeff, filter_size_numOfBlk8_8, result3, result4);
-      current_coeff += filter_size_numOfBlk8_8; // because of dual pixel processing
+      for (int i = 0; i < filter_size_numOfBlk16; i++)
+        process_two_16pixels_h_uint8_t(src, begin3, begin4, i << 4, current_coeff, filter_size_numOfBlk16_16, result3, result4);
+      current_coeff += filter_size_numOfBlk16_16; // because of dual pixel processing
 
       __m256i sumQuad1234 = _mm256_hadd_epi32(_mm256_hadd_epi32(result1, result2), _mm256_hadd_epi32(result3, result4)); 
       // L1L1L1L1 L1L1L1L1 + L2L2L2L2 L2L2L2L2 = L1L1 L2L2 L1L1 L2L2
@@ -2430,18 +2421,14 @@ static void internal_resizer_h_avx2_generic_uint8_t(BYTE* dst, const BYTE* src, 
       begin4 = program->pixel_offset[x + 7];
 
       // begin1, begin2
-      for (int i = 0; i < filter_size_numOfBlk8 - 1; i += 2)
-        process_two_16pixels_h_uint8_t(src, begin1, begin2, i << 3, current_coeff, filter_size_numOfBlk8_8, result1, result2);
-      if ((filter_size_numOfBlk8 & 1)!=0) // rest odd
-        process_two_8pixels_h_uint8_t(src, begin1, begin2, (filter_size_numOfBlk8 - 1) << 3, current_coeff, filter_size_numOfBlk8_8, result1, result2);
-      current_coeff += filter_size_numOfBlk8_8; // because of dual pixel processing
+      for (int i = 0; i < filter_size_numOfBlk16; i++)
+        process_two_16pixels_h_uint8_t(src, begin1, begin2, i << 4, current_coeff, filter_size_numOfBlk16_16, result1, result2);
+      current_coeff += filter_size_numOfBlk16_16; // because of dual pixel processing
 
       // begin3, begin4
-      for (int i = 0; i < filter_size_numOfBlk8 - 1; i += 2)
-        process_two_16pixels_h_uint8_t(src, begin3, begin4, i << 3, current_coeff, filter_size_numOfBlk8_8, result3, result4);
-      if ((filter_size_numOfBlk8 & 1)!=0) // rest odd
-        process_two_8pixels_h_uint8_t(src, begin3, begin4, (filter_size_numOfBlk8 - 1) << 3, current_coeff, filter_size_numOfBlk8_8, result3, result4);
-      current_coeff += filter_size_numOfBlk8_8; // because of dual pixel processing
+      for (int i = 0; i < filter_size_numOfBlk16; i++)
+        process_two_16pixels_h_uint8_t(src, begin3, begin4, i << 4, current_coeff, filter_size_numOfBlk16_16, result3, result4);
+      current_coeff += filter_size_numOfBlk16_16; // because of dual pixel processing
 
       __m256i sumQuad5678 = _mm256_hadd_epi32(_mm256_hadd_epi32(result1, result2), _mm256_hadd_epi32(result3, result4));
       // L5L6 L7L8 L5L6 L7L8
@@ -2454,7 +2441,7 @@ static void internal_resizer_h_avx2_generic_uint8_t(BYTE* dst, const BYTE* src, 
       __m256i result_8x_uint32 = _mm256_set_m128i(pix5678, pix1234);
 
       // scale back, shuffle, store
-      __m256i result = _mm256_srai_epi32(result_8x_uint32, 14); // shift back integer arithmetic 14 bits precision for 8 bit data
+	  __m256i result = _mm256_srai_epi32(result_8x_uint32,FPScale8bits); // shift back integer arithmetic 14 bits precision for 8 bit data
 
       __m256i result_2x4x_uint16 = _mm256_packus_epi32(result, zero); // 8*32+zeros = lower 4*16 in both 128bit lanes
       __m128i result_2x4x_uint16_128 = _mm256_castsi256_si128(_mm256_permute4x64_epi64(result_2x4x_uint16, (0 << 0) | (2 << 2) | (0 << 4) | (0 << 6))); // low64 of 2nd 128bit lane to hi64 of 1st 128bit lane
@@ -2681,7 +2668,7 @@ __forceinline static void process_two_pixels_h_uint16_t(const uint16_t *src, int
   if (!lessthan16bit)
     data_single = _mm256_add_epi16(data_single, shifttosigned); // unsigned -> signed
   __m128i coeff_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff)); // 8 coeffs
-  __m128i coeff_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff + filter_size_numOfBlk8_8)); // 8 coeffs for begin3
+  __m128i coeff_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff + filter_size_numOfBlk8_8)); // 8 coeffs
   __m256i coeff = _mm256_set_m128i(coeff_hi, coeff_lo);
   result = _mm256_add_epi32(result, _mm256_madd_epi16(data_single, coeff));
   current_coeff += 8;
@@ -2695,7 +2682,7 @@ void internal_resizer_h_avx2_generic_uint16_t(BYTE* dst8, const BYTE* src8, int 
 {
   // 1 and 2: special case for compiler optimization
   const int filter_size_numOfBlk8 = (filtersizealigned8 >= 1) ? filtersizealigned8 : (AlignNumber(program->filter_size,8) >> 3);
-  const int filter_size_numOfBlk8_8 = filter_size_numOfBlk8 << 3;
+  const int incFilterSize = filter_size_numOfBlk8 << 3; // skip every 2nd coeffs (two pixels)
 
   const __m256i zero = _mm256_setzero_si256();
   const __m256i shifttosigned = _mm256_set1_epi16(-32768); // for 16 bits only
@@ -2732,13 +2719,13 @@ void internal_resizer_h_avx2_generic_uint16_t(BYTE* dst8, const BYTE* src8, int 
 
       // begin1, begin2, result12
       for (int i = 0; i < filter_size_numOfBlk8; i++)
-        process_two_pixels_h_uint16_t<lessthan16bit>(src, begin1, begin2, i << 3, current_coeff, filter_size_numOfBlk8_8, result12, shifttosigned);
-      current_coeff += filter_size_numOfBlk8_8; // skip begin2
+        process_two_pixels_h_uint16_t<lessthan16bit>(src, begin1, begin2, i << 3, current_coeff, incFilterSize, result12, shifttosigned);
+      current_coeff += incFilterSize; // skip begin2
 
       // begin3, begin4, result34
       for (int i = 0; i < filter_size_numOfBlk8; i++)
-        process_two_pixels_h_uint16_t<lessthan16bit>(src, begin3, begin4, i << 3, current_coeff, filter_size_numOfBlk8_8, result34, shifttosigned);
-      current_coeff += filter_size_numOfBlk8_8; // skip begin4
+        process_two_pixels_h_uint16_t<lessthan16bit>(src, begin3, begin4, i << 3, current_coeff, incFilterSize, result34, shifttosigned);
+      current_coeff += incFilterSize; // skip begin4
 
       __m256i sumQuad1234 = _mm256_hadd_epi32(result12, result34); // L1L1L1L1L2L2L2L2 + L3L3L3L3L4L4L4L4 = L1L1 L3L3 L2L2 L4L4
 
@@ -2753,13 +2740,13 @@ void internal_resizer_h_avx2_generic_uint16_t(BYTE* dst8, const BYTE* src8, int 
 
       // begin1, begin2, result12
       for (int i = 0; i < filter_size_numOfBlk8; i++)
-        process_two_pixels_h_uint16_t<lessthan16bit>(src, begin1, begin2, i << 3, current_coeff, filter_size_numOfBlk8_8, result12, shifttosigned);
-      current_coeff += filter_size_numOfBlk8_8; // skip begin2
+        process_two_pixels_h_uint16_t<lessthan16bit>(src, begin1, begin2, i << 3, current_coeff, incFilterSize, result12, shifttosigned);
+      current_coeff += incFilterSize; // skip begin2
 
       // begin3, begin4, result34
       for (int i = 0; i < filter_size_numOfBlk8; i++)
-        process_two_pixels_h_uint16_t<lessthan16bit>(src, begin3, begin4, i << 3, current_coeff, filter_size_numOfBlk8_8, result34, shifttosigned);
-      current_coeff += filter_size_numOfBlk8_8; // skip begin4
+        process_two_pixels_h_uint16_t<lessthan16bit>(src, begin3, begin4, i << 3, current_coeff, incFilterSize, result34, shifttosigned);
+      current_coeff += incFilterSize; // skip begin4
 
       __m256i sumQuad5678 = _mm256_hadd_epi32(result12, result34); // L5L5L5L5L6L6L6L6 + L7L7L7L7L8L8L8L8 = L5L5 L7L7 L6L6 L8L8
 
@@ -2789,13 +2776,13 @@ void internal_resizer_h_avx2_generic_uint16_t(BYTE* dst8, const BYTE* src8, int 
 
 void resizer_h_avx2_generic_uint8_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
 {
-  const int filter_size_numOfBlk8 = AlignNumber(program->filter_size,8) >> 3;
+  const int filter_size_numOfBlk16 = AlignNumber(program->filter_size,16) >> 4;
 
-  if (filter_size_numOfBlk8 == 1)
+  if (filter_size_numOfBlk16 == 1)
     internal_resizer_h_avx2_generic_uint8_t<1>(dst8,src8,dst_pitch,src_pitch,program,width,height,bits_per_pixel,range,mode_YUY2);
-  else if (filter_size_numOfBlk8 == 2)
+  else if (filter_size_numOfBlk16 == 2)
     internal_resizer_h_avx2_generic_uint8_t<2>(dst8,src8,dst_pitch,src_pitch,program,width,height,bits_per_pixel,range,mode_YUY2);
-  else if (filter_size_numOfBlk8 == 3)
+  else if (filter_size_numOfBlk16 == 3)
     internal_resizer_h_avx2_generic_uint8_t<3>(dst8,src8,dst_pitch,src_pitch,program,width,height,bits_per_pixel,range,mode_YUY2);
   else // -1: basic method, use program->filter_size
     internal_resizer_h_avx2_generic_uint8_t<-1>(dst8,src8,dst_pitch,src_pitch,program,width,height,bits_per_pixel,range,mode_YUY2);
@@ -2806,7 +2793,7 @@ void resizer_h_avx2_generic_uint8_t(BYTE* dst8, const BYTE* src8, int dst_pitch,
 template<bool lessthan16bit>
 void resizer_h_avx2_generic_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
 {
-  const int filter_size_numOfBlk8 = AlignNumber(program->filter_size,8) >> 3;
+  const int filter_size_numOfBlk8 = AlignNumber(program->filter_size,8) >> 3;  // yes, 8 is used here
 
   if (filter_size_numOfBlk8 == 1)
     internal_resizer_h_avx2_generic_uint16_t<lessthan16bit, 1>(dst8,src8,dst_pitch,src_pitch,program,width,height,bits_per_pixel,range,mode_YUY2);
@@ -3169,9 +3156,9 @@ uint8_t FilteredResizeH::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 }
 
 
-void FilteredResizeH::ResamplerLumaMT(uint8_t thread_num)
+void FilteredResizeH::ResamplerLumaMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_h_luma(mt_data_inf.dst1,mt_data_inf.src1,mt_data_inf.dst_pitch1,mt_data_inf.src_pitch1,
 		mt_data_inf.resampling_program_luma,mt_data_inf.dst_Y_w,mt_data_inf.dst_Y_h_max-mt_data_inf.dst_Y_h_min,
@@ -3179,9 +3166,9 @@ void FilteredResizeH::ResamplerLumaMT(uint8_t thread_num)
 }
 
 
-void FilteredResizeH::ResamplerLumaMT2(uint8_t thread_num)
+void FilteredResizeH::ResamplerLumaMT2(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_h_luma(mt_data_inf.dst2,mt_data_inf.src2,mt_data_inf.dst_pitch2,mt_data_inf.src_pitch2,
 		mt_data_inf.resampling_program_luma,mt_data_inf.dst_Y_w,mt_data_inf.dst_Y_h_max-mt_data_inf.dst_Y_h_min,
@@ -3189,27 +3176,27 @@ void FilteredResizeH::ResamplerLumaMT2(uint8_t thread_num)
 }
 
 
-void FilteredResizeH::ResamplerLumaMT3(uint8_t thread_num)
+void FilteredResizeH::ResamplerLumaMT3(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_h_luma(mt_data_inf.dst3,mt_data_inf.src3,mt_data_inf.dst_pitch3,mt_data_inf.src_pitch3,
 		mt_data_inf.resampling_program_luma,mt_data_inf.dst_Y_w,mt_data_inf.dst_Y_h_max-mt_data_inf.dst_Y_h_min,
 		bits_per_pixel,plane_range[2],mode_YUY2);
 }
 
-void FilteredResizeH::ResamplerLumaMT4(uint8_t thread_num)
+void FilteredResizeH::ResamplerLumaMT4(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_h_luma(mt_data_inf.dst4,mt_data_inf.src4,mt_data_inf.dst_pitch4,mt_data_inf.src_pitch4,
 		mt_data_inf.resampling_program_luma,mt_data_inf.dst_Y_w,mt_data_inf.dst_Y_h_max-mt_data_inf.dst_Y_h_min,
 		bits_per_pixel,plane_range[3],mode_YUY2);
 }
 
-void FilteredResizeH::ResamplerUChromaMT(uint8_t thread_num)
+void FilteredResizeH::ResamplerUChromaMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_h_chroma(mt_data_inf.dst2,mt_data_inf.src2,mt_data_inf.dst_pitch2,mt_data_inf.src_pitch2,
 		mt_data_inf.resampling_program_chroma,mt_data_inf.dst_UV_w,mt_data_inf.dst_UV_h_max-mt_data_inf.dst_UV_h_min,
@@ -3217,9 +3204,9 @@ void FilteredResizeH::ResamplerUChromaMT(uint8_t thread_num)
 }
 
 
-void FilteredResizeH::ResamplerVChromaMT(uint8_t thread_num)
+void FilteredResizeH::ResamplerVChromaMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_h_chroma(mt_data_inf.dst3,mt_data_inf.src3,mt_data_inf.dst_pitch3,mt_data_inf.src_pitch3,
 		mt_data_inf.resampling_program_chroma,mt_data_inf.dst_UV_w,mt_data_inf.dst_UV_h_max-mt_data_inf.dst_UV_h_min,
@@ -3231,20 +3218,22 @@ void FilteredResizeH::StaticThreadpoolH(void *ptr)
 {
 	const Public_MT_Data_Thread *data=(const Public_MT_Data_Thread *)ptr;
 	FilteredResizeH *ptrClass=(FilteredResizeH *)data->pClass;
+	const MT_Data_Info_ResampleMT *MT_DataGF=(MT_Data_Info_ResampleMT *)data->pData;
+	const uint8_t thread_num=data->thread_Id;
 
 	switch(data->f_process)
 	{
-		case 1 : ptrClass->ResamplerLumaMT(data->thread_Id);
+		case 1 : ptrClass->ResamplerLumaMT(MT_DataGF,thread_num);
 			break;
-		case 2 : ptrClass->ResamplerUChromaMT(data->thread_Id);
+		case 2 : ptrClass->ResamplerUChromaMT(MT_DataGF,thread_num);
 			break;
-		case 3 : ptrClass->ResamplerVChromaMT(data->thread_Id);
+		case 3 : ptrClass->ResamplerVChromaMT(MT_DataGF,thread_num);
 			break;
-		case 4 : ptrClass->ResamplerLumaMT2(data->thread_Id);
+		case 4 : ptrClass->ResamplerLumaMT2(MT_DataGF,thread_num);
 			break;
-		case 5 : ptrClass->ResamplerLumaMT3(data->thread_Id);
+		case 5 : ptrClass->ResamplerLumaMT3(MT_DataGF,thread_num);
 			break;
-		case 6 : ptrClass->ResamplerLumaMT4(data->thread_Id);
+		case 6 : ptrClass->ResamplerLumaMT4(MT_DataGF,thread_num);
 			break;		
 		default : ;
 	}
@@ -3275,52 +3264,60 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 	const int dst_pitch_4 = (isAlphaChannel) ? dst->GetPitch(PLANAR_A) : 0;
 	const BYTE *srcp_4 = (isAlphaChannel) ? src->GetReadPtr(PLANAR_A) : NULL;
 	BYTE *dstp_4 = (isAlphaChannel) ? dst->GetWritePtr(PLANAR_A) : NULL;
+
+	Public_MT_Data_Thread MT_ThreadGF[MAX_MT_THREADS];
+	MT_Data_Info_ResampleMT MT_DataGF[MAX_MT_THREADS];
+
+  memcpy(MT_ThreadGF,MT_Thread,sizeof(MT_Thread));
+  memcpy(MT_DataGF,MT_Data,sizeof(MT_Data));
+
+  MT_ThreadGF->pData=MT_DataGF;
 	
   if (threads_number>1)
   {
-	if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,-1,false))
+	if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,-1,false))
 		env->ThrowError("ResizeHMT: Error with the TheadPool while requesting threadpool!");
   }
   
 	for(uint8_t i=0; i<threads_number; i++)
 	{
-		MT_Data[i].src1=srcp_1+(MT_Data[i].src_Y_h_min*src_pitch_1);
-		MT_Data[i].src2=srcp_2+(MT_Data[i].src_UV_h_min*src_pitch_2);
-		MT_Data[i].src3=srcp_3+(MT_Data[i].src_UV_h_min*src_pitch_3);
-		MT_Data[i].src4=srcp_4+(MT_Data[i].src_Y_h_min*src_pitch_4);
-		MT_Data[i].src_pitch1=src_pitch_1;
-		MT_Data[i].src_pitch2=src_pitch_2;
-		MT_Data[i].src_pitch3=src_pitch_3;
-		MT_Data[i].src_pitch4=src_pitch_4;
-		MT_Data[i].dst1=dstp_1+(MT_Data[i].dst_Y_h_min*dst_pitch_1);
-		MT_Data[i].dst2=dstp_2+(MT_Data[i].dst_UV_h_min*dst_pitch_2);
-		MT_Data[i].dst3=dstp_3+(MT_Data[i].dst_UV_h_min*dst_pitch_3);
-		MT_Data[i].dst4=dstp_4+(MT_Data[i].dst_Y_h_min*dst_pitch_4);
-		MT_Data[i].dst_pitch1=dst_pitch_1;
-		MT_Data[i].dst_pitch2=dst_pitch_2;
-		MT_Data[i].dst_pitch3=dst_pitch_3;
-		MT_Data[i].dst_pitch4=dst_pitch_4;
-		MT_Data[i].filter_storage_luma=filter_storage_luma;
-		MT_Data[i].resampling_program_luma=resampling_program_luma;
-		MT_Data[i].resampling_program_chroma=resampling_program_chroma;
-		MT_Data[i].filter_storage_chromaU=filter_storage_chroma;
-		MT_Data[i].filter_storage_chromaV=filter_storage_chroma;
+		MT_DataGF[i].src1=srcp_1+(MT_Data[i].src_Y_h_min*src_pitch_1);
+		MT_DataGF[i].src2=srcp_2+(MT_Data[i].src_UV_h_min*src_pitch_2);
+		MT_DataGF[i].src3=srcp_3+(MT_Data[i].src_UV_h_min*src_pitch_3);
+		MT_DataGF[i].src4=srcp_4+(MT_Data[i].src_Y_h_min*src_pitch_4);
+		MT_DataGF[i].src_pitch1=src_pitch_1;
+		MT_DataGF[i].src_pitch2=src_pitch_2;
+		MT_DataGF[i].src_pitch3=src_pitch_3;
+		MT_DataGF[i].src_pitch4=src_pitch_4;
+		MT_DataGF[i].dst1=dstp_1+(MT_Data[i].dst_Y_h_min*dst_pitch_1);
+		MT_DataGF[i].dst2=dstp_2+(MT_Data[i].dst_UV_h_min*dst_pitch_2);
+		MT_DataGF[i].dst3=dstp_3+(MT_Data[i].dst_UV_h_min*dst_pitch_3);
+		MT_DataGF[i].dst4=dstp_4+(MT_Data[i].dst_Y_h_min*dst_pitch_4);
+		MT_DataGF[i].dst_pitch1=dst_pitch_1;
+		MT_DataGF[i].dst_pitch2=dst_pitch_2;
+		MT_DataGF[i].dst_pitch3=dst_pitch_3;
+		MT_DataGF[i].dst_pitch4=dst_pitch_4;
+		MT_DataGF[i].filter_storage_luma=filter_storage_luma;
+		MT_DataGF[i].resampling_program_luma=resampling_program_luma;
+		MT_DataGF[i].resampling_program_chroma=resampling_program_chroma;
+		MT_DataGF[i].filter_storage_chromaU=filter_storage_chroma;
+		MT_DataGF[i].filter_storage_chromaV=filter_storage_chroma;
 	}
 
 	if (threads_number>1)
 	{
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=1;
+			MT_ThreadGF[i].f_process=1;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		if (!grey && vi.IsPlanar() && !isRGBPfamily)
 		{
 			for(uint8_t i=0; i<threads_number; i++)
-				MT_Thread[i].f_process=2;
+				MT_ThreadGF[i].f_process=2;
 			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 			for(uint8_t i=0; i<threads_number; i++)
-				MT_Thread[i].f_process=3;
+				MT_ThreadGF[i].f_process=3;
 			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 		}
 		else
@@ -3328,11 +3325,11 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 			if (isRGBPfamily)
 			{
 				for(uint8_t i=0; i<threads_number; i++)
-					MT_Thread[i].f_process=4;
+					MT_ThreadGF[i].f_process=4;
 				if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 				for(uint8_t i=0; i<threads_number; i++)
-					MT_Thread[i].f_process=5;
+					MT_ThreadGF[i].f_process=5;
 				if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);								
 			}
 		}
@@ -3340,39 +3337,39 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 		if (isAlphaChannel)
 		{
 			for(uint8_t i=0; i<threads_number; i++)
-				MT_Thread[i].f_process=6;
+				MT_ThreadGF[i].f_process=6;
 			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);												
 		}
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=0;
+			MT_ThreadGF[i].f_process=0;
 
 		poolInterface->ReleaseThreadPool(UserId,sleep);
 	}
 	else
 	{
 		// Do resizing
-		ResamplerLumaMT(0);
+		ResamplerLumaMT(MT_DataGF,0);
     
 		if (!grey && vi.IsPlanar() && !isRGBPfamily)
 		{
 			// Plane U resizing   
-			ResamplerUChromaMT(0);
+			ResamplerUChromaMT(MT_DataGF,0);
 			// Plane V resizing
-			ResamplerVChromaMT(0);
+			ResamplerVChromaMT(MT_DataGF,0);
 		}
 		else
 		{
 			if (isRGBPfamily)
 			{
 				// Plane B resizing
-				ResamplerLumaMT2(0);
+				ResamplerLumaMT2(MT_DataGF,0);
 				// Plane R resizing
-				ResamplerLumaMT3(0);
+				ResamplerLumaMT3(MT_DataGF,0);
 			}
 		}
 		// Plane A resizing
-		if (isAlphaChannel) ResamplerLumaMT4(0);
+		if (isAlphaChannel) ResamplerLumaMT4(MT_DataGF,0);
 	}
 
   return dst;
@@ -3385,15 +3382,18 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 	{
 		if (Enable_SSSE3)
 		{
-			resize_h_prepare_coeff_8(program,env);
 #ifdef AVX2_BUILD_POSSIBLE				
 			if (Enable_AVX2)
 			{
+				// make the resampling coefficient array mod16 friendly for simd, padding non-used coeffs with zeros
+				resize_h_prepare_coeff_8or16(program,env,16);
 				return resizer_h_avx2_generic_uint8_t;
 			}
 			else
 #endif			
 			{
+				// make the resampling coefficient array mod8 friendly for simd, padding non-used coeffs with zeros
+				resize_h_prepare_coeff_8or16(program,env,8);
 				if (program->filter_size>8) return resizer_h_ssse3_generic;
 				else return resizer_h_ssse3_8;
 			}
@@ -3404,7 +3404,7 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 	{ 
 		if (Enable_SSSE3)
 		{
-			resize_h_prepare_coeff_8(program,env);
+			resize_h_prepare_coeff_8or16(program,env,8); // alignment of 8 is enough for AVX2 uint16_t as well
 #ifdef AVX2_BUILD_POSSIBLE				
 			if (Enable_AVX2)
 			{
@@ -3432,7 +3432,7 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 	{ //if (pixelsize == 4)
 		if (Enable_SSSE3)
 		{
-			resize_h_prepare_coeff_8(program,env);
+			resize_h_prepare_coeff_8or16(program,env,ALIGN_FLOAT_RESIZER_COEFF_SIZE); // alignment of 8 is enough for AVX2 float as well
 
 			const int filtersizealign8 = AlignNumber(program->filter_size,8);
 			const int filtersizemod8 = program->filter_size & 7;
@@ -3931,9 +3931,9 @@ uint8_t FilteredResizeV::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 	return(max);
 }
 
-void FilteredResizeV::ResamplerLumaAlignedMT(uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaAlignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_luma_aligned(mt_data_inf.dst1,mt_data_inf.src1,mt_data_inf.dst_pitch1,mt_data_inf.src_pitch1,
 		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
@@ -3941,18 +3941,18 @@ void FilteredResizeV::ResamplerLumaAlignedMT(uint8_t thread_num)
 }
 
 
-void FilteredResizeV::ResamplerLumaUnalignedMT(uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaUnalignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_luma_unaligned(mt_data_inf.dst1,mt_data_inf.src1,mt_data_inf.dst_pitch1,mt_data_inf.src_pitch1,
 		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
 		mt_data_inf.src_pitch_table_luma,mt_data_inf.filter_storage_luma,plane_range[0],mode_YUY2);
 }
 
-void FilteredResizeV::ResamplerLumaAlignedMT2(uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaAlignedMT2(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_luma_aligned(mt_data_inf.dst2,mt_data_inf.src2,mt_data_inf.dst_pitch2,mt_data_inf.src_pitch2,
 		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
@@ -3960,9 +3960,9 @@ void FilteredResizeV::ResamplerLumaAlignedMT2(uint8_t thread_num)
 }
 
 
-void FilteredResizeV::ResamplerLumaUnalignedMT2(uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaUnalignedMT2(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_luma_unaligned(mt_data_inf.dst2,mt_data_inf.src2,mt_data_inf.dst_pitch2,mt_data_inf.src_pitch2,
 		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
@@ -3970,9 +3970,9 @@ void FilteredResizeV::ResamplerLumaUnalignedMT2(uint8_t thread_num)
 }
 
 
-void FilteredResizeV::ResamplerLumaAlignedMT3(uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaAlignedMT3(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_luma_aligned(mt_data_inf.dst3,mt_data_inf.src3,mt_data_inf.dst_pitch3,mt_data_inf.src_pitch3,
 		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
@@ -3980,9 +3980,9 @@ void FilteredResizeV::ResamplerLumaAlignedMT3(uint8_t thread_num)
 }
 
 
-void FilteredResizeV::ResamplerLumaUnalignedMT3(uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaUnalignedMT3(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_luma_unaligned(mt_data_inf.dst3,mt_data_inf.src3,mt_data_inf.dst_pitch3,mt_data_inf.src_pitch3,
 		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
@@ -3990,9 +3990,9 @@ void FilteredResizeV::ResamplerLumaUnalignedMT3(uint8_t thread_num)
 }
 
 
-void FilteredResizeV::ResamplerLumaAlignedMT4(uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaAlignedMT4(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_luma_aligned(mt_data_inf.dst4,mt_data_inf.src4,mt_data_inf.dst_pitch4,mt_data_inf.src_pitch4,
 		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
@@ -4000,9 +4000,9 @@ void FilteredResizeV::ResamplerLumaAlignedMT4(uint8_t thread_num)
 }
 
 
-void FilteredResizeV::ResamplerLumaUnalignedMT4(uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaUnalignedMT4(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_luma_unaligned(mt_data_inf.dst4,mt_data_inf.src4,mt_data_inf.dst_pitch4,mt_data_inf.src_pitch4,
 		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
@@ -4010,9 +4010,9 @@ void FilteredResizeV::ResamplerLumaUnalignedMT4(uint8_t thread_num)
 }
 
 
-void FilteredResizeV::ResamplerUChromaAlignedMT(uint8_t thread_num)
+void FilteredResizeV::ResamplerUChromaAlignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_chroma_aligned(mt_data_inf.dst2,mt_data_inf.src2,mt_data_inf.dst_pitch2,mt_data_inf.src_pitch2,
 		mt_data_inf.resampling_program_chroma,mt_data_inf.src_UV_w,bits_per_pixel,mt_data_inf.dst_UV_h_min,mt_data_inf.dst_UV_h_max,
@@ -4020,9 +4020,9 @@ void FilteredResizeV::ResamplerUChromaAlignedMT(uint8_t thread_num)
 }
 
 
-void FilteredResizeV::ResamplerUChromaUnalignedMT(uint8_t thread_num)
+void FilteredResizeV::ResamplerUChromaUnalignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_chroma_unaligned(mt_data_inf.dst2,mt_data_inf.src2,mt_data_inf.dst_pitch2,mt_data_inf.src_pitch2,
 		mt_data_inf.resampling_program_chroma,mt_data_inf.src_UV_w,bits_per_pixel,mt_data_inf.dst_UV_h_min,mt_data_inf.dst_UV_h_max,
@@ -4030,9 +4030,9 @@ void FilteredResizeV::ResamplerUChromaUnalignedMT(uint8_t thread_num)
 }
 
 
-void FilteredResizeV::ResamplerVChromaAlignedMT(uint8_t thread_num)
+void FilteredResizeV::ResamplerVChromaAlignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_chroma_aligned(mt_data_inf.dst3,mt_data_inf.src3,mt_data_inf.dst_pitch3,mt_data_inf.src_pitch3,
 		mt_data_inf.resampling_program_chroma,mt_data_inf.src_UV_w,bits_per_pixel,mt_data_inf.dst_UV_h_min,mt_data_inf.dst_UV_h_max,
@@ -4040,9 +4040,9 @@ void FilteredResizeV::ResamplerVChromaAlignedMT(uint8_t thread_num)
 }
 
 
-void FilteredResizeV::ResamplerVChromaUnalignedMT(uint8_t thread_num)
+void FilteredResizeV::ResamplerVChromaUnalignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_Data[thread_num];
+	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
 
 	resampler_chroma_unaligned(mt_data_inf.dst3,mt_data_inf.src3,mt_data_inf.dst_pitch3,mt_data_inf.src_pitch3,
 		mt_data_inf.resampling_program_chroma,mt_data_inf.src_UV_w,bits_per_pixel,mt_data_inf.dst_UV_h_min,mt_data_inf.dst_UV_h_max,
@@ -4054,32 +4054,34 @@ void FilteredResizeV::StaticThreadpoolV(void *ptr)
 {
 	const Public_MT_Data_Thread *data=(const Public_MT_Data_Thread *)ptr;
 	FilteredResizeV *ptrClass=(FilteredResizeV *)data->pClass;
+	const MT_Data_Info_ResampleMT *MT_DataGF=(MT_Data_Info_ResampleMT *)data->pData;
+	const uint8_t thread_num=data->thread_Id;
 	
 	switch(data->f_process)
 	{
-		case 1 : ptrClass->ResamplerLumaAlignedMT(data->thread_Id);
+		case 1 : ptrClass->ResamplerLumaAlignedMT(MT_DataGF,thread_num);
 			break;
-		case 2 : ptrClass->ResamplerLumaUnalignedMT(data->thread_Id);
+		case 2 : ptrClass->ResamplerLumaUnalignedMT(MT_DataGF,thread_num);
 			break;
-		case 3 : ptrClass->ResamplerUChromaAlignedMT(data->thread_Id);
+		case 3 : ptrClass->ResamplerUChromaAlignedMT(MT_DataGF,thread_num);
 			break;
-		case 4 : ptrClass->ResamplerUChromaUnalignedMT(data->thread_Id);
+		case 4 : ptrClass->ResamplerUChromaUnalignedMT(MT_DataGF,thread_num);
 			break;
-		case 5 : ptrClass->ResamplerVChromaAlignedMT(data->thread_Id);
+		case 5 : ptrClass->ResamplerVChromaAlignedMT(MT_DataGF,thread_num);
 			break;
-		case 6 : ptrClass->ResamplerVChromaUnalignedMT(data->thread_Id);
+		case 6 : ptrClass->ResamplerVChromaUnalignedMT(MT_DataGF,thread_num);
 			break;
-		case 7 : ptrClass->ResamplerLumaAlignedMT2(data->thread_Id);
+		case 7 : ptrClass->ResamplerLumaAlignedMT2(MT_DataGF,thread_num);
 			break;
-		case 8 : ptrClass->ResamplerLumaUnalignedMT2(data->thread_Id);
+		case 8 : ptrClass->ResamplerLumaUnalignedMT2(MT_DataGF,thread_num);
 			break;			
-		case 9 : ptrClass->ResamplerLumaAlignedMT3(data->thread_Id);
+		case 9 : ptrClass->ResamplerLumaAlignedMT3(MT_DataGF,thread_num);
 			break;
-		case 10 : ptrClass->ResamplerLumaUnalignedMT3(data->thread_Id);
+		case 10 : ptrClass->ResamplerLumaUnalignedMT3(MT_DataGF,thread_num);
 			break;			
-		case 11 : ptrClass->ResamplerLumaAlignedMT4(data->thread_Id);
+		case 11 : ptrClass->ResamplerLumaAlignedMT4(MT_DataGF,thread_num);
 			break;
-		case 12 : ptrClass->ResamplerLumaUnalignedMT4(data->thread_Id);
+		case 12 : ptrClass->ResamplerLumaUnalignedMT4(MT_DataGF,thread_num);
 			break;			
 		default : ;
 	}
@@ -4110,84 +4112,92 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 	const int dst_pitch_4 = (isAlphaChannel) ? dst->GetPitch(PLANAR_A) : 0;
 	const BYTE *srcp_4 = (isAlphaChannel) ? src->GetReadPtr(PLANAR_A) : NULL;
 	BYTE *dstp_4 = (isAlphaChannel) ? dst->GetWritePtr(PLANAR_A) : NULL;  
- 
+
+	Public_MT_Data_Thread MT_ThreadGF[MAX_MT_THREADS];
+	MT_Data_Info_ResampleMT MT_DataGF[MAX_MT_THREADS];
+
+  memcpy(MT_ThreadGF,MT_Thread,sizeof(MT_Thread));
+  memcpy(MT_DataGF,MT_Data,sizeof(MT_Data));
+
+  MT_ThreadGF->pData=MT_DataGF;
+
   // Create pitch table
   if (src_pitch_luma != src->GetPitch())
   {
-    src_pitch_luma = src->GetPitch();
     resize_v_create_pitch_table(src_pitch_table_luma, src_pitch_luma, src->GetHeight(),pixelsize);
+	src_pitch_luma = src->GetPitch();
   }
 
   if (!grey && vi.IsPlanar() && !isRGBPfamily)
   {
 	if (src_pitch_chromaU != src->GetPitch(PLANAR_U))
 	{
-		src_pitch_chromaU = src->GetPitch(PLANAR_U);
 		resize_v_create_pitch_table(src_pitch_table_chromaU, src_pitch_chromaU, src->GetHeight(PLANAR_U),pixelsize);
+		src_pitch_chromaU = src->GetPitch(PLANAR_U);
 	}	  
 	if (src_pitch_chromaV != src->GetPitch(PLANAR_V))
 	{
-		src_pitch_chromaV = src->GetPitch(PLANAR_V);
 		resize_v_create_pitch_table(src_pitch_table_chromaV, src_pitch_chromaV, src->GetHeight(PLANAR_V),pixelsize);
+		src_pitch_chromaV = src->GetPitch(PLANAR_V);
 	}	
   }
 
   if (threads_number>1)
   {
-	if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,-1,false))
+	if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,-1,false))
 		env->ThrowError("ResizeHMT: Error with the TheadPool while requesting threadpool!");
   }
 
 	for(uint8_t i=0; i<threads_number; i++)
 	{		
-		MT_Data[i].src1=srcp_1;
-		MT_Data[i].src2=srcp_2;
-		MT_Data[i].src3=srcp_3;
-		MT_Data[i].src4=srcp_4;
-		MT_Data[i].src_pitch1=src_pitch_1;
-		MT_Data[i].src_pitch2=src_pitch_2;
-		MT_Data[i].src_pitch3=src_pitch_3;
-		MT_Data[i].src_pitch4=src_pitch_4;
-		MT_Data[i].dst1=dstp_1+(MT_Data[i].dst_Y_h_min*dst_pitch_1);
-		MT_Data[i].dst2=dstp_2+(MT_Data[i].dst_UV_h_min*dst_pitch_2);
-		MT_Data[i].dst3=dstp_3+(MT_Data[i].dst_UV_h_min*dst_pitch_3);
-		MT_Data[i].dst4=dstp_4+(MT_Data[i].dst_Y_h_min*dst_pitch_4);
-		MT_Data[i].dst_pitch1=dst_pitch_1;
-		MT_Data[i].dst_pitch2=dst_pitch_2;
-		MT_Data[i].dst_pitch3=dst_pitch_3;
-		MT_Data[i].dst_pitch4=dst_pitch_4;
+		MT_DataGF[i].src1=srcp_1;
+		MT_DataGF[i].src2=srcp_2;
+		MT_DataGF[i].src3=srcp_3;
+		MT_DataGF[i].src4=srcp_4;
+		MT_DataGF[i].src_pitch1=src_pitch_1;
+		MT_DataGF[i].src_pitch2=src_pitch_2;
+		MT_DataGF[i].src_pitch3=src_pitch_3;
+		MT_DataGF[i].src_pitch4=src_pitch_4;
+		MT_DataGF[i].dst1=dstp_1+(MT_Data[i].dst_Y_h_min*dst_pitch_1);
+		MT_DataGF[i].dst2=dstp_2+(MT_Data[i].dst_UV_h_min*dst_pitch_2);
+		MT_DataGF[i].dst3=dstp_3+(MT_Data[i].dst_UV_h_min*dst_pitch_3);
+		MT_DataGF[i].dst4=dstp_4+(MT_Data[i].dst_Y_h_min*dst_pitch_4);
+		MT_DataGF[i].dst_pitch1=dst_pitch_1;
+		MT_DataGF[i].dst_pitch2=dst_pitch_2;
+		MT_DataGF[i].dst_pitch3=dst_pitch_3;
+		MT_DataGF[i].dst_pitch4=dst_pitch_4;
 		if (IsPtrAligned(srcp_1, 16) && ((src_pitch_1 & 15) == 0))
-			MT_Data[i].filter_storage_luma=filter_storage_luma_aligned;
+			MT_DataGF[i].filter_storage_luma=filter_storage_luma_aligned;
 		else
-			MT_Data[i].filter_storage_luma=filter_storage_luma_unaligned;
+			MT_DataGF[i].filter_storage_luma=filter_storage_luma_unaligned;
 		if (IsPtrAligned(srcp_4, 16) && ((src_pitch_4 & 15) == 0))
-			MT_Data[i].filter_storage_luma4=filter_storage_luma_aligned;
+			MT_DataGF[i].filter_storage_luma4=filter_storage_luma_aligned;
 		else
-			MT_Data[i].filter_storage_luma4=filter_storage_luma_unaligned;
-		MT_Data[i].src_pitch_table_luma=src_pitch_table_luma;
-		MT_Data[i].src_pitch_table_chromaU=src_pitch_table_chromaU;
-		MT_Data[i].src_pitch_table_chromaV=src_pitch_table_chromaV;
-		MT_Data[i].resampling_program_luma=resampling_program_luma;
-		MT_Data[i].resampling_program_chroma=resampling_program_chroma;
+			MT_DataGF[i].filter_storage_luma4=filter_storage_luma_unaligned;
+		MT_DataGF[i].src_pitch_table_luma=src_pitch_table_luma;
+		MT_DataGF[i].src_pitch_table_chromaU=src_pitch_table_chromaU;
+		MT_DataGF[i].src_pitch_table_chromaV=src_pitch_table_chromaV;
+		MT_DataGF[i].resampling_program_luma=resampling_program_luma;
+		MT_DataGF[i].resampling_program_chroma=resampling_program_chroma;
 		if (IsPtrAligned(srcp_2, 16) && ((src_pitch_2 & 15) == 0))
 		{
-			MT_Data[i].filter_storage_chromaU=filter_storage_chroma_aligned;
-			MT_Data[i].filter_storage_luma2=filter_storage_luma_aligned;
+			MT_DataGF[i].filter_storage_chromaU=filter_storage_chroma_aligned;
+			MT_DataGF[i].filter_storage_luma2=filter_storage_luma_aligned;
 		}
 		else
 		{
-			MT_Data[i].filter_storage_chromaU=filter_storage_chroma_unaligned;
-			MT_Data[i].filter_storage_luma2=filter_storage_luma_unaligned;
+			MT_DataGF[i].filter_storage_chromaU=filter_storage_chroma_unaligned;
+			MT_DataGF[i].filter_storage_luma2=filter_storage_luma_unaligned;
 		}
 		if (IsPtrAligned(srcp_3, 16) && ((src_pitch_3 & 15) == 0))
 		{
-			MT_Data[i].filter_storage_chromaV=filter_storage_chroma_aligned;
-			MT_Data[i].filter_storage_luma3=filter_storage_luma_aligned;
+			MT_DataGF[i].filter_storage_chromaV=filter_storage_chroma_aligned;
+			MT_DataGF[i].filter_storage_luma3=filter_storage_luma_aligned;
 		}
 		else
 		{
-			MT_Data[i].filter_storage_chromaV=filter_storage_chroma_unaligned;
-			MT_Data[i].filter_storage_luma3=filter_storage_luma_unaligned;
+			MT_DataGF[i].filter_storage_chromaV=filter_storage_chroma_unaligned;
+			MT_DataGF[i].filter_storage_luma3=filter_storage_luma_unaligned;
 		}
 	}
 
@@ -4199,7 +4209,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 		else f_proc=2;
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=f_proc;
+			MT_ThreadGF[i].f_process=f_proc;
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 		if (!grey && vi.IsPlanar() && !isRGBPfamily)
@@ -4208,14 +4218,14 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 			else f_proc=4;
 
 			for(uint8_t i=0; i<threads_number; i++)
-				MT_Thread[i].f_process=f_proc;
+				MT_ThreadGF[i].f_process=f_proc;
 			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 			if (IsPtrAligned(srcp_3, 16) && ((src_pitch_3 & 15) == 0)) f_proc=5;
 			else f_proc=6;
 
 			for(uint8_t i=0; i<threads_number; i++)
-				MT_Thread[i].f_process=f_proc;
+				MT_ThreadGF[i].f_process=f_proc;
 			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 		}
 		else
@@ -4226,14 +4236,14 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 				else f_proc=8;
 
 				for(uint8_t i=0; i<threads_number; i++)
-					MT_Thread[i].f_process=f_proc;
+					MT_ThreadGF[i].f_process=f_proc;
 				if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
 				if (IsPtrAligned(srcp_3, 16) && ((src_pitch_3 & 15) == 0)) f_proc=9;
 				else f_proc=10;
 
 				for(uint8_t i=0; i<threads_number; i++)
-					MT_Thread[i].f_process=f_proc;
+					MT_ThreadGF[i].f_process=f_proc;
 				if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);							
 			}
 		}
@@ -4244,12 +4254,12 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 			else f_proc=12;
 
 			for(uint8_t i=0; i<threads_number; i++)
-				MT_Thread[i].f_process=f_proc;
+				MT_ThreadGF[i].f_process=f_proc;
 			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);			
 		}
 
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=0;
+			MT_ThreadGF[i].f_process=0;
 
 		poolInterface->ReleaseThreadPool(UserId,sleep);
 	}
@@ -4257,46 +4267,46 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 	{
 		// Do resizing
 		if (IsPtrAligned(srcp_1, 16) && ((src_pitch_1 & 15) == 0))
-			ResamplerLumaAlignedMT(0);
+			ResamplerLumaAlignedMT(MT_DataGF,0);
 		else
-			ResamplerLumaUnalignedMT(0);
+			ResamplerLumaUnalignedMT(MT_DataGF,0);
     
 		if (!grey && vi.IsPlanar() && !isRGBPfamily)
 		{
 			// Plane U resizing   
 			if (IsPtrAligned(srcp_2, 16) && ((src_pitch_2 & 15) == 0))
-				ResamplerUChromaAlignedMT(0);
+				ResamplerUChromaAlignedMT(MT_DataGF,0);
 			else
-				ResamplerUChromaUnalignedMT(0);
+				ResamplerUChromaUnalignedMT(MT_DataGF,0);
 
 			// Plane V resizing
 			if (IsPtrAligned(srcp_3, 16) && ((src_pitch_3 & 15) == 0))
-				ResamplerVChromaAlignedMT(0);
+				ResamplerVChromaAlignedMT(MT_DataGF,0);
 			else
-				ResamplerVChromaUnalignedMT(0);
+				ResamplerVChromaUnalignedMT(MT_DataGF,0);
 		}
 		else
 		{
 			if (isRGBPfamily)
 			{
 				if (IsPtrAligned(srcp_2, 16) && ((src_pitch_2 & 15) == 0))
-					ResamplerLumaAlignedMT2(0);
+					ResamplerLumaAlignedMT2(MT_DataGF,0);
 				else
-					ResamplerLumaUnalignedMT2(0);		
+					ResamplerLumaUnalignedMT2(MT_DataGF,0);		
 				
 				if (IsPtrAligned(srcp_3, 16) && ((src_pitch_3 & 15) == 0))
-					ResamplerLumaAlignedMT3(0);
+					ResamplerLumaAlignedMT3(MT_DataGF,0);
 				else
-					ResamplerLumaUnalignedMT3(0);								
+					ResamplerLumaUnalignedMT3(MT_DataGF,0);								
 			}			
 		}
 		
 		if (isAlphaChannel)
 		{
 			if (IsPtrAligned(srcp_4, 16) && ((src_pitch_4 & 15) == 0))
-				ResamplerLumaAlignedMT4(0);
+				ResamplerLumaAlignedMT4(MT_DataGF,0);
 			else
-				ResamplerLumaUnalignedMT4(0);	
+				ResamplerLumaUnalignedMT4(MT_DataGF,0);	
 		}
 	}
 

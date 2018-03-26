@@ -99,12 +99,12 @@ private:
 
 	void FreeData(void);
 
-	void ResamplerLumaMT(uint8_t thread_num);
-	void ResamplerLumaMT2(uint8_t thread_num);
-	void ResamplerLumaMT3(uint8_t thread_num);
-	void ResamplerLumaMT4(uint8_t thread_num);
-	void ResamplerUChromaMT(uint8_t thread_num);
-	void ResamplerVChromaMT(uint8_t thread_num);
+	void ResamplerLumaMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerLumaMT2(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerLumaMT3(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerLumaMT4(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerUChromaMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerVChromaMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
 	
 
   // Resampling
@@ -161,18 +161,18 @@ private:
 
 	void FreeData(void);
 
-	void ResamplerLumaAlignedMT(uint8_t thread_num);
-	void ResamplerLumaUnalignedMT(uint8_t thread_num);
-	void ResamplerLumaAlignedMT2(uint8_t thread_num);
-	void ResamplerLumaUnalignedMT2(uint8_t thread_num);
-	void ResamplerLumaAlignedMT3(uint8_t thread_num);
-	void ResamplerLumaUnalignedMT3(uint8_t thread_num);
-	void ResamplerLumaAlignedMT4(uint8_t thread_num);
-	void ResamplerLumaUnalignedMT4(uint8_t thread_num);
-	void ResamplerUChromaAlignedMT(uint8_t thread_num);
-	void ResamplerUChromaUnalignedMT(uint8_t thread_num);
-	void ResamplerVChromaAlignedMT(uint8_t thread_num);
-	void ResamplerVChromaUnalignedMT(uint8_t thread_num);
+	void ResamplerLumaAlignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerLumaUnalignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerLumaAlignedMT2(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerLumaUnalignedMT2(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerLumaAlignedMT3(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerLumaUnalignedMT3(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerLumaAlignedMT4(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerLumaUnalignedMT4(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerUChromaAlignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerUChromaUnalignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerVChromaAlignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
+	void ResamplerVChromaUnalignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num);
 
   bool grey,avsp,isRGBPfamily,isAlphaChannel;
   uint8_t pixelsize; // AVS16

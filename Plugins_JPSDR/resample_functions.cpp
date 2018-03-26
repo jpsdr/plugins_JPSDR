@@ -47,7 +47,8 @@
  ***** Point filter *****
  **************************/
 
-double PointFilter::f(double x) {
+double PointFilter::f(double x)
+{
   return 1.0;
 }
 
@@ -56,7 +57,8 @@ double PointFilter::f(double x) {
  ***** Triangle filter *****
  **************************/
 
-double TriangleFilter::f(double x) {
+double TriangleFilter::f(double x)
+{
   x = fabs(x);
   return (x<1.0) ? 1.0-x : 0.0;
 }
@@ -69,7 +71,8 @@ double TriangleFilter::f(double x) {
  *** Mitchell-Netravali filter ***
  *********************************/
 
-MitchellNetravaliFilter::MitchellNetravaliFilter (double b=1./3., double c=1./3.) {
+MitchellNetravaliFilter::MitchellNetravaliFilter (double b=1./3., double c=1./3.)
+{
   p0 = (   6. -  2.*b            ) / 6.;
   p2 = ( -18. + 12.*b +  6.*c    ) / 6.;
   p3 = (  12. -  9.*b -  6.*c    ) / 6.;
@@ -79,7 +82,8 @@ MitchellNetravaliFilter::MitchellNetravaliFilter (double b=1./3., double c=1./3.
   q3 = (      -     b -  6.*c    ) / 6.;
 }
 
-double MitchellNetravaliFilter::f (double x) {
+double MitchellNetravaliFilter::f (double x)
+{
   x = fabs(x);
   return (x<1) ? (p0+x*x*(p2+x*p3)) : (x<2) ? (q0+x*(q1+x*(q2+x*q3))) : 0.0;
 }
@@ -88,25 +92,34 @@ double MitchellNetravaliFilter::f (double x) {
 /***********************
  *** Lanczos3 filter ***
  ***********************/
-LanczosFilter::LanczosFilter(int t = 3) {
+LanczosFilter::LanczosFilter(int t = 3)
+{
    taps = (double)clamp(t, 1, 100);
 }
 
-double LanczosFilter::sinc(double value) {
-  if (value > 0.000001) {
+double LanczosFilter::sinc(double value)
+{
+  if (value > 0.000001)
+  {
     value *= M_PI;
     return sin(value) / value;
-  } else {
+  }
+  else
+  {
     return 1.0;
   }
 }
 
-double LanczosFilter::f(double value) {
+double LanczosFilter::f(double value)
+{
    value = fabs(value);
 
-  if (value < taps) {
+  if (value < taps)
+  {
     return (sinc(value) * sinc(value / taps));
-  } else {
+  }
+  else
+  {
     return 0.0;
   }
 }
@@ -115,22 +128,30 @@ double LanczosFilter::f(double value) {
 /***********************
  *** Blackman filter ***
  ***********************/
-BlackmanFilter::BlackmanFilter(int t = 4) {
+BlackmanFilter::BlackmanFilter(int t = 4)
+{
    taps = (double)clamp(t, 1, 100);
    rtaps = 1.0/taps;
 }
 
-double BlackmanFilter::f(double value) {
+double BlackmanFilter::f(double value)
+{
    value = fabs(value);
 
-  if (value < taps) {
-    if (value > 0.000001) {
+  if (value < taps)
+  {
+    if (value > 0.000001)
+	{
       value *= M_PI;
       return (sin(value) / value) * (0.42 + 0.5*cos(value*rtaps) + 0.08*cos(2*value*rtaps));
-    } else {
+    }
+	else
+	{
       return 1.0;
     }
-  } else {
+  }
+  else
+  {
     return 0.0;
   }
 }
@@ -140,12 +161,16 @@ double BlackmanFilter::f(double value) {
  *** Spline16 filter ***
  ***********************/
 
-double Spline16Filter::f(double value) {
+double Spline16Filter::f(double value)
+{
   value = fabs(value);
 
-  if (value < 1.0) {
+  if (value < 1.0)
+  {
     return ( ( value - 9.0/5.0 ) * value - 1.0/5.0 ) * value + 1.0;
-  } else if (value < 2.0) {
+  }
+  else if (value < 2.0)
+  {
     return ( ( -1.0/3.0 * (value-1.0) + 4.0/5.0 ) * (value-1.0) - 7.0/15.0 ) * (value-1.0);
   }
   return 0.0;
@@ -155,14 +180,20 @@ double Spline16Filter::f(double value) {
  *** Spline36 filter ***
  ***********************/
 
-double Spline36Filter::f(double value) {
+double Spline36Filter::f(double value)
+{
   value = fabs(value);
 
-  if        (value < 1.0) {
+  if (value < 1.0)
+  {
     return ( ( 13.0/11.0  * (value    ) - 453.0/ 209.0 ) * (value    ) -   3.0/ 209.0 ) *(value    ) + 1.0;
-  } else if (value < 2.0) {
+  }
+  else if (value < 2.0)
+  {
     return ( ( -6.0/11.0  * (value-1.0) + 270.0/ 209.0 ) * (value-1.0) - 156.0/ 209.0 ) *(value-1.0);
-  } else if (value < 3.0) {
+  }
+  else if (value < 3.0)
+  {
     return  ( ( 1.0/11.0  * (value-2.0) -  45.0/ 209.0 ) * (value-2.0) +  26.0/ 209.0 ) *(value-2.0);
   }
   return 0.0;
@@ -172,16 +203,24 @@ double Spline36Filter::f(double value) {
  *** Spline64 filter ***
  ***********************/
 
-double Spline64Filter::f(double value) {
+double Spline64Filter::f(double value)
+{
   value = fabs(value);
 
-  if        (value < 1.0) {
+  if (value < 1.0)
+  {
     return (( 49.0/41.0 * (value    ) - 6387.0/2911.0) * (value    ) -    3.0/2911.0) * (value    ) + 1.0;
-  } else if (value < 2.0) {
+  }
+  else if (value < 2.0)
+  {
     return ((-24.0/41.0 * (value-1.0) + 4032.0/2911.0) * (value-1.0) - 2328.0/2911.0) * (value-1.0);
-  } else if (value < 3.0) {
+  }
+  else if (value < 3.0)
+  {
     return ((  6.0/41.0 * (value-2.0) - 1008.0/2911.0) * (value-2.0) +  582.0/2911.0) * (value-2.0);
-  } else if (value < 4.0) {
+  }
+  else if (value < 4.0)
+  {
     return ((- 1.0/41.0 * (value-3.0) +  168.0/2911.0) * (value-3.0) -   97.0/2911.0) * (value-3.0);
   }
   return 0.0;
@@ -198,11 +237,13 @@ double Spline64Filter::f(double value) {
                      value*value < {900, 4.0, 3.0, 0.9}
                      value       < {30, 2.0, 1.73, 0.949}         */
 
-GaussianFilter::GaussianFilter(double p = 30.0) {
+GaussianFilter::GaussianFilter(double p = 30.0)
+{
   param = clamp(p, 0.1, 100.0);
 }
 
-double GaussianFilter::f(double value) {
+double GaussianFilter::f(double value)
+{
 	double p = param*0.1;
 	return pow(2.0, - p*value*value);
 }
@@ -210,17 +251,22 @@ double GaussianFilter::f(double value) {
 /***********************
  *** Sinc filter ***
  ***********************/
-SincFilter::SincFilter(int t = 4) {
+SincFilter::SincFilter(int t = 4)
+{
    taps = (double)clamp(t, 1, 20);
 }
 
-double SincFilter::f(double value) {
+double SincFilter::f(double value)
+{
    value = fabs(value);
 
-  if (value > 0.000001) {
+  if (value > 0.000001)
+  {
     value *= M_PI;
     return sin(value)/value;
-  } else {
+  }
+  else
+  {
     return 1.0;
   }
 }
@@ -270,7 +316,7 @@ ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, dou
 
     // check the simd-optimized (8 pixels and filter coefficients at a time) limit to not reach beyond the last pixel
     // in order not to have NaN floats
-    if ((start_pos+AlignNumber(fir_filter_size,ALIGN_RESIZER_COEFF_SIZE)-1)>(source_size-1))
+    if ((start_pos+AlignNumber(fir_filter_size,ALIGN_FLOAT_RESIZER_COEFF_SIZE)-1)>(source_size-1))
     {
       if (!program->overread_possible)
 	  {
@@ -527,7 +573,7 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
 
     // check the simd-optimized (8 pixels and filter coefficients at a time) limit to not reach beyond the last pixel
     // in order not to have NaN floats
-    if ((start_pos+AlignNumber(fir_filter_size,ALIGN_RESIZER_COEFF_SIZE)-1)>(target_size-1))
+    if ((start_pos+AlignNumber(fir_filter_size,ALIGN_FLOAT_RESIZER_COEFF_SIZE)-1)>(target_size-1))
     {
       if (!program->overread_possible)
 	  {
@@ -566,7 +612,7 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
 
     // check the simd-optimized (8 pixels and filter coefficients at a time) limit to not reach beyond the last pixel
     // in order not to have NaN floats
-    if ((start_pos+AlignNumber(fir_filter_size,ALIGN_RESIZER_COEFF_SIZE)-1)>(target_size-1))
+    if ((start_pos+AlignNumber(fir_filter_size,ALIGN_FLOAT_RESIZER_COEFF_SIZE)-1)>(target_size-1))
     {
       if (!program->overread_possible)
 	  {
