@@ -193,6 +193,7 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
 
 	const int val_min = (range==1) ? 0 : 16;
 	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
+	const int Offset = 1 << (FPScale8bits-1);
 
 	if ((mode_YUY2) && ((range>=2) && (range<=3)))
 	{
@@ -209,7 +210,7 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
 				for (int i = 0; i < filter_size; i++)
 					result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
 
-				result = (result+8192) >> 14;
+				result = (result+Offset) >> FPScale8bits;
 				result = (result>TabMax[x & 0x03]) ? TabMax[x & 0x3] : (result<16) ? 16 : result;
 				dst[x] = (BYTE) result;
 			}
@@ -231,7 +232,7 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
 				for (int i = 0; i < filter_size; i++)
 					result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
 
-				result = (result+8192) >> 14;
+				result = (result+Offset) >> FPScale8bits;
 				result = (result>val_max) ? val_max : (result<val_min) ? val_min : result;
 				dst[x] = (BYTE) result;
 			}
@@ -284,6 +285,8 @@ static void resize_v_c_planar_s(BYTE* dst, const BYTE* src, int dst_pitch, int s
 	const __int64 val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ?
 		((int)235 << (bits_per_pixel-8)) : ((int)240 << (bits_per_pixel-8));
 
+	const __int64 Offset = 1 << (FPScale16bits-1);
+
 	dst_pitch>>=1;
 
 	for (int y = MinY; y < MaxY; y++)
@@ -297,7 +300,7 @@ static void resize_v_c_planar_s(BYTE* dst, const BYTE* src, int dst_pitch, int s
 			for (int i = 0; i < filter_size; i++)
 				result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
 
-			result = (result+8192) >> 14;
+			result = (result+Offset) >> FPScale16bits;
 			result = (result>val_max) ? val_max : (result<val_min) ? val_min : result;
 			dst0[x] = (uint16_t) result;
 		}
@@ -317,6 +320,8 @@ static void resize_v_mmx_planar(BYTE* dst, const BYTE* src, int dst_pitch, int s
   const int sizeMod2 = (filter_size >> 1) << 1;
   const bool notMod2 = sizeMod2 < filter_size;
 
+  const int Offset = 1 << (FPScale8bits-1);
+
   const __m64 zero = _mm_setzero_si64();
 
 	const int val_min = (range==1) ? 0 : 16;
@@ -333,7 +338,7 @@ static void resize_v_mmx_planar(BYTE* dst, const BYTE* src, int dst_pitch, int s
 
     for (int x = 0; x < wMod8; x += 8)
 	{
-      __m64 result_1 = _mm_set1_pi32(8192); // Init. with rounder (16384/2 = 8192)
+      __m64 result_1 = _mm_set1_pi32(Offset); // Init. with rounder (16384/2 = 8192)
       __m64 result_2 = result_1;
       __m64 result_3 = result_1;
       __m64 result_4 = result_1;
@@ -391,10 +396,10 @@ static void resize_v_mmx_planar(BYTE* dst, const BYTE* src, int dst_pitch, int s
       }
 
       // Divide by 16348 (FPRound)
-      result_1  = _mm_srai_pi32(result_1, 14);
-      result_2  = _mm_srai_pi32(result_2, 14);
-      result_3  = _mm_srai_pi32(result_3, 14);
-      result_4  = _mm_srai_pi32(result_4, 14);
+      result_1  = _mm_srai_pi32(result_1, FPScale8bits);
+      result_2  = _mm_srai_pi32(result_2, FPScale8bits);
+      result_3  = _mm_srai_pi32(result_3, FPScale8bits);
+      result_4  = _mm_srai_pi32(result_4, FPScale8bits);
 
       // Pack and store
       __m64 result_l = _mm_packs_pi32(result_1, result_2);
@@ -416,7 +421,7 @@ static void resize_v_mmx_planar(BYTE* dst, const BYTE* src, int dst_pitch, int s
 
 		    for (int i = 0; i < filter_size; i++)
 				result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
-			result = (result+8192) >> 14;
+			result = (result+Offset) >> FPScale8bits;
 			result = (result>TabMax[x & 0x03]) ? TabMax[x & 0x03] : (result<val_min) ? val_min : result;
 			dst[x] = (BYTE) result;
 		}
@@ -429,7 +434,7 @@ static void resize_v_mmx_planar(BYTE* dst, const BYTE* src, int dst_pitch, int s
 
 		    for (int i = 0; i < filter_size; i++)
 				result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
-			result = (result+8192) >> 14;
+			result = (result+Offset) >> FPScale8bits;
 			result = (result>val_max) ? val_max : (result<val_min) ? val_min : result;
 			dst[x] = (BYTE) result;
 		}
@@ -452,6 +457,7 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
   const int wMod16 = (width >> 4) << 4;
   const int sizeMod2 = (filter_size >> 1) << 1;
   const bool notMod2 = sizeMod2 < filter_size;
+  const int Offset = 1 << (FPScale8bits-1);
 
   const __m128i zero = _mm_setzero_si128();
 
@@ -469,7 +475,7 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
 
     for (int x = 0; x < wMod16; x += 16)
 	{
-      __m128i result_1 = _mm_set1_epi32(8192); // Init. with rounder (16384/2 = 8192)
+      __m128i result_1 = _mm_set1_epi32(Offset); // Init. with rounder (16384/2 = 8192)
       __m128i result_2 = result_1;
       __m128i result_3 = result_1;
       __m128i result_4 = result_1;
@@ -527,10 +533,10 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
       }
       
       // Divide by 16348 (FPRound)
-      result_1  = _mm_srai_epi32(result_1, 14);
-      result_2  = _mm_srai_epi32(result_2, 14);
-      result_3  = _mm_srai_epi32(result_3, 14);
-      result_4  = _mm_srai_epi32(result_4, 14);
+      result_1  = _mm_srai_epi32(result_1, FPScale8bits);
+      result_2  = _mm_srai_epi32(result_2, FPScale8bits);
+      result_3  = _mm_srai_epi32(result_3, FPScale8bits);
+      result_4  = _mm_srai_epi32(result_4, FPScale8bits);
 
       // Pack and store
       __m128i result_l = _mm_packs_epi32(result_1, result_2);
@@ -552,7 +558,7 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
 
 			for (int i = 0; i < filter_size; i++)
 				result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
-			result = (result+8192) >> 14;
+			result = (result+Offset) >> FPScale8bits;
 			result = (result>TabMax[x & 0x03]) ? TabMax[x & 0x03] : (result<val_min) ? val_min : result;
 			dst[x] = (BYTE) result;
 		}
@@ -565,7 +571,7 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
 
 			for (int i = 0; i < filter_size; i++)
 				result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
-			result = (result+8192) >> 14;
+			result = (result+Offset) >> FPScale8bits;
 			result = (result>val_max) ? val_max : (result<val_min) ? val_min : result;
 			dst[x] = (BYTE) result;
 		}
@@ -584,6 +590,7 @@ static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int
   const short *current_coeff = program->pixel_coefficient + filter_size*MinY;
   
   const int wMod16 = (width >> 4) << 4;
+  const int Offset = 1 << (FPScale8bits-1);
 
 	const int val_min = (range==1) ? 0 : 16;
 	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
@@ -650,7 +657,7 @@ static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int
 
 			for (int i = 0; i < filter_size; i++)
 				result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
-			result = (result+8192) >> 14;
+			result = (result+Offset) >> FPScale8bits;
 			result = (result>TabMax[x & 0x03]) ? TabMax[x & 0x03] : (result<val_min) ? val_min : result;
 			dst[x] = (BYTE) result;
 		}
@@ -663,7 +670,7 @@ static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int
 
 			for (int i = 0; i < filter_size; i++)
 				result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
-			result = (result+8192) >> 14;
+			result = (result+Offset) >> FPScale8bits;
 			result = (result>val_max) ? val_max : (result<val_min) ? val_min : result;
 			dst[x] = (BYTE) result;
 		}
@@ -690,7 +697,7 @@ __forceinline static void process_chunk_v_uint16_t(const uint16_t *src2_ptr, int
     src_lo = _mm_add_epi16(src_lo, shifttosigned);
     src_hi = _mm_add_epi16(src_hi, shifttosigned);
   }
-  __m128i coeff = _mm_shuffle_epi32(coeff01234567, (index >> 1) | ((index >> 1) << 2) | ((index >> 1) << 4) | ((index >> 1) << 6)); // spread short pair
+  __m128i coeff = _mm_shuffle_epi32(coeff01234567, (index / 2) | ((index / 2) << 2) | ((index / 2) << 4) | ((index / 2) << 6)); // spread short pair
   result_single_lo = _mm_add_epi32(result_single_lo, _mm_madd_epi16(src_lo, coeff)); // a*b + c
   result_single_hi = _mm_add_epi32(result_single_hi, _mm_madd_epi16(src_hi, coeff)); // a*b + c
 }
@@ -723,6 +730,8 @@ void internal_resize_v_sse_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst
 	const uint16_t val_min = (range==1) ? 0 : (int)16 << (bits_per_pixel-8);
 	const uint16_t val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ?
 		((int)235 << (bits_per_pixel-8)) : ((int)240 << (bits_per_pixel-8));
+
+	const int64_t Offset = 1 << (FPScale16bits - 1); // rounder
 
 	__m128i clamp_limit_min = _mm_set1_epi16(val_min);
 	__m128i clamp_limit_max = _mm_set1_epi16(val_max);
@@ -795,7 +804,7 @@ void internal_resize_v_sse_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst
       __m128i result_8x_uint16 = hasSSE41 ? _mm_packus_epi32(result_lo, result_hi) : _MM_PACKUS_EPI32(result_lo, result_hi);
       //if (lessthan16bit)
         result_8x_uint16 = hasSSE41 ? _mm_min_epu16(result_8x_uint16,clamp_limit_max) : _MM_MIN_EPU16(result_8x_uint16,clamp_limit_max); // extra clamp for 10-14 bit
-		result_8x_uint16 = hasSSE41 ? _mm_max_epu16(result_8x_uint16,clamp_limit_min) : _MM_MIN_EPU16(result_8x_uint16,clamp_limit_min); // extra clamp for 10-14 bit
+		result_8x_uint16 = hasSSE41 ? _mm_max_epu16(result_8x_uint16,clamp_limit_min) : _MM_MAX_EPU16(result_8x_uint16,clamp_limit_min); // extra clamp for 10-14 bit
       _mm_store_si128(reinterpret_cast<__m128i *>(dst + x), result_8x_uint16);
     }
 
@@ -803,7 +812,7 @@ void internal_resize_v_sse_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst
     // Leftover, slow C
     for (int x = wMod8; x < width; x++)
 	{
-      int64_t result64 = 1 << (FPScale16bits - 1); // rounder
+      int64_t result64 = Offset; // rounder
       const uint16_t* src2_ptr = src_ptr + x;
       for (int i = 0; i < program->filter_size; i++)
 	  {
@@ -811,7 +820,7 @@ void internal_resize_v_sse_planar_uint16_t(BYTE* dst0, const BYTE* src0, int dst
         result64 += (int)(*src2_ptr) * (int64_t)current_coeff[i];
         src2_ptr += src_pitch;
       }
-      int result = (int)(result64 / (1 << FPScale16bits)); // scale back 13 bits
+      int result = (int)(result64 >> FPScale16bits); // scale back 13 bits
       result = result > val_max ? val_max : result < val_min ? val_min : result; // clamp 10..16 bits
       dst[x] = (uint16_t)result;
     }
@@ -1176,6 +1185,8 @@ void internal_resize_v_avx2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int ds
 	const uint16_t val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ?
 		((int)235 << (bits_per_pixel-8)) : ((int)240 << (bits_per_pixel-8));
 
+	const int64_t Offset = 1 << (FPScale16bits - 1); // rounder
+
   __m256i clamp_limit_min = _mm256_set1_epi16(val_min);
   __m256i clamp_limit_max = _mm256_set1_epi16(val_max);
 
@@ -1257,7 +1268,7 @@ void internal_resize_v_avx2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int ds
     // Leftover, slow C
     for (int x = wMod16; x < width; x++)
 	{
-      int64_t result64 = 1 << (FPScale16bits - 1); // rounder
+      int64_t result64 = Offset; // rounder
       const uint16_t* src2_ptr = src_ptr + x;
       for (int i = 0; i < program->filter_size; i++)
 	  {
@@ -1265,7 +1276,7 @@ void internal_resize_v_avx2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int ds
         result64 += (int)(*src2_ptr) * (int64_t)current_coeff[i];
         src2_ptr += src_pitch;
       }
-      int result = (int)(result64 / (1 << FPScale16bits)); // scale back 13 bits
+      int result = (int)(result64 >> FPScale16bits); // scale back 13 bits
       result = result > val_max ? val_max : result < val_min ? val_min : result; // clamp 10..16 bits
       dst[x] = (uint16_t)result;
     }
@@ -2166,6 +2177,7 @@ static void resizer_h_ssse3_generic(BYTE* dst, const BYTE* src, int dst_pitch, i
 
 	const int val_min = (range==1) ? 0 : 16;
 	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
+	const int Offset = 1 << (FPScale8bits-1);
 
 	const __m128i val_min_m128 = _mm_set1_epi16((short)((val_min << 8)|val_min));
 	const __m128i val_max_m128 = (mode_YUY2 && ((range>=2) && (range<=3))) ? _mm_set1_epi16((short)(((int)240 << 8)|235)) : _mm_set1_epi16((short)((val_max << 8)|val_max));
@@ -2176,10 +2188,10 @@ static void resizer_h_ssse3_generic(BYTE* dst, const BYTE* src, int dst_pitch, i
 	
     for (int x = 0; x < width; x+=4)
 	{
-      __m128i result1 = _mm_setr_epi32(8192, 0, 0, 0);
-      __m128i result2 = _mm_setr_epi32(8192, 0, 0, 0);
-      __m128i result3 = _mm_setr_epi32(8192, 0, 0, 0);
-      __m128i result4 = _mm_setr_epi32(8192, 0, 0, 0);
+      __m128i result1 = _mm_setr_epi32(Offset, 0, 0, 0);
+      __m128i result2 = _mm_setr_epi32(Offset, 0, 0, 0);
+      __m128i result3 = _mm_setr_epi32(Offset, 0, 0, 0);
+      __m128i result4 = _mm_setr_epi32(Offset, 0, 0, 0);
 
       const int begin1 = program->pixel_offset[x+0];
       const int begin2 = program->pixel_offset[x+1];
@@ -2238,7 +2250,7 @@ static void resizer_h_ssse3_generic(BYTE* dst, const BYTE* src, int dst_pitch, i
       __m128i result34 = _mm_hadd_epi32(result3, result4);
       __m128i result = _mm_hadd_epi32(result12, result34);
 
-      result = _mm_srai_epi32(result, 14);
+      result = _mm_srai_epi32(result, FPScale8bits);
 
       result = _mm_packs_epi32(result, zero);
       result = _mm_packus_epi16(result, zero);
@@ -2264,6 +2276,7 @@ static void resizer_h_ssse3_8(BYTE* dst, const BYTE* src, int dst_pitch, int src
 	const int val_min = (range==1) ? 0 : 16;
 	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
 	const int TabMax[4] = {235,240,235,240};
+	const int Offset = 1 << (FPScale8bits-1);
 
 	const __m128i val_min_m128 = _mm_set1_epi16((short)((val_min << 8)|val_min));
 	const __m128i val_max_m128 = (mode_YUY2 && ((range>=2) && (range<=3))) ? _mm_set1_epi16((short)(((int)240 << 8)|235)) : _mm_set1_epi16((short)((val_max << 8)|val_max));
@@ -2274,10 +2287,10 @@ static void resizer_h_ssse3_8(BYTE* dst, const BYTE* src, int dst_pitch, int src
 	
     for (int x = 0; x < width; x+=4)
 	{
-      __m128i result1 = _mm_setr_epi32(8192, 0, 0, 0);
-      __m128i result2 = _mm_setr_epi32(8192, 0, 0, 0);
-      __m128i result3 = _mm_setr_epi32(8192, 0, 0, 0);
-      __m128i result4 = _mm_setr_epi32(8192, 0, 0, 0);
+      __m128i result1 = _mm_setr_epi32(Offset, 0, 0, 0);
+      __m128i result2 = _mm_setr_epi32(Offset, 0, 0, 0);
+      __m128i result3 = _mm_setr_epi32(Offset, 0, 0, 0);
+      __m128i result4 = _mm_setr_epi32(Offset, 0, 0, 0);
 
       const int begin1 = program->pixel_offset[x+0];
       const int begin2 = program->pixel_offset[x+1];
@@ -2327,7 +2340,7 @@ static void resizer_h_ssse3_8(BYTE* dst, const BYTE* src, int dst_pitch, int src
       __m128i result34 = _mm_hadd_epi32(result3, result4);
       __m128i result = _mm_hadd_epi32(result12, result34);
 
-      result = _mm_srai_epi32(result, 14);
+      result = _mm_srai_epi32(result, FPScale8bits);
 
       result = _mm_packs_epi32(result, zero);
       result = _mm_packus_epi16(result, zero);
@@ -3156,84 +3169,72 @@ uint8_t FilteredResizeH::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 }
 
 
-void FilteredResizeH::ResamplerLumaMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeH::ResamplerLumaMT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_h_luma(mt_data_inf.dst1,mt_data_inf.src1,mt_data_inf.dst_pitch1,mt_data_inf.src_pitch1,
-		mt_data_inf.resampling_program_luma,mt_data_inf.dst_Y_w,mt_data_inf.dst_Y_h_max-mt_data_inf.dst_Y_h_min,
+	resampler_h_luma(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
 		bits_per_pixel,plane_range[0],mode_YUY2);
 }
 
 
-void FilteredResizeH::ResamplerLumaMT2(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeH::ResamplerLumaMT2(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_h_luma(mt_data_inf.dst2,mt_data_inf.src2,mt_data_inf.dst_pitch2,mt_data_inf.src_pitch2,
-		mt_data_inf.resampling_program_luma,mt_data_inf.dst_Y_w,mt_data_inf.dst_Y_h_max-mt_data_inf.dst_Y_h_min,
+	resampler_h_luma(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
 		bits_per_pixel,plane_range[1],mode_YUY2);
 }
 
 
-void FilteredResizeH::ResamplerLumaMT3(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeH::ResamplerLumaMT3(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_h_luma(mt_data_inf.dst3,mt_data_inf.src3,mt_data_inf.dst_pitch3,mt_data_inf.src_pitch3,
-		mt_data_inf.resampling_program_luma,mt_data_inf.dst_Y_w,mt_data_inf.dst_Y_h_max-mt_data_inf.dst_Y_h_min,
+	resampler_h_luma(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
 		bits_per_pixel,plane_range[2],mode_YUY2);
 }
 
-void FilteredResizeH::ResamplerLumaMT4(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeH::ResamplerLumaMT4(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_h_luma(mt_data_inf.dst4,mt_data_inf.src4,mt_data_inf.dst_pitch4,mt_data_inf.src_pitch4,
-		mt_data_inf.resampling_program_luma,mt_data_inf.dst_Y_w,mt_data_inf.dst_Y_h_max-mt_data_inf.dst_Y_h_min,
+	resampler_h_luma(MT_DataGF->dst4,MT_DataGF->src4,MT_DataGF->dst_pitch4,MT_DataGF->src_pitch4,
+		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
 		bits_per_pixel,plane_range[3],mode_YUY2);
 }
 
-void FilteredResizeH::ResamplerUChromaMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeH::ResamplerUChromaMT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_h_chroma(mt_data_inf.dst2,mt_data_inf.src2,mt_data_inf.dst_pitch2,mt_data_inf.src_pitch2,
-		mt_data_inf.resampling_program_chroma,mt_data_inf.dst_UV_w,mt_data_inf.dst_UV_h_max-mt_data_inf.dst_UV_h_min,
+	resampler_h_chroma(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+		MT_DataGF->resampling_program_chroma,MT_DataGF->dst_UV_w,MT_DataGF->dst_UV_h_max-MT_DataGF->dst_UV_h_min,
 		bits_per_pixel,plane_range[1],mode_YUY2);
 }
 
 
-void FilteredResizeH::ResamplerVChromaMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeH::ResamplerVChromaMT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_h_chroma(mt_data_inf.dst3,mt_data_inf.src3,mt_data_inf.dst_pitch3,mt_data_inf.src_pitch3,
-		mt_data_inf.resampling_program_chroma,mt_data_inf.dst_UV_w,mt_data_inf.dst_UV_h_max-mt_data_inf.dst_UV_h_min,
+	resampler_h_chroma(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+		MT_DataGF->resampling_program_chroma,MT_DataGF->dst_UV_w,MT_DataGF->dst_UV_h_max-MT_DataGF->dst_UV_h_min,
 		bits_per_pixel,plane_range[2],mode_YUY2);
 }
 
 
 void FilteredResizeH::StaticThreadpoolH(void *ptr)
 {
-	const Public_MT_Data_Thread *data=(const Public_MT_Data_Thread *)ptr;
+	Public_MT_Data_Thread *data=(Public_MT_Data_Thread *)ptr;
 	FilteredResizeH *ptrClass=(FilteredResizeH *)data->pClass;
-	const MT_Data_Info_ResampleMT *MT_DataGF=(MT_Data_Info_ResampleMT *)data->pData;
+	MT_Data_Info_ResampleMT *MT_DataGF=(MT_Data_Info_ResampleMT *)data->pData;
 	const uint8_t thread_num=data->thread_Id;
 
 	switch(data->f_process)
 	{
-		case 1 : ptrClass->ResamplerLumaMT(MT_DataGF,thread_num);
+		case 1 : ptrClass->ResamplerLumaMT(MT_DataGF+thread_num);
 			break;
-		case 2 : ptrClass->ResamplerUChromaMT(MT_DataGF,thread_num);
+		case 2 : ptrClass->ResamplerUChromaMT(MT_DataGF+thread_num);
 			break;
-		case 3 : ptrClass->ResamplerVChromaMT(MT_DataGF,thread_num);
+		case 3 : ptrClass->ResamplerVChromaMT(MT_DataGF+thread_num);
 			break;
-		case 4 : ptrClass->ResamplerLumaMT2(MT_DataGF,thread_num);
+		case 4 : ptrClass->ResamplerLumaMT2(MT_DataGF+thread_num);
 			break;
-		case 5 : ptrClass->ResamplerLumaMT3(MT_DataGF,thread_num);
+		case 5 : ptrClass->ResamplerLumaMT3(MT_DataGF+thread_num);
 			break;
-		case 6 : ptrClass->ResamplerLumaMT4(MT_DataGF,thread_num);
+		case 6 : ptrClass->ResamplerLumaMT4(MT_DataGF+thread_num);
 			break;		
 		default : ;
 	}
@@ -3271,7 +3272,8 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   memcpy(MT_ThreadGF,MT_Thread,sizeof(MT_Thread));
   memcpy(MT_DataGF,MT_Data,sizeof(MT_Data));
 
-  MT_ThreadGF->pData=MT_DataGF;
+  for(uint8_t i=0; i<threads_number; i++)
+	MT_ThreadGF[i].pData=(void *)MT_DataGF;
 	
   if (threads_number>1)
   {
@@ -3349,27 +3351,27 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 	else
 	{
 		// Do resizing
-		ResamplerLumaMT(MT_DataGF,0);
+		ResamplerLumaMT(MT_DataGF);
     
 		if (!grey && vi.IsPlanar() && !isRGBPfamily)
 		{
 			// Plane U resizing   
-			ResamplerUChromaMT(MT_DataGF,0);
+			ResamplerUChromaMT(MT_DataGF);
 			// Plane V resizing
-			ResamplerVChromaMT(MT_DataGF,0);
+			ResamplerVChromaMT(MT_DataGF);
 		}
 		else
 		{
 			if (isRGBPfamily)
 			{
 				// Plane B resizing
-				ResamplerLumaMT2(MT_DataGF,0);
+				ResamplerLumaMT2(MT_DataGF);
 				// Plane R resizing
-				ResamplerLumaMT3(MT_DataGF,0);
+				ResamplerLumaMT3(MT_DataGF);
 			}
 		}
 		// Plane A resizing
-		if (isAlphaChannel) ResamplerLumaMT4(MT_DataGF,0);
+		if (isAlphaChannel) ResamplerLumaMT4(MT_DataGF);
 	}
 
   return dst;
@@ -3931,157 +3933,133 @@ uint8_t FilteredResizeV::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 	return(max);
 }
 
-void FilteredResizeV::ResamplerLumaAlignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaAlignedMT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_luma_aligned(mt_data_inf.dst1,mt_data_inf.src1,mt_data_inf.dst_pitch1,mt_data_inf.src_pitch1,
-		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
-		mt_data_inf.src_pitch_table_luma,mt_data_inf.filter_storage_luma,plane_range[0],mode_YUY2);
+	resampler_luma_aligned(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma,plane_range[0],mode_YUY2);
 }
 
 
-void FilteredResizeV::ResamplerLumaUnalignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaUnalignedMT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_luma_unaligned(mt_data_inf.dst1,mt_data_inf.src1,mt_data_inf.dst_pitch1,mt_data_inf.src_pitch1,
-		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
-		mt_data_inf.src_pitch_table_luma,mt_data_inf.filter_storage_luma,plane_range[0],mode_YUY2);
+	resampler_luma_unaligned(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma,plane_range[0],mode_YUY2);
 }
 
-void FilteredResizeV::ResamplerLumaAlignedMT2(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaAlignedMT2(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_luma_aligned(mt_data_inf.dst2,mt_data_inf.src2,mt_data_inf.dst_pitch2,mt_data_inf.src_pitch2,
-		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
-		mt_data_inf.src_pitch_table_luma,mt_data_inf.filter_storage_luma2,plane_range[1],mode_YUY2);
+	resampler_luma_aligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma2,plane_range[1],mode_YUY2);
 }
 
 
-void FilteredResizeV::ResamplerLumaUnalignedMT2(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaUnalignedMT2(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_luma_unaligned(mt_data_inf.dst2,mt_data_inf.src2,mt_data_inf.dst_pitch2,mt_data_inf.src_pitch2,
-		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
-		mt_data_inf.src_pitch_table_luma,mt_data_inf.filter_storage_luma2,plane_range[1],mode_YUY2);
+	resampler_luma_unaligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma2,plane_range[1],mode_YUY2);
 }
 
 
-void FilteredResizeV::ResamplerLumaAlignedMT3(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaAlignedMT3(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_luma_aligned(mt_data_inf.dst3,mt_data_inf.src3,mt_data_inf.dst_pitch3,mt_data_inf.src_pitch3,
-		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
-		mt_data_inf.src_pitch_table_luma,mt_data_inf.filter_storage_luma3,plane_range[2],mode_YUY2);
+	resampler_luma_aligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma3,plane_range[2],mode_YUY2);
 }
 
 
-void FilteredResizeV::ResamplerLumaUnalignedMT3(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaUnalignedMT3(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_luma_unaligned(mt_data_inf.dst3,mt_data_inf.src3,mt_data_inf.dst_pitch3,mt_data_inf.src_pitch3,
-		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
-		mt_data_inf.src_pitch_table_luma,mt_data_inf.filter_storage_luma3,plane_range[2],mode_YUY2);
+	resampler_luma_unaligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma3,plane_range[2],mode_YUY2);
 }
 
 
-void FilteredResizeV::ResamplerLumaAlignedMT4(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaAlignedMT4(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_luma_aligned(mt_data_inf.dst4,mt_data_inf.src4,mt_data_inf.dst_pitch4,mt_data_inf.src_pitch4,
-		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
-		mt_data_inf.src_pitch_table_luma,mt_data_inf.filter_storage_luma4,plane_range[3],mode_YUY2);
+	resampler_luma_aligned(MT_DataGF->dst4,MT_DataGF->src4,MT_DataGF->dst_pitch4,MT_DataGF->src_pitch4,
+		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma4,plane_range[3],mode_YUY2);
 }
 
 
-void FilteredResizeV::ResamplerLumaUnalignedMT4(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeV::ResamplerLumaUnalignedMT4(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_luma_unaligned(mt_data_inf.dst4,mt_data_inf.src4,mt_data_inf.dst_pitch4,mt_data_inf.src_pitch4,
-		mt_data_inf.resampling_program_luma,mt_data_inf.src_Y_w,bits_per_pixel,mt_data_inf.dst_Y_h_min,mt_data_inf.dst_Y_h_max,
-		mt_data_inf.src_pitch_table_luma,mt_data_inf.filter_storage_luma4,plane_range[3],mode_YUY2);
+	resampler_luma_unaligned(MT_DataGF->dst4,MT_DataGF->src4,MT_DataGF->dst_pitch4,MT_DataGF->src_pitch4,
+		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma4,plane_range[3],mode_YUY2);
 }
 
 
-void FilteredResizeV::ResamplerUChromaAlignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeV::ResamplerUChromaAlignedMT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_chroma_aligned(mt_data_inf.dst2,mt_data_inf.src2,mt_data_inf.dst_pitch2,mt_data_inf.src_pitch2,
-		mt_data_inf.resampling_program_chroma,mt_data_inf.src_UV_w,bits_per_pixel,mt_data_inf.dst_UV_h_min,mt_data_inf.dst_UV_h_max,
-		mt_data_inf.src_pitch_table_chromaU,mt_data_inf.filter_storage_chromaU,plane_range[1],mode_YUY2);
+	resampler_chroma_aligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+		MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
+		MT_DataGF->src_pitch_table_chromaU,MT_DataGF->filter_storage_chromaU,plane_range[1],mode_YUY2);
 }
 
 
-void FilteredResizeV::ResamplerUChromaUnalignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeV::ResamplerUChromaUnalignedMT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_chroma_unaligned(mt_data_inf.dst2,mt_data_inf.src2,mt_data_inf.dst_pitch2,mt_data_inf.src_pitch2,
-		mt_data_inf.resampling_program_chroma,mt_data_inf.src_UV_w,bits_per_pixel,mt_data_inf.dst_UV_h_min,mt_data_inf.dst_UV_h_max,
-		mt_data_inf.src_pitch_table_chromaU,mt_data_inf.filter_storage_chromaU,plane_range[1],mode_YUY2);
+	resampler_chroma_unaligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+		MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
+		MT_DataGF->src_pitch_table_chromaU,MT_DataGF->filter_storage_chromaU,plane_range[1],mode_YUY2);
 }
 
 
-void FilteredResizeV::ResamplerVChromaAlignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeV::ResamplerVChromaAlignedMT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_chroma_aligned(mt_data_inf.dst3,mt_data_inf.src3,mt_data_inf.dst_pitch3,mt_data_inf.src_pitch3,
-		mt_data_inf.resampling_program_chroma,mt_data_inf.src_UV_w,bits_per_pixel,mt_data_inf.dst_UV_h_min,mt_data_inf.dst_UV_h_max,
-		mt_data_inf.src_pitch_table_chromaV,mt_data_inf.filter_storage_chromaV,plane_range[2],mode_YUY2);
+	resampler_chroma_aligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+		MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
+		MT_DataGF->src_pitch_table_chromaV,MT_DataGF->filter_storage_chromaV,plane_range[2],mode_YUY2);
 }
 
 
-void FilteredResizeV::ResamplerVChromaUnalignedMT(const MT_Data_Info_ResampleMT *MT_DataGF,const uint8_t thread_num)
+void FilteredResizeV::ResamplerVChromaUnalignedMT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	const MT_Data_Info_ResampleMT mt_data_inf=MT_DataGF[thread_num];
-
-	resampler_chroma_unaligned(mt_data_inf.dst3,mt_data_inf.src3,mt_data_inf.dst_pitch3,mt_data_inf.src_pitch3,
-		mt_data_inf.resampling_program_chroma,mt_data_inf.src_UV_w,bits_per_pixel,mt_data_inf.dst_UV_h_min,mt_data_inf.dst_UV_h_max,
-		mt_data_inf.src_pitch_table_chromaV,mt_data_inf.filter_storage_chromaV,plane_range[2],mode_YUY2);
+	resampler_chroma_unaligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+		MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
+		MT_DataGF->src_pitch_table_chromaV,MT_DataGF->filter_storage_chromaV,plane_range[2],mode_YUY2);
 }
 
 
 void FilteredResizeV::StaticThreadpoolV(void *ptr)
 {
-	const Public_MT_Data_Thread *data=(const Public_MT_Data_Thread *)ptr;
+	Public_MT_Data_Thread *data=(Public_MT_Data_Thread *)ptr;
 	FilteredResizeV *ptrClass=(FilteredResizeV *)data->pClass;
-	const MT_Data_Info_ResampleMT *MT_DataGF=(MT_Data_Info_ResampleMT *)data->pData;
+	MT_Data_Info_ResampleMT *MT_DataGF=(MT_Data_Info_ResampleMT *)data->pData;
 	const uint8_t thread_num=data->thread_Id;
 	
 	switch(data->f_process)
 	{
-		case 1 : ptrClass->ResamplerLumaAlignedMT(MT_DataGF,thread_num);
+		case 1 : ptrClass->ResamplerLumaAlignedMT(MT_DataGF+thread_num);
 			break;
-		case 2 : ptrClass->ResamplerLumaUnalignedMT(MT_DataGF,thread_num);
+		case 2 : ptrClass->ResamplerLumaUnalignedMT(MT_DataGF+thread_num);
 			break;
-		case 3 : ptrClass->ResamplerUChromaAlignedMT(MT_DataGF,thread_num);
+		case 3 : ptrClass->ResamplerUChromaAlignedMT(MT_DataGF+thread_num);
 			break;
-		case 4 : ptrClass->ResamplerUChromaUnalignedMT(MT_DataGF,thread_num);
+		case 4 : ptrClass->ResamplerUChromaUnalignedMT(MT_DataGF+thread_num);
 			break;
-		case 5 : ptrClass->ResamplerVChromaAlignedMT(MT_DataGF,thread_num);
+		case 5 : ptrClass->ResamplerVChromaAlignedMT(MT_DataGF+thread_num);
 			break;
-		case 6 : ptrClass->ResamplerVChromaUnalignedMT(MT_DataGF,thread_num);
+		case 6 : ptrClass->ResamplerVChromaUnalignedMT(MT_DataGF+thread_num);
 			break;
-		case 7 : ptrClass->ResamplerLumaAlignedMT2(MT_DataGF,thread_num);
+		case 7 : ptrClass->ResamplerLumaAlignedMT2(MT_DataGF+thread_num);
 			break;
-		case 8 : ptrClass->ResamplerLumaUnalignedMT2(MT_DataGF,thread_num);
+		case 8 : ptrClass->ResamplerLumaUnalignedMT2(MT_DataGF+thread_num);
 			break;			
-		case 9 : ptrClass->ResamplerLumaAlignedMT3(MT_DataGF,thread_num);
+		case 9 : ptrClass->ResamplerLumaAlignedMT3(MT_DataGF+thread_num);
 			break;
-		case 10 : ptrClass->ResamplerLumaUnalignedMT3(MT_DataGF,thread_num);
+		case 10 : ptrClass->ResamplerLumaUnalignedMT3(MT_DataGF+thread_num);
 			break;			
-		case 11 : ptrClass->ResamplerLumaAlignedMT4(MT_DataGF,thread_num);
+		case 11 : ptrClass->ResamplerLumaAlignedMT4(MT_DataGF+thread_num);
 			break;
-		case 12 : ptrClass->ResamplerLumaUnalignedMT4(MT_DataGF,thread_num);
+		case 12 : ptrClass->ResamplerLumaUnalignedMT4(MT_DataGF+thread_num);
 			break;			
 		default : ;
 	}
@@ -4119,12 +4097,13 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   memcpy(MT_ThreadGF,MT_Thread,sizeof(MT_Thread));
   memcpy(MT_DataGF,MT_Data,sizeof(MT_Data));
 
-  MT_ThreadGF->pData=MT_DataGF;
+  for(uint8_t i=0; i<threads_number; i++)
+	MT_ThreadGF[i].pData=(void *)MT_DataGF;
 
   // Create pitch table
   if (src_pitch_luma != src->GetPitch())
   {
-    resize_v_create_pitch_table(src_pitch_table_luma, src_pitch_luma, src->GetHeight(),pixelsize);
+    resize_v_create_pitch_table(src_pitch_table_luma, src->GetPitch(), src->GetHeight(),pixelsize);
 	src_pitch_luma = src->GetPitch();
   }
 
@@ -4132,12 +4111,12 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   {
 	if (src_pitch_chromaU != src->GetPitch(PLANAR_U))
 	{
-		resize_v_create_pitch_table(src_pitch_table_chromaU, src_pitch_chromaU, src->GetHeight(PLANAR_U),pixelsize);
+		resize_v_create_pitch_table(src_pitch_table_chromaU, src->GetPitch(PLANAR_U), src->GetHeight(PLANAR_U),pixelsize);
 		src_pitch_chromaU = src->GetPitch(PLANAR_U);
 	}	  
 	if (src_pitch_chromaV != src->GetPitch(PLANAR_V))
 	{
-		resize_v_create_pitch_table(src_pitch_table_chromaV, src_pitch_chromaV, src->GetHeight(PLANAR_V),pixelsize);
+		resize_v_create_pitch_table(src_pitch_table_chromaV, src->GetPitch(PLANAR_V), src->GetHeight(PLANAR_V),pixelsize);
 		src_pitch_chromaV = src->GetPitch(PLANAR_V);
 	}	
   }
@@ -4267,46 +4246,46 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 	{
 		// Do resizing
 		if (IsPtrAligned(srcp_1, 16) && ((src_pitch_1 & 15) == 0))
-			ResamplerLumaAlignedMT(MT_DataGF,0);
+			ResamplerLumaAlignedMT(MT_DataGF);
 		else
-			ResamplerLumaUnalignedMT(MT_DataGF,0);
+			ResamplerLumaUnalignedMT(MT_DataGF);
     
 		if (!grey && vi.IsPlanar() && !isRGBPfamily)
 		{
 			// Plane U resizing   
 			if (IsPtrAligned(srcp_2, 16) && ((src_pitch_2 & 15) == 0))
-				ResamplerUChromaAlignedMT(MT_DataGF,0);
+				ResamplerUChromaAlignedMT(MT_DataGF);
 			else
-				ResamplerUChromaUnalignedMT(MT_DataGF,0);
+				ResamplerUChromaUnalignedMT(MT_DataGF);
 
 			// Plane V resizing
 			if (IsPtrAligned(srcp_3, 16) && ((src_pitch_3 & 15) == 0))
-				ResamplerVChromaAlignedMT(MT_DataGF,0);
+				ResamplerVChromaAlignedMT(MT_DataGF);
 			else
-				ResamplerVChromaUnalignedMT(MT_DataGF,0);
+				ResamplerVChromaUnalignedMT(MT_DataGF);
 		}
 		else
 		{
 			if (isRGBPfamily)
 			{
 				if (IsPtrAligned(srcp_2, 16) && ((src_pitch_2 & 15) == 0))
-					ResamplerLumaAlignedMT2(MT_DataGF,0);
+					ResamplerLumaAlignedMT2(MT_DataGF);
 				else
-					ResamplerLumaUnalignedMT2(MT_DataGF,0);		
+					ResamplerLumaUnalignedMT2(MT_DataGF);		
 				
 				if (IsPtrAligned(srcp_3, 16) && ((src_pitch_3 & 15) == 0))
-					ResamplerLumaAlignedMT3(MT_DataGF,0);
+					ResamplerLumaAlignedMT3(MT_DataGF);
 				else
-					ResamplerLumaUnalignedMT3(MT_DataGF,0);								
+					ResamplerLumaUnalignedMT3(MT_DataGF);								
 			}			
 		}
 		
 		if (isAlphaChannel)
 		{
 			if (IsPtrAligned(srcp_4, 16) && ((src_pitch_4 & 15) == 0))
-				ResamplerLumaAlignedMT4(MT_DataGF,0);
+				ResamplerLumaAlignedMT4(MT_DataGF);
 			else
-				ResamplerLumaUnalignedMT4(MT_DataGF,0);	
+				ResamplerLumaUnalignedMT4(MT_DataGF);	
 		}
 	}
 
