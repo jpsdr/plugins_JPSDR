@@ -5,7 +5,7 @@
 
 ThreadPoolInterface *poolInterface;
 
-int aWarpSharp_g_cpuid;
+bool aWarpSharp_Enable_SSE2,aWarpSharp_Enable_SSE41,aWarpSharp_Enable_AVX;
 
 const AVS_Linkage *AVS_linkage = nullptr;
 
@@ -837,7 +837,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
   {
   case 0 :
 	  {
-	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aWarpSharp2: SSE2 capable CPU is required");
+	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aWarpSharp2: SSE2 capable CPU is required");
 
 	  threads=args[14].AsInt(0);
 	  LogicalCores=args[15].AsBool(true);
@@ -885,7 +885,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  }
   case 1 :
 	  {
-	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aWarpSharp: SSE2 capable CPU is required");
+	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aWarpSharp: SSE2 capable CPU is required");
 
     blurt = (args[5].AsInt(2)!=2)?1:0;
     const int blurlevel = args[2].AsInt(2);
@@ -945,7 +945,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  sleep = args[8].AsBool(false);
 	  prefetch=args[9].AsInt(0);
 
-	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aSobel: SSE2 capable CPU is required");
+	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aSobel: SSE2 capable CPU is required");
 
 	  if ((threads<0) || (threads>MAX_MT_THREADS))
 		  env->ThrowError("aSobel: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
@@ -984,7 +984,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  sleep = args[11].AsBool(false);
 	  prefetch=args[12].AsInt(0);
 
-	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aBlur: SSE2 capable CPU is required");
+	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aBlur: SSE2 capable CPU is required");
 
 	  if ((threads<0) || (threads>MAX_MT_THREADS))
 		  env->ThrowError("aBlur: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
@@ -1007,7 +1007,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 		  }
 	  }
 
-	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aBlur: SSE2 capable CPU is required");
+	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aBlur: SSE2 capable CPU is required");
 
 	  blurt=args[2].AsInt(1);
 	  args[1].Defined() ? blur=args[1].AsInt(-1) : blur=((blurt==0) ? 2:3);
@@ -1028,7 +1028,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  sleep = args[12].AsBool(false);
 	  prefetch=args[13].AsInt(0);
 
-	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aWarp: SSE2 capable CPU is required");
+	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aWarp: SSE2 capable CPU is required");
 
 	  if ((threads<0) || (threads>MAX_MT_THREADS))
 		  env->ThrowError("aWarp: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
@@ -1051,7 +1051,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 		  }
 	  }
 
-	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aWarp: SSE2 capable CPU is required");
+	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aWarp: SSE2 capable CPU is required");
 
 	  depth=args[2].AsInt(3);
 	  args[4].Defined() ? depthC=args[4].AsInt(128) : depthC=(vi.Is444() ? depth:(depth>>1));
@@ -1071,7 +1071,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  sleep = args[12].AsBool(false);
 	  prefetch=args[13].AsInt(0);
 
-	  if ((aWarpSharp_g_cpuid & CPUF_SSE2)==0) env->ThrowError("aWarp4: SSE2 capable CPU is required");
+	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aWarp4: SSE2 capable CPU is required");
 
 	  if ((threads<0) || (threads>MAX_MT_THREADS))
 		  env->ThrowError("aWarp4: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
@@ -1115,7 +1115,9 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 
 	poolInterface=ThreadPoolInterface::Init(0);
 
-	aWarpSharp_g_cpuid = env->GetCPUFlags(); // PF
+	aWarpSharp_Enable_SSE2=(env->GetCPUFlags() & CPUF_SSE2)!=0;
+	aWarpSharp_Enable_SSE41=(env->GetCPUFlags() & CPUF_SSE4_1)!=0;
+	aWarpSharp_Enable_AVX=(env->GetCPUFlags() & CPUF_AVX)!=0;
 
 	if (!poolInterface->GetThreadPoolInterfaceStatus()) env->ThrowError("plugins_JPSDR: Error with the TheadPool status!");
 

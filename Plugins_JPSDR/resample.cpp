@@ -3219,22 +3219,21 @@ void FilteredResizeH::StaticThreadpoolH(void *ptr)
 {
 	Public_MT_Data_Thread *data=(Public_MT_Data_Thread *)ptr;
 	FilteredResizeH *ptrClass=(FilteredResizeH *)data->pClass;
-	MT_Data_Info_ResampleMT *MT_DataGF=(MT_Data_Info_ResampleMT *)data->pData;
-	const uint8_t thread_num=data->thread_Id;
+	MT_Data_Info_ResampleMT *MT_DataGF=((MT_Data_Info_ResampleMT *)data->pData)+data->thread_Id;
 
 	switch(data->f_process)
 	{
-		case 1 : ptrClass->ResamplerLumaMT(MT_DataGF+thread_num);
+		case 1 : ptrClass->ResamplerLumaMT(MT_DataGF);
 			break;
-		case 2 : ptrClass->ResamplerUChromaMT(MT_DataGF+thread_num);
+		case 2 : ptrClass->ResamplerUChromaMT(MT_DataGF);
 			break;
-		case 3 : ptrClass->ResamplerVChromaMT(MT_DataGF+thread_num);
+		case 3 : ptrClass->ResamplerVChromaMT(MT_DataGF);
 			break;
-		case 4 : ptrClass->ResamplerLumaMT2(MT_DataGF+thread_num);
+		case 4 : ptrClass->ResamplerLumaMT2(MT_DataGF);
 			break;
-		case 5 : ptrClass->ResamplerLumaMT3(MT_DataGF+thread_num);
+		case 5 : ptrClass->ResamplerLumaMT3(MT_DataGF);
 			break;
-		case 6 : ptrClass->ResamplerLumaMT4(MT_DataGF+thread_num);
+		case 6 : ptrClass->ResamplerLumaMT4(MT_DataGF);
 			break;		
 		default : ;
 	}
@@ -4032,34 +4031,33 @@ void FilteredResizeV::StaticThreadpoolV(void *ptr)
 {
 	Public_MT_Data_Thread *data=(Public_MT_Data_Thread *)ptr;
 	FilteredResizeV *ptrClass=(FilteredResizeV *)data->pClass;
-	MT_Data_Info_ResampleMT *MT_DataGF=(MT_Data_Info_ResampleMT *)data->pData;
-	const uint8_t thread_num=data->thread_Id;
+	MT_Data_Info_ResampleMT *MT_DataGF=((MT_Data_Info_ResampleMT *)data->pData)+data->thread_Id;
 	
 	switch(data->f_process)
 	{
-		case 1 : ptrClass->ResamplerLumaAlignedMT(MT_DataGF+thread_num);
+		case 1 : ptrClass->ResamplerLumaAlignedMT(MT_DataGF);
 			break;
-		case 2 : ptrClass->ResamplerLumaUnalignedMT(MT_DataGF+thread_num);
+		case 2 : ptrClass->ResamplerLumaUnalignedMT(MT_DataGF);
 			break;
-		case 3 : ptrClass->ResamplerUChromaAlignedMT(MT_DataGF+thread_num);
+		case 3 : ptrClass->ResamplerUChromaAlignedMT(MT_DataGF);
 			break;
-		case 4 : ptrClass->ResamplerUChromaUnalignedMT(MT_DataGF+thread_num);
+		case 4 : ptrClass->ResamplerUChromaUnalignedMT(MT_DataGF);
 			break;
-		case 5 : ptrClass->ResamplerVChromaAlignedMT(MT_DataGF+thread_num);
+		case 5 : ptrClass->ResamplerVChromaAlignedMT(MT_DataGF);
 			break;
-		case 6 : ptrClass->ResamplerVChromaUnalignedMT(MT_DataGF+thread_num);
+		case 6 : ptrClass->ResamplerVChromaUnalignedMT(MT_DataGF);
 			break;
-		case 7 : ptrClass->ResamplerLumaAlignedMT2(MT_DataGF+thread_num);
+		case 7 : ptrClass->ResamplerLumaAlignedMT2(MT_DataGF);
 			break;
-		case 8 : ptrClass->ResamplerLumaUnalignedMT2(MT_DataGF+thread_num);
+		case 8 : ptrClass->ResamplerLumaUnalignedMT2(MT_DataGF);
 			break;			
-		case 9 : ptrClass->ResamplerLumaAlignedMT3(MT_DataGF+thread_num);
+		case 9 : ptrClass->ResamplerLumaAlignedMT3(MT_DataGF);
 			break;
-		case 10 : ptrClass->ResamplerLumaUnalignedMT3(MT_DataGF+thread_num);
+		case 10 : ptrClass->ResamplerLumaUnalignedMT3(MT_DataGF);
 			break;			
-		case 11 : ptrClass->ResamplerLumaAlignedMT4(MT_DataGF+thread_num);
+		case 11 : ptrClass->ResamplerLumaAlignedMT4(MT_DataGF);
 			break;
-		case 12 : ptrClass->ResamplerLumaUnalignedMT4(MT_DataGF+thread_num);
+		case 12 : ptrClass->ResamplerLumaUnalignedMT4(MT_DataGF);
 			break;			
 		default : ;
 	}
