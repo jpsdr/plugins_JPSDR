@@ -3274,9 +3274,11 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   for(uint8_t i=0; i<threads_number; i++)
 	MT_ThreadGF[i].pData=(void *)MT_DataGF;
 	
+  int8_t nPool=-1;
+
   if (threads_number>1)
   {
-	if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,-1,false))
+	if ((!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,nPool,false,true)) || (nPool==-1))
 		env->ThrowError("ResizeHMT: Error with the TheadPool while requesting threadpool!");
   }
   
@@ -3309,17 +3311,17 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 	{
 		for(uint8_t i=0; i<threads_number; i++)
 			MT_ThreadGF[i].f_process=1;
-		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+		if (poolInterface->StartThreads(UserId,nPool)) poolInterface->WaitThreadsEnd(UserId,nPool);
 
 		if (!grey && vi.IsPlanar() && !isRGBPfamily)
 		{
 			for(uint8_t i=0; i<threads_number; i++)
 				MT_ThreadGF[i].f_process=2;
-			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+			if (poolInterface->StartThreads(UserId,nPool)) poolInterface->WaitThreadsEnd(UserId,nPool);
 
 			for(uint8_t i=0; i<threads_number; i++)
 				MT_ThreadGF[i].f_process=3;
-			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+			if (poolInterface->StartThreads(UserId,nPool)) poolInterface->WaitThreadsEnd(UserId,nPool);
 		}
 		else
 		{
@@ -3327,11 +3329,11 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 			{
 				for(uint8_t i=0; i<threads_number; i++)
 					MT_ThreadGF[i].f_process=4;
-				if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+				if (poolInterface->StartThreads(UserId,nPool)) poolInterface->WaitThreadsEnd(UserId,nPool);
 
 				for(uint8_t i=0; i<threads_number; i++)
 					MT_ThreadGF[i].f_process=5;
-				if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);								
+				if (poolInterface->StartThreads(UserId,nPool)) poolInterface->WaitThreadsEnd(UserId,nPool);								
 			}
 		}
 
@@ -3339,13 +3341,13 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 		{
 			for(uint8_t i=0; i<threads_number; i++)
 				MT_ThreadGF[i].f_process=6;
-			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);												
+			if (poolInterface->StartThreads(UserId,nPool)) poolInterface->WaitThreadsEnd(UserId,nPool);												
 		}
 
 		for(uint8_t i=0; i<threads_number; i++)
 			MT_ThreadGF[i].f_process=0;
 
-		poolInterface->ReleaseThreadPool(UserId,sleep);
+		poolInterface->ReleaseThreadPool(UserId,sleep,nPool);
 	}
 	else
 	{
@@ -4119,9 +4121,11 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 	}	
   }
 
+  int8_t nPool=-1;
+
   if (threads_number>1)
   {
-	if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,-1,false))
+	if ((!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,nPool,false,true)) || (nPool==-1))
 		env->ThrowError("ResizeHMT: Error with the TheadPool while requesting threadpool!");
   }
 
@@ -4187,7 +4191,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 
 		for(uint8_t i=0; i<threads_number; i++)
 			MT_ThreadGF[i].f_process=f_proc;
-		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+		if (poolInterface->StartThreads(UserId,nPool)) poolInterface->WaitThreadsEnd(UserId,nPool);
 
 		if (!grey && vi.IsPlanar() && !isRGBPfamily)
 		{
@@ -4196,14 +4200,14 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 
 			for(uint8_t i=0; i<threads_number; i++)
 				MT_ThreadGF[i].f_process=f_proc;
-			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+			if (poolInterface->StartThreads(UserId,nPool)) poolInterface->WaitThreadsEnd(UserId,nPool);
 
 			if (IsPtrAligned(srcp_3, 16) && ((src_pitch_3 & 15) == 0)) f_proc=5;
 			else f_proc=6;
 
 			for(uint8_t i=0; i<threads_number; i++)
 				MT_ThreadGF[i].f_process=f_proc;
-			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+			if (poolInterface->StartThreads(UserId,nPool)) poolInterface->WaitThreadsEnd(UserId,nPool);
 		}
 		else
 		{
@@ -4214,14 +4218,14 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 
 				for(uint8_t i=0; i<threads_number; i++)
 					MT_ThreadGF[i].f_process=f_proc;
-				if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+				if (poolInterface->StartThreads(UserId,nPool)) poolInterface->WaitThreadsEnd(UserId,nPool);
 
 				if (IsPtrAligned(srcp_3, 16) && ((src_pitch_3 & 15) == 0)) f_proc=9;
 				else f_proc=10;
 
 				for(uint8_t i=0; i<threads_number; i++)
 					MT_ThreadGF[i].f_process=f_proc;
-				if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);							
+				if (poolInterface->StartThreads(UserId,nPool)) poolInterface->WaitThreadsEnd(UserId,nPool);							
 			}
 		}
 		
@@ -4232,13 +4236,13 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 
 			for(uint8_t i=0; i<threads_number; i++)
 				MT_ThreadGF[i].f_process=f_proc;
-			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);			
+			if (poolInterface->StartThreads(UserId,nPool)) poolInterface->WaitThreadsEnd(UserId,nPool);			
 		}
 
 		for(uint8_t i=0; i<threads_number; i++)
 			MT_ThreadGF[i].f_process=0;
 
-		poolInterface->ReleaseThreadPool(UserId,sleep);
+		poolInterface->ReleaseThreadPool(UserId,sleep,nPool);
 	}
 	else
 	{
