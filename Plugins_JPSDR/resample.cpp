@@ -32,7 +32,6 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include <stdio.h>
 #include "resample.h"
 #include "./avs/config.h"
 #include "./avs/alignment.h"
@@ -4670,11 +4669,41 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 
 		if (threads_number>1)
 		{
-			if (!poolInterface->AllocateThreads(threads_number,0,0,_MaxPhysCores,_SetAffinity,true,-1))
-				env->ThrowError("ResizeMT: Error with the TheadPool while allocating threadpool!");
+			if (prefetch>1)
+			{
+				if (_SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+
+					for(uint8_t i=0; i<prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,_MaxPhysCores,true,true,i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("ResizeMT: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset+=delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number,0,0,_MaxPhysCores,false,true,-1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("ResizeMT: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number,0,0,_MaxPhysCores,_SetAffinity,true,-1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("ResizeMT: Error with the TheadPool while allocating threadpool!");
+				}
+			}
 		}
 	}
-
 
   if (!fast_resize)
   {

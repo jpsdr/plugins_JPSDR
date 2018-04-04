@@ -10,7 +10,7 @@ bool aWarpSharp_Enable_SSE2,aWarpSharp_Enable_SSE41,aWarpSharp_Enable_AVX;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 2.1.0"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 2.1.1"
 
 /*
   threshold : int, default value : 4
@@ -75,8 +75,39 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 
 		if (threads_number>1)
 		{
-			if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-				env->ThrowError("AutoYUY2: Error with the TheadPool while allocating threadpool!");
+			if (prefetch>1)
+			{
+				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+
+					for(uint8_t i=0; i<prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("AutoYUY2: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset+=delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("AutoYUY2: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("AutoYUY2: Error with the TheadPool while allocating threadpool!");
+				}
+			}
 		}
 	}
 
@@ -135,8 +166,39 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 
 		if (threads_number>1)
 		{
-			if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-				env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool!");
+			if (prefetch>1)
+			{
+				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+
+					for(uint8_t i=0; i<prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset+=delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool!");
+				}
+			}
 		}
 	}
 
@@ -266,11 +328,42 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
 
 		if (threads_number==0) env->ThrowError("nnedi3_rpow2: Error with the TheadPool while getting CPU info!");
-		
+
 		if (threads_number>1)
 		{
-			if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-				env->ThrowError("nnedi3_rpow2: Error with the TheadPool while allocating threadpool!");
+			if (prefetch>1)
+			{
+				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+
+					for(uint8_t i=0; i<prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("nnedi3_rpow2: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset+=delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("nnedi3_rpow2: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("nnedi3_rpow2: Error with the TheadPool while allocating threadpool!");
+				}
+			}
 		}
 	}
 
@@ -860,11 +953,42 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 		  if (threads_number==0) env->ThrowError("aWarpSharp2: Error with the TheadPool while getting CPU info!");
 
-		  if (threads_number>1)
-		  {
-			  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-				  env->ThrowError("aWarpSharp2: Error with the TheadPool while allocating threadpool!");
-		  }
+		if (threads_number>1)
+		{
+			if (prefetch>1)
+			{
+				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+
+					for(uint8_t i=0; i<prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("aWarpSharp2: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset+=delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("aWarpSharp2: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("aWarpSharp2: Error with the TheadPool while allocating threadpool!");
+				}
+			}
+		}
 	  }
 
 	  thresh=args[1].AsInt(0x80);
@@ -913,11 +1037,42 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 		  if (threads_number==0) env->ThrowError("aWarpSharp: Error with the TheadPool while getting CPU info!");
 
-		  if (threads_number>1)
-		  {
-			  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-				  env->ThrowError("aWarpSharp: Error with the TheadPool while allocating threadpool!");
-		  }
+		if (threads_number>1)
+		{
+			if (prefetch>1)
+			{
+				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+
+					for(uint8_t i=0; i<prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("aWarpSharp: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset+=delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("aWarpSharp: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("aWarpSharp: Error with the TheadPool while allocating threadpool!");
+				}
+			}
+		}
 	  }
 
 	  thresh=int(args[3].AsFloat(0.5)*256.0);
@@ -961,11 +1116,42 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 		  if (threads_number==0) env->ThrowError("aSobel: Error with the TheadPool while getting CPU info!");
 
-		  if (threads_number>1)
-		  {
-			  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-				  env->ThrowError("aSobel: Error with the TheadPool while allocating threadpool!");
-		  }
+		if (threads_number>1)
+		{
+			if (prefetch>1)
+			{
+				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+
+					for(uint8_t i=0; i<prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("aSobel: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset+=delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("aSobel: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("aSobel: Error with the TheadPool while allocating threadpool!");
+				}
+			}
+		}
 	  }
 
 	  thresh=args[1].AsInt(0x80);
@@ -1000,14 +1186,43 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 		  if (threads_number==0) env->ThrowError("aBlur: Error with the TheadPool while getting CPU info!");
 
-		  if (threads_number>1)
-		  {
-			  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-				  env->ThrowError("aBlur: Error with the TheadPool while allocating threadpool!");
-		  }
-	  }
+		if (threads_number>1)
+		{
+			if (prefetch>1)
+			{
+				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
 
-	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aBlur: SSE2 capable CPU is required");
+					for(uint8_t i=0; i<prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("aBlur: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset+=delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("aBlur: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("aBlur: Error with the TheadPool while allocating threadpool!");
+				}
+			}
+		}
+	  }
 
 	  blurt=args[2].AsInt(1);
 	  args[1].Defined() ? blur=args[1].AsInt(-1) : blur=((blurt==0) ? 2:3);
@@ -1044,14 +1259,43 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 		  if (threads_number==0) env->ThrowError("aWarp: Error with the TheadPool while getting CPU info!");
 
-		  if (threads_number>1)
-		  {
-			  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-				  env->ThrowError("aWarp: Error with the TheadPool while allocating threadpool!");
-		  }
-	  }
+		if (threads_number>1)
+		{
+			if (prefetch>1)
+			{
+				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
 
-	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aWarp: SSE2 capable CPU is required");
+					for(uint8_t i=0; i<prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("aWarp: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset+=delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("aWarp: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("aWarp: Error with the TheadPool while allocating threadpool!");
+				}
+			}
+		}
+	  }
 
 	  depth=args[2].AsInt(3);
 	  args[4].Defined() ? depthC=args[4].AsInt(128) : depthC=(vi.Is444() ? depth:(depth>>1));
@@ -1087,11 +1331,42 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 		  if (threads_number==0) env->ThrowError("aWarp4: Error with the TheadPool while getting CPU info!");
 
-		  if (threads_number>1)
-		  {
-			  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-				  env->ThrowError("aWarp4: Error with the TheadPool while allocating threadpool!");
-		  }
+		if (threads_number>1)
+		{
+			if (prefetch>1)
+			{
+				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+
+					for(uint8_t i=0; i<prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("aWarp4: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset+=delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("aWarp4: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("aWarp4: Error with the TheadPool while allocating threadpool!");
+				}
+			}
+		}
 	  }
 
 	  depth=args[2].AsInt(3);

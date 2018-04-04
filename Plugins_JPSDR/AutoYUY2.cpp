@@ -22,11 +22,6 @@
  */
 
 #include <windows.h>
-#include <winreg.h>
-#include <stdio.h>
-#include <io.h>
-#include <fcntl.h>
-#include <stdint.h>
 #include "AutoYUY2.h"
 
 extern ThreadPoolInterface *poolInterface;

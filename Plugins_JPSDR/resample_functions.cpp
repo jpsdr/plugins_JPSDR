@@ -34,7 +34,6 @@
 
 #include "resample_functions.h"
 #include "./avs/minmax.h"
-#include <stdio.h>
 
 
 /*******************************************
