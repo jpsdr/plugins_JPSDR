@@ -5156,7 +5156,7 @@ AVSValue __cdecl FilteredResizeMT::Create_PointResize(AVSValue args, void*, IScr
 {
   PointFilter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
-	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
 	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3],&f,env);
 }
 
@@ -5165,7 +5165,7 @@ AVSValue __cdecl FilteredResizeMT::Create_BilinearResize(AVSValue args, void*, I
 {
   TriangleFilter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
-	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
 	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3],&f,env);
 }
 
@@ -5174,7 +5174,7 @@ AVSValue __cdecl FilteredResizeMT::Create_BicubicResize(AVSValue args, void*, IS
 {
   MitchellNetravaliFilter f(args[3].AsDblDef(1./3.), args[4].AsDblDef(1./3.));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[9].AsInt(0),
-	  args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(true),args[13].AsBool(false),
+	  args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(false),args[13].AsBool(false),
 	  args[14].AsInt(0),args[15].AsInt(1),false,0,0,&args[5],&f,env);
 }
 
@@ -5182,7 +5182,7 @@ AVSValue __cdecl FilteredResizeMT::Create_LanczosResize(AVSValue args, void*, IS
 {
   LanczosFilter f(args[7].AsInt(3));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
-	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(false),
+	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
 	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,&args[3],&f,env);
 }
 
@@ -5190,7 +5190,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Lanczos4Resize(AVSValue args, void*, I
 {
   LanczosFilter f(4);
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
-	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
 	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3],&f,env);
 }
 
@@ -5198,7 +5198,7 @@ AVSValue __cdecl FilteredResizeMT::Create_BlackmanResize(AVSValue args, void*, I
 {
   BlackmanFilter f(args[7].AsInt(4));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
-	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(false),
+	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
 	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,&args[3],&f,env);
 }
 
@@ -5206,7 +5206,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Spline16Resize(AVSValue args, void*, I
 {
   Spline16Filter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
-	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
 	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3],&f,env);
 }
 
@@ -5214,7 +5214,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Spline36Resize(AVSValue args, void*, I
 {
   Spline36Filter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
-	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
 	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3],&f,env);
 }
 
@@ -5222,7 +5222,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Spline64Resize(AVSValue args, void*, I
 {
   Spline64Filter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
-	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
 	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3],&f,env);
 }
 
@@ -5230,7 +5230,7 @@ AVSValue __cdecl FilteredResizeMT::Create_GaussianResize(AVSValue args, void*, I
 {
   GaussianFilter f(args[7].AsFloat(30.0f));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
-	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(false),
+	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
 	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,&args[3],&f,env);
 }
 
@@ -5238,7 +5238,7 @@ AVSValue __cdecl FilteredResizeMT::Create_SincResize(AVSValue args, void*, IScri
 {
   SincFilter f(args[7].AsInt(4));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
-	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(false),
+	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
 	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,&args[3],&f,env);
 }
 
@@ -5247,7 +5247,7 @@ AVSValue __cdecl FilteredResizeMT::Create_DeBilinearResize(AVSValue args, void*,
 {
   TriangleFilter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
-	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
 	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),&args[3],&f,env);
 }
 
@@ -5256,7 +5256,7 @@ AVSValue __cdecl FilteredResizeMT::Create_DeBicubicResize(AVSValue args, void*, 
 {
   MitchellNetravaliFilter f(args[3].AsDblDef(1./3.), args[4].AsDblDef(1./3.));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[9].AsInt(0),
-	  args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(true),args[13].AsBool(false),
+	  args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(false),args[13].AsBool(false),
 	  args[14].AsInt(0),args[15].AsInt(1),true,args[16].AsInt(0),args[17].AsInt(0),&args[5],&f,env);
 }
 
@@ -5264,7 +5264,7 @@ AVSValue __cdecl FilteredResizeMT::Create_DeLanczosResize(AVSValue args, void*, 
 {
   LanczosFilter f(args[7].AsInt(3));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
-	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(false),
+	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
 	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),&args[3],&f,env);
 }
 
@@ -5272,7 +5272,7 @@ AVSValue __cdecl FilteredResizeMT::Create_DeLanczos4Resize(AVSValue args, void*,
 {
   LanczosFilter f(4);
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
-	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
 	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),&args[3],&f,env);
 }
 
@@ -5280,7 +5280,7 @@ AVSValue __cdecl FilteredResizeMT::Create_DeBlackmanResize(AVSValue args, void*,
 {
   BlackmanFilter f(args[7].AsInt(4));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
-	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(false),
+	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
 	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),&args[3],&f,env);
 }
 
@@ -5288,7 +5288,7 @@ AVSValue __cdecl FilteredResizeMT::Create_DeSpline16Resize(AVSValue args, void*,
 {
   Spline16Filter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
-	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
 	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),&args[3],&f,env);
 }
 
@@ -5296,7 +5296,7 @@ AVSValue __cdecl FilteredResizeMT::Create_DeSpline36Resize(AVSValue args, void*,
 {
   Spline36Filter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
-	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
 	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),&args[3],&f,env);
 }
 
@@ -5304,7 +5304,7 @@ AVSValue __cdecl FilteredResizeMT::Create_DeSpline64Resize(AVSValue args, void*,
 {
   Spline64Filter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
-	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),
+	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
 	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),&args[3],&f,env);
 }
 
@@ -5312,7 +5312,7 @@ AVSValue __cdecl FilteredResizeMT::Create_DeGaussianResize(AVSValue args, void*,
 {
   GaussianFilter f(args[7].AsFloat(30.0f));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
-	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(false),
+	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
 	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),&args[3],&f,env);
 }
 
@@ -5320,6 +5320,6 @@ AVSValue __cdecl FilteredResizeMT::Create_DeSincResize(AVSValue args, void*, ISc
 {
   SincFilter f(args[7].AsInt(4));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
-	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(false),
+	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
 	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),&args[3],&f,env);
 }
