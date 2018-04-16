@@ -582,6 +582,230 @@ CoeffAdd2D_AVX_1:
 CoeffAdd2D_AVX endp
 
 
+CoeffSubF_SSE2 proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+
+    public CoeffSubF_SSE2
+	
+	push ebx
+	
+	mov edx,coeff_a
+	
+	movss xmm0,dword ptr[edx]
+	pshufd xmm0,xmm0,0
+	
+	mov ebx,coeff_b
+	mov edx,coeff_c
+	mov eax,16
+	movzx ecx,lgth
+	
+CoeffSubF_SSE2_1:	
+	movaps xmm1,xmm0
+	subps xmm1,XMMWORD ptr[ebx]
+	add ebx,eax
+	movaps XMMWORD ptr[edx],xmm1
+	add edx,eax
+	loop CoeffSubF_SSE2_1
+	
+	pop ebx
+	
+	ret
+	
+CoeffSubF_SSE2 endp	
+
+
+CoeffSub2F_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+
+    public CoeffSub2F_SSE2
+	
+	mov edx,coeff_a
+	
+	movss xmm0,dword ptr[edx]
+	pshufd xmm0,xmm0,0
+	
+	mov edx,coeff_b
+	mov eax,16
+	movzx ecx,lgth
+	
+CoeffSub2F_SSE2_1:	
+	movaps xmm1,xmm0
+	subps xmm1,XMMWORD ptr[edx]
+	movaps XMMWORD ptr[edx],xmm1
+	add edx,eax
+	loop CoeffSub2F_SSE2_1
+
+	ret
+	
+CoeffSub2F_SSE2 endp	
+
+
+CoeffSubF_AVX proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+
+    public CoeffSubF_AVX
+	
+	push ebx
+	
+	mov edx,coeff_a
+	
+	vbroadcastss ymm0,dword ptr[edx]
+	
+	mov ebx,coeff_b
+	mov edx,coeff_c
+	mov eax,32
+	movzx ecx,lgth
+	
+CoeffSubF_AVX_1:	
+	vsubps ymm1,ymm0,YMMWORD ptr[ebx]
+	add ebx,eax
+	vmovaps YMMWORD ptr[edx],ymm1
+	add edx,eax
+	loop CoeffSubF_AVX_1
+	
+	vzeroupper
+	
+	pop ebx
+	
+	ret
+	
+CoeffSubF_AVX endp
+	
+
+CoeffSub2F_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+
+    public CoeffSub2F_AVX
+	
+	mov edx,coeff_a
+	
+	vbroadcastss ymm0,dword ptr[edx]
+	
+	mov edx,coeff_b
+	mov eax,32
+	movzx ecx,lgth
+	
+CoeffSub2F_AVX_1:	
+	vsubps ymm1,ymm0,YMMWORD ptr[edx]
+	vmovaps YMMWORD ptr[edx],ymm1
+	add edx,eax
+	loop CoeffSub2F_AVX_1
+	
+	vzeroupper
+
+	ret
+	
+CoeffSub2F_AVX endp
+
+	
+CoeffSubD_SSE2 proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+
+    public CoeffSubD_SSE2
+	
+	push ebx
+	
+	mov edx,coeff_a
+	
+	movsd xmm0,qword ptr[edx]
+	movlhps xmm0,xmm0
+	
+	mov ebx,coeff_b
+	mov edx,coeff_c
+	mov eax,16
+	movzx ecx,lgth
+	
+CoeffSubD_SSE2_1:	
+	movapd xmm1,xmm0
+	subpd xmm1,XMMWORD ptr[ebx]
+	add ebx,eax
+	movapd XMMWORD ptr[edx],xmm1
+	add edx,eax
+	loop CoeffSubD_SSE2_1
+	
+	pop ebx
+	
+	ret
+	
+CoeffSubD_SSE2 endp		
+
+
+CoeffSub2D_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+
+    public CoeffSub2D_SSE2
+	
+	mov edx,coeff_a
+	
+	movsd xmm0,qword ptr[edx]
+	movlhps xmm0,xmm0
+	
+	mov edx,coeff_b
+	mov eax,16
+	movzx ecx,lgth
+	
+CoeffSub2D_SSE2_1:	
+	movapd xmm1,xmm0
+	subpd xmm1,XMMWORD ptr[edx]
+	movapd XMMWORD ptr[edx],xmm1
+	add edx,eax
+	loop CoeffSub2D_SSE2_1
+
+	ret
+	
+CoeffSub2D_SSE2 endp		
+
+
+CoeffSubD_AVX proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+
+    public CoeffSubD_AVX
+	
+	push ebx
+	
+	mov edx,coeff_a
+	
+	vbroadcastsd ymm0,qword ptr[edx]
+	
+	mov ebx,coeff_b
+	mov edx,coeff_c
+	mov eax,32
+	movzx ecx,lgth
+	
+CoeffSubD_AVX_1:	
+	vsubpd ymm1,ymm0,YMMWORD ptr[ebx]
+	add ebx,eax
+	vmovapd YMMWORD ptr[edx],ymm1
+	add edx,eax
+	loop CoeffSubD_AVX_1
+	
+	vzeroupper
+	
+	pop ebx
+	
+	ret
+	
+CoeffSubD_AVX endp	
+
+
+CoeffSub2D_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+
+    public CoeffSub2D_AVX
+	
+	mov edx,coeff_a
+	
+	vbroadcastsd ymm0,qword ptr[edx]
+	
+	mov edx,coeff_b
+	mov eax,32
+	movzx ecx,lgth
+	
+CoeffSub2D_AVX_1:	
+	vsubpd ymm1,ymm0,YMMWORD ptr[edx]
+	vmovapd YMMWORD ptr[edx],ymm1
+	add edx,eax
+	loop CoeffSub2D_AVX_1
+	
+	vzeroupper
+	
+	ret
+	
+CoeffSub2D_AVX endp
+
+
 VectorNormeF_SSE2 proc coeff_x:dword,result:dword,lgth:word
 
     public VectorNormeF_SSE2

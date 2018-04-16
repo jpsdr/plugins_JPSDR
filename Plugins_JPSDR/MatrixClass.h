@@ -77,6 +77,8 @@ public :
 	bool Mult(const double coef);
 	bool Add(const double coef,const Vector &x);
 	bool Add(const double coef);
+	bool Sub(const double coef,const Vector &x);
+	bool Sub(const double coef);
 	bool Add_X(const Vector &x,const Vector &y);
 	bool Add_X(const Vector &x);
 	bool Sub_X(const Vector &x,const Vector &y);
@@ -99,6 +101,8 @@ protected :
 	void MultF(const double coef);
 	void AddF(const double coef,const Vector &x);
 	void AddF(const double coef);
+	void SubF(const double coef,const Vector &x);
+	void SubF(const double coef);
 	void AddF_X(const Vector &x,const Vector &y);
 	void AddF_X(const Vector &x);
 	void SubF_X(const Vector &x,const Vector &y);
@@ -118,6 +122,8 @@ protected :
 	void MultD(const double coef);
 	void AddD(const double coef,const Vector &x);
 	void AddD(const double coef);
+	void SubD(const double coef,const Vector &x);
+	void SubD(const double coef);
 	void AddD_X(const Vector &x,const Vector &y);
 	void AddD_X(const Vector &x);
 	void SubD_X(const Vector &x,const Vector &y);
@@ -217,6 +223,8 @@ public :
 	bool Mult(const double coef);
 	bool Add(const double coef,const Matrix &ma);
 	bool Add(const double coef);
+	bool Sub(const double coef,const Matrix &ma);
+	bool Sub(const double coef);
 	bool Add_A(const Matrix &ma,const Matrix &mb);
 	bool Add_A(const Matrix &ma);
 	bool Sub_A(const Matrix &ma,const Matrix &mb);
@@ -241,6 +249,8 @@ protected :
 	void MultF(const double coef);
 	void AddF(const double coef,const Matrix &ma);
 	void AddF(const double coef);
+	void SubF(const double coef,const Matrix &ma);
+	void SubF(const double coef);
 	void AddF_A(const Matrix &ma,const Matrix &mb);
 	void AddF_A(const Matrix &ma);
 	void SubF_A(const Matrix &ma,const Matrix &mb);
@@ -258,6 +268,8 @@ protected :
 	void MultD(const double coef);
 	void AddD(const double coef,const Matrix &ma);
 	void AddD(const double coef);
+	void SubD(const double coef,const Matrix &ma);
+	void SubD(const double coef);
 	void AddD_A(const Matrix &ma,const Matrix &mb);
 	void AddD_A(const Matrix &ma);
 	void SubD_A(const Matrix &ma,const Matrix &mb);

@@ -32,6 +32,16 @@ extern "C" void CoeffAdd2F_AVX(const float *coeff_a,float *coeff_b,uint16_t lght
 extern "C" void CoeffAdd2D_SSE2(const double *coeff_a,double *coeff_b,uint16_t lght);
 extern "C" void CoeffAdd2D_AVX(const double *coeff_a,double *coeff_b,uint16_t lght);
 
+extern "C" void CoeffSubF_SSE2(const float *coeff_a,const float *coeff_b,float *coeff_c,uint16_t lght);
+extern "C" void CoeffSubF_AVX(const float *coeff_a,const float *coeff_b,float *coeff_c,uint16_t lght);
+extern "C" void CoeffSubD_SSE2(const double *coeff_a,const double *coeff_b,double *coeff_c,uint16_t lght);
+extern "C" void CoeffSubD_AVX(const double *coeff_a,const double *coeff_b,double *coeff_c,uint16_t lght);
+
+extern "C" void CoeffSub2F_SSE2(const float *coeff_a,float *coeff_b,uint16_t lght);
+extern "C" void CoeffSub2F_AVX(const float *coeff_a,float *coeff_b,uint16_t lght);
+extern "C" void CoeffSub2D_SSE2(const double *coeff_a,double *coeff_b,uint16_t lght);
+extern "C" void CoeffSub2D_AVX(const double *coeff_a,double *coeff_b,uint16_t lght);
+
 extern "C" void VectorNormeF_SSE2(const float *coeff_x,float *result,uint16_t lght);
 extern "C" void VectorNormeF_AVX(const float *coeff_x,float *result,uint16_t lght);
 extern "C" void VectorNormeD_SSE2(const double *coeff_x,double *result,uint16_t lght);
@@ -1110,6 +1120,169 @@ void Vector_Compute::AddD(const double coef)
 		{
 			for (uint16_t i=0; i<l; i++)
 				c1[i]+=coef;
+		}
+	}
+}
+
+
+bool Vector_Compute::Sub(const double coef,const Vector &x)
+{
+	const uint16_t l=length;
+
+	if ((Coeff==NULL) || (l==0) || (&x==NULL)) return(false);
+	if (!x.AllocCheck()) return(false);
+
+	const uint16_t lb=x.GetLength();
+
+	if ((l!=lb) || (x.GetDataType()!=data_type)) return(false);
+
+	if (coef==0.0)
+	{
+		CopyStrict(x);
+		return(true);
+	}
+
+	switch(data_type)
+	{
+		case DATA_FLOAT : SubF(coef,x); break;
+		case DATA_DOUBLE : SubD(coef,x); break;
+		default : return(false);
+	}
+
+	return(true);
+}
+
+
+bool Vector_Compute::Sub(const double coef)
+{
+	const uint16_t l=length;
+
+	if ((Coeff==NULL) || (l==0)) return(false);
+
+	if (coef==0.0) return(true);
+
+	switch(data_type)
+	{
+		case DATA_FLOAT : SubF(coef); break;
+		case DATA_DOUBLE : SubD(coef); break;
+		default : return(false);
+	}
+
+	return(true);
+}
+
+
+void Vector_Compute::SubF(const double coef, const Vector &x)
+{
+	const uint16_t l=length;
+	const float *x1=(const float *)x.GetPtrVector();
+	float *c1=(float *)Coeff;
+	float b=(float)coef;
+
+	if (AVX_Enable)
+	{
+		const uint16_t n=(l+7)>>3;
+
+		CoeffSubF_AVX(&b,x1,c1,n);
+	}
+	else
+	{
+		if (SSE2_Enable)
+		{
+			const uint16_t n=(l+3)>>2;
+
+			CoeffSubF_SSE2(&b,x1,c1,n);
+		}
+		else
+		{
+			for (uint16_t i=0; i<l; i++)
+				c1[i]=b-x1[i];
+		}
+	}
+}
+
+
+void Vector_Compute::SubF(const double coef)
+{
+	const uint16_t l=length;
+	float *c1=(float *)Coeff;
+	float b=(float)coef;
+
+	if (AVX_Enable)
+	{
+		const uint16_t n=(l+7)>>3;
+
+		CoeffSub2F_AVX(&b,c1,n);
+	}
+	else
+	{
+		if (SSE2_Enable)
+		{
+			const uint16_t n=(l+3)>>2;
+
+			CoeffSub2F_SSE2(&b,c1,n);
+		}
+		else
+		{
+			for (uint16_t i=0; i<l; i++)
+				c1[i]=b-c1[i];
+		}
+	}
+}
+
+
+void Vector_Compute::SubD(const double coef, const Vector &x)
+{
+	const uint16_t l=length;
+	const double *x1=(const double *)x.GetPtrVector();
+	double *c1=(double *)Coeff;
+
+	if (AVX_Enable)
+	{
+		const uint16_t n=(l+3)>>2;
+
+		CoeffSubD_AVX(&coef,x1,c1,n);
+	}
+	else
+	{
+		if (SSE2_Enable)
+		{
+			const uint16_t n=(l+1)>>1;
+
+			CoeffSubD_SSE2(&coef,x1,c1,n);
+		}
+		else
+		{
+			for (uint16_t i=0; i<l; i++)
+				c1[i]=coef-x1[i];
+		}
+	}
+}
+
+
+void Vector_Compute::SubD(const double coef)
+{
+	const uint16_t l=length;
+	double *c1=(double *)Coeff;
+
+	if (AVX_Enable)
+	{
+		const uint16_t n=(l+3)>>2;
+
+		CoeffSub2D_AVX(&coef,c1,n);
+	}
+	else
+	{
+		if (SSE2_Enable)
+		{
+			const uint16_t n=(l+1)>>1;
+
+			CoeffSub2D_SSE2(&coef,c1,n);
+		}
+		else
+		{
+			for (uint16_t i=0; i<l; i++)
+				c1[i]=coef-c1[i];
 		}
 	}
 }
@@ -3054,6 +3227,249 @@ void Matrix_Compute::AddD(const double coef)
 
 				for (uint16_t j=0; j<co; j++)
 					c1[j]+=coef;
+
+				c+=pc;
+			}
+		}
+	}
+}
+
+
+bool Matrix_Compute::Sub(const double coef,const Matrix &ma)
+{
+	const uint16_t l=lines,c=columns;
+
+	if ((Coeff==NULL) || (l==0) || (c==0) || (&ma==NULL)) return(false);
+	if (!ma.AllocCheck()) return(false);
+
+	const uint16_t la=ma.GetLines(),ca=ma.GetColumns();
+
+	if ((c!=ca) || (l!=la) || (ma.GetDataType()!=data_type)) return(false);
+
+	if (coef==0.0)
+	{
+		Matrix::CopyStrict(ma);
+		return(true);
+	}
+
+	switch(data_type)
+	{
+		case DATA_FLOAT : SubF(coef,ma); break;
+		case DATA_DOUBLE : SubD(coef,ma); break;
+		default : return(false);
+	}
+
+	return(true);
+}
+
+
+bool Matrix_Compute::Sub(const double coef)
+{
+	const uint16_t l=lines,c=columns;
+
+	if ((Coeff==NULL) || (l==0) || (c==0)) return(false);
+
+	if (coef==0.0) return(true);
+
+	switch(data_type)
+	{
+		case DATA_FLOAT : SubF(coef); break;
+		case DATA_DOUBLE : SubD(coef); break;
+		default : return(false);
+	}
+
+	return(true);
+}
+
+
+void Matrix_Compute::SubF(const double coef,const Matrix &ma)
+{
+	const uint16_t li=lines,co=columns;
+	const uint8_t *a=(const uint8_t *)ma.GetPtrMatrix();
+	uint8_t *c=(uint8_t *)Coeff;
+	const ptrdiff_t pa=ma.GetPitch(),pc=pitch;
+	const float b=(float)coef;
+
+	if (AVX_Enable)
+	{
+		const uint16_t n=(co+7)>>3;
+
+		for (uint16_t i=0; i<li; i++)
+		{
+			CoeffSubF_AVX(&b,(const float *)a,(float *)c,n);
+
+			a+=pa;
+			c+=pc;
+		}
+	}
+	else
+	{
+		if (SSE2_Enable)
+		{
+			const uint16_t n=(co+3)>>2;
+
+			for (uint16_t i=0; i<li; i++)
+			{
+				CoeffSubF_SSE2(&b,(const float *)a,(float *)c,n);
+
+				a+=pa;
+				c+=pc;
+			}
+		}
+		else
+		{
+			for (uint16_t i=0; i<li; i++)
+			{
+				const float *a1=(const float *)a;
+				float *c1=(float *)c;
+
+				for (uint16_t j=0; j<co; j++)
+					c1[j]=b-a1[j];
+
+				a+=pa;
+				c+=pc;
+			}
+		}
+	}
+}
+
+
+void Matrix_Compute::SubD(const double coef,const Matrix &ma)
+{
+	const uint16_t li=lines,co=columns;
+	const uint8_t *a=(const uint8_t *)ma.GetPtrMatrix();
+	uint8_t *c=(uint8_t *)Coeff;
+	const ptrdiff_t pa=ma.GetPitch(),pc=pitch;
+
+	if (AVX_Enable)
+	{
+		const uint16_t n=(co+3)>>2;
+
+		for (uint16_t i=0; i<li; i++)
+		{
+			CoeffSubD_AVX(&coef,(const double *)a,(double *)c,n);
+
+			a+=pa;
+			c+=pc;
+		}
+	}
+	else
+	{
+		if (SSE2_Enable)
+		{
+			const uint16_t n=(co+1)>>1;
+
+			for (uint16_t i=0; i<li; i++)
+			{
+				CoeffSubD_SSE2(&coef,(const double *)a,(double *)c,n);
+
+				a+=pa;
+				c+=pc;
+			}
+		}
+		else
+		{
+			for (uint16_t i=0; i<li; i++)
+			{
+				const double *a1=(const double *)a;
+				double *c1=(double *)c;
+
+				for (uint16_t j=0; j<co; j++)
+					c1[j]=coef-a1[j];
+
+				a+=pa;
+				c+=pc;
+			}
+		}
+	}
+}
+
+
+void Matrix_Compute::SubF(const double coef)
+{
+	const uint16_t li=lines,co=columns;
+	uint8_t *c=(uint8_t *)Coeff;
+	const ptrdiff_t pc=pitch;
+	const float b=(float)coef;
+
+	if (AVX_Enable)
+	{
+		const uint16_t n=(co+7)>>3;
+
+		for (uint16_t i=0; i<li; i++)
+		{
+			CoeffSub2F_AVX(&b,(float *)c,n);
+
+			c+=pc;
+		}
+	}
+	else
+	{
+		if (SSE2_Enable)
+		{
+			const uint16_t n=(co+3)>>2;
+
+			for (uint16_t i=0; i<li; i++)
+			{
+				CoeffSub2F_SSE2(&b,(float *)c,n);
+
+				c+=pc;
+			}
+		}
+		else
+		{
+			for (uint16_t i=0; i<li; i++)
+			{
+				float *c1=(float *)c;
+
+				for (uint16_t j=0; j<co; j++)
+					c1[j]=b-c1[j];
+
+				c+=pc;
+			}
+		}
+	}
+}
+
+
+void Matrix_Compute::SubD(const double coef)
+{
+	const uint16_t li=lines,co=columns;
+	uint8_t *c=(uint8_t *)Coeff;
+	const ptrdiff_t pc=pitch;
+
+	if (AVX_Enable)
+	{
+		const uint16_t n=(co+3)>>2;
+
+		for (uint16_t i=0; i<li; i++)
+		{
+			CoeffSub2D_AVX(&coef,(double *)c,n);
+
+			c+=pc;
+		}
+	}
+	else
+	{
+		if (SSE2_Enable)
+		{
+			const uint16_t n=(co+1)>>1;
+
+			for (uint16_t i=0; i<li; i++)
+			{
+				CoeffSub2D_SSE2(&coef,(double *)c,n);
+
+				c+=pc;
+			}
+		}
+		else
+		{
+			for (uint16_t i=0; i<li; i++)
+			{
+				double *c1=(double *)c;
+
+				for (uint16_t j=0; j<co; j++)
+					c1[j]=coef-c1[j];
 
 				c+=pc;
 			}
