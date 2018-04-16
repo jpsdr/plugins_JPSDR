@@ -67,6 +67,11 @@ extern "C" void VectorSub2F_AVX(const float *coeff_a,float *coeff_b,uint16_t lgh
 extern "C" void VectorSub2D_SSE2(const double *coeff_a,double *coeff_b,uint16_t lght);
 extern "C" void VectorSub2D_AVX(const double *coeff_a,double *coeff_b,uint16_t lght);
 
+extern "C" void VectorInvSubF_SSE2(const float *coeff_a,float *coeff_b,uint16_t lght);
+extern "C" void VectorInvSubF_AVX(const float *coeff_a,float *coeff_b,uint16_t lght);
+extern "C" void VectorInvSubD_SSE2(const double *coeff_a,double *coeff_b,uint16_t lght);
+extern "C" void VectorInvSubD_AVX(const double *coeff_a,double *coeff_b,uint16_t lght);
+
 extern "C" void VectorProdF_SSE2(const float *coeff_a,const float *coeff_b,float *coeff_c,uint16_t lght);
 extern "C" void VectorProdF_AVX(const float *coeff_a,const float *coeff_b,float *coeff_c,uint16_t lght);
 extern "C" void VectorProdD_SSE2(const double *coeff_a,const double *coeff_b,double *coeff_c,uint16_t lght);
@@ -1316,6 +1321,28 @@ bool Vector_Compute::Sub_X(const Vector &x)
 }
 
 
+bool Vector_Compute::InvSub_X(const Vector &x)
+{
+	const uint16_t l=length;
+
+	if ((Coeff==NULL) || (l==0) || (&x==NULL)) return(false);
+	if (!x.AllocCheck()) return(false);
+
+	const uint16_t lx=x.GetLength();
+
+	if ((l!=lx) || (x.GetDataType()!=data_type)) return(false);
+
+	switch(data_type)
+	{
+		case DATA_FLOAT : InvSubF_X(x); break;
+		case DATA_DOUBLE : InvSubD_X(x); break;
+		default : return(false);
+	}
+
+	return(true);
+}
+
+
 void Vector_Compute::SubF_X(const Vector &x,const Vector &y)
 {
 	const uint16_t l=length;
@@ -1375,6 +1402,35 @@ void Vector_Compute::SubF_X(const Vector &x)
 }
 
 
+void Vector_Compute::InvSubF_X(const Vector &x)
+{
+	const uint16_t l=length;
+	const float *x1=(const float *)x.GetPtrVector();
+	float *c1=(float *)Coeff;
+
+	if (AVX_Enable)
+	{
+		const uint16_t n=(l+7)>>3;
+
+		VectorInvSubF_AVX(x1,c1,n);
+	}
+	else
+	{
+		if (SSE2_Enable)
+		{
+			const uint16_t n=(l+3)>>2;
+
+			VectorInvSubF_SSE2(x1,c1,n);
+		}
+		else
+		{
+			for (uint16_t i=0; i<l; i++)
+				c1[i]=x1[i]-c1[i];
+		}
+	}
+}
+
+
 void Vector_Compute::SubD_X(const Vector &x,const Vector &y)
 {
 	const uint16_t l=length;
@@ -1429,6 +1485,35 @@ void Vector_Compute::SubD_X(const Vector &x)
 		{
 			for (uint16_t i=0; i<l; i++)
 				c1[i]-=x1[i];
+		}
+	}
+}
+
+
+void Vector_Compute::InvSubD_X(const Vector &x)
+{
+	const uint16_t l=length;
+	const double *x1=(const double *)x.GetPtrVector();
+	double *c1=(double *)Coeff;
+
+	if (AVX_Enable)
+	{
+		const uint16_t n=(l+3)>>2;
+
+		VectorInvSubD_AVX(x1,c1,n);
+	}
+	else
+	{
+		if (SSE2_Enable)
+		{
+			const uint16_t n=(l+1)>>1;
+
+			VectorInvSubD_SSE2(x1,c1,n);
+		}
+		else
+		{
+			for (uint16_t i=0; i<l; i++)
+				c1[i]=x1[i]-c1[i];
 		}
 	}
 }
@@ -3281,6 +3366,28 @@ bool Matrix_Compute::Sub_A(const Matrix &ma)
 }
 
 
+bool Matrix_Compute::InvSub_A(const Matrix &ma)
+{
+	const uint16_t l=lines,c=columns;
+
+	if ((Coeff==NULL) || (l==0) || (c==0) || (&ma==NULL)) return(false);
+	if (!ma.AllocCheck()) return(false);
+
+	const uint16_t la=ma.GetLines(),ca=ma.GetColumns();
+
+	if ((c!=ca) || (l!=la) || (ma.GetDataType()!=data_type)) return(false);
+
+	switch(data_type)
+	{
+		case DATA_FLOAT : InvSub_A(ma); break;
+		case DATA_DOUBLE : InvSub_A(ma); break;
+		default : return(false);
+	}
+
+	return(true);
+}
+
+
 void Matrix_Compute::SubF_A(const Matrix &ma, const Matrix &mb)
 {
 	const uint16_t li=lines,co=columns;
@@ -3444,6 +3551,57 @@ void Matrix_Compute::SubF_A(const Matrix &ma)
 }
 
 
+void Matrix_Compute::InvSubF_A(const Matrix &ma)
+{
+	const uint16_t li=lines,co=columns;
+	const uint8_t *a=(const uint8_t *)ma.GetPtrMatrix();
+	uint8_t *c=(uint8_t *)Coeff;
+	const ptrdiff_t pa=ma.GetPitch(),pc=pitch;
+
+	if (AVX_Enable)
+	{
+		const uint16_t n=(co+7)>>3;
+
+		for (uint16_t i=0; i<li; i++)
+		{
+			VectorInvSubF_AVX((const float *)a,(float *)c,n);
+
+			a+=pa;
+			c+=pc;
+		}
+	}
+	else
+	{
+		if (SSE2_Enable)
+		{
+			const uint16_t n=(co+3)>>2;
+
+			for (uint16_t i=0; i<li; i++)
+			{
+				VectorInvSubF_SSE2((const float *)a,(float *)c,n);
+
+				a+=pa;
+				c+=pc;
+			}
+		}
+		else
+		{
+			for (uint16_t i=0; i<li; i++)
+			{
+				const float *a1=(const float *)a;
+				float *c1=(float *)c;
+
+				for (uint16_t j=0; j<co; j++)
+					c1[j]=a1[j]-c1[j];
+
+				a+=pa;
+				c+=pc;
+			}
+		}
+	}
+}
+
+
 void Matrix_Compute::SubD_A(const Matrix &ma)
 {
 	const uint16_t li=lines,co=columns;
@@ -3486,6 +3644,57 @@ void Matrix_Compute::SubD_A(const Matrix &ma)
 
 				for (uint16_t j=0; j<co; j++)
 					c1[j]-=a1[j];
+
+				a+=pa;
+				c+=pc;
+			}
+		}
+	}
+}
+
+
+void Matrix_Compute::InvSubD_A(const Matrix &ma)
+{
+	const uint16_t li=lines,co=columns;
+	const uint8_t *a=(const uint8_t *)ma.GetPtrMatrix();
+	uint8_t *c=(uint8_t *)Coeff;
+	const ptrdiff_t pa=ma.GetPitch(),pc=pitch;
+
+	if (AVX_Enable)
+	{
+		const uint16_t n=(co+3)>>2;
+
+		for (uint16_t i=0; i<li; i++)
+		{
+			VectorInvSubD_AVX((const double *)a,(double *)c,n);
+
+			a+=pa;
+			c+=pc;
+		}
+	}
+	else
+	{
+		if (SSE2_Enable)
+		{
+			const uint16_t n=(co+1)>>1;
+
+			for (uint16_t i=0; i<li; i++)
+			{
+				VectorInvSubD_SSE2((const double *)a,(double *)c,n);
+
+				a+=pa;
+				c+=pc;
+			}
+		}
+		else
+		{
+			for (uint16_t i=0; i<li; i++)
+			{
+				const double *a1=(const double *)a;
+				double *c1=(double *)c;
+
+				for (uint16_t j=0; j<co; j++)
+					c1[j]=a1[j]-c1[j];
 
 				a+=pa;
 				c+=pc;

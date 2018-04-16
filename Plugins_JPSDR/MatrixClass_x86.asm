@@ -1136,9 +1136,9 @@ VectorSub2F_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
 VectorSub2F_SSE2_1:	
 	movaps xmm0,XMMWORD ptr[ebx]
 	subps xmm0,XMMWORD ptr[edx]
-	add ebx,eax
-	movaps XMMWORD ptr[ebx],xmm0
 	add edx,eax
+	movaps XMMWORD ptr[ebx],xmm0
+	add ebx,eax
 	loop VectorSub2F_SSE2_1
 	
 	pop ebx
@@ -1146,6 +1146,32 @@ VectorSub2F_SSE2_1:
 	ret
 	
 VectorSub2F_SSE2 endp	
+
+
+VectorInvSubF_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+
+    public VectorInvSubF_SSE2
+	
+	push ebx
+
+	mov eax,16
+	mov ebx,coeff_a
+	mov edx,coeff_b
+	movzx ecx,lgth
+	
+VectorInvSubF_SSE2_1:	
+	movaps xmm0,XMMWORD ptr[edx]
+	subps xmm0,XMMWORD ptr[ebx]
+	add edx,eax
+	movaps XMMWORD ptr[ebx],xmm0
+	add ebx,eax
+	loop VectorInvSubF_SSE2_1
+	
+	pop ebx
+	
+	ret
+	
+VectorInvSubF_SSE2 endp	
 
 
 VectorProd2F_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
@@ -1303,9 +1329,9 @@ VectorSub2F_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
 VectorSub2F_AVX_1:	
 	vmovaps ymm0,YMMWORD ptr[ebx]
 	vsubps ymm0,ymm0,YMMWORD ptr[edx]
-	add ebx,eax
-	vmovaps YMMWORD ptr[ebx],ymm0
 	add edx,eax
+	vmovaps YMMWORD ptr[ebx],ymm0
+	add ebx,eax
 	loop VectorSub2F_AVX_1
 	
 	vzeroupper
@@ -1315,6 +1341,34 @@ VectorSub2F_AVX_1:
 	ret
 	
 VectorSub2F_AVX endp
+
+
+VectorInvSubF_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+
+    public VectorInvSubF_AVX
+	
+	push ebx
+
+	mov eax,32
+	mov ebx,coeff_a
+	mov edx,coeff_b
+	movzx ecx,lgth
+	
+VectorInvSubF_AVX_1:	
+	vmovaps ymm0,YMMWORD ptr[edx]
+	vsubps ymm0,ymm0,YMMWORD ptr[ebx]
+	add edx,eax
+	vmovaps YMMWORD ptr[ebx],ymm0
+	add ebx,eax
+	loop VectorInvSubF_AVX_1
+	
+	vzeroupper
+	
+	pop ebx
+	
+	ret
+	
+VectorInvSubF_AVX endp
 
 
 VectorProd2F_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
@@ -1466,9 +1520,9 @@ VectorSub2D_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
 VectorSub2D_SSE2_1:	
 	movapd xmm0,XMMWORD ptr[ebx]
 	subpd xmm0,XMMWORD ptr[edx]
-	add ebx,eax
-	movapd XMMWORD ptr[ebx],xmm0
 	add edx,eax
+	movapd XMMWORD ptr[ebx],xmm0
+	add ebx,eax
 	loop VectorSub2D_SSE2_1
 	
 	pop ebx
@@ -1476,6 +1530,32 @@ VectorSub2D_SSE2_1:
 	ret
 	
 VectorSub2D_SSE2 endp	
+
+
+VectorInvSubD_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+
+    public VectorInvSubD_SSE2
+	
+	push ebx
+
+	mov eax,16
+	mov ebx,coeff_a
+	mov edx,coeff_b
+	movzx ecx,lgth
+	
+VectorInvSubD_SSE2_1:	
+	movapd xmm0,XMMWORD ptr[edx]
+	subpd xmm0,XMMWORD ptr[ebx]
+	add edx,eax
+	movapd XMMWORD ptr[ebx],xmm0
+	add ebx,eax
+	loop VectorInvSubD_SSE2_1
+	
+	pop ebx
+	
+	ret
+	
+VectorInvSubD_SSE2 endp	
 
 
 VectorProd2D_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
@@ -1633,9 +1713,9 @@ VectorSub2D_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
 VectorSub2D_AVX_1:	
 	vmovapd ymm0,YMMWORD ptr[ebx]
 	vsubpd ymm0,ymm0,YMMWORD ptr[edx]
-	add ebx,eax
-	vmovapd YMMWORD ptr[ebx],ymm0
 	add edx,eax
+	vmovapd YMMWORD ptr[ebx],ymm0
+	add ebx,eax
 	loop VectorSub2D_AVX_1
 	
 	vzeroupper
@@ -1645,6 +1725,34 @@ VectorSub2D_AVX_1:
 	ret
 	
 VectorSub2D_AVX endp
+
+
+VectorInvSubD_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+
+    public VectorInvSubD_AVX
+	
+	push ebx
+
+	mov eax,32
+	mov ebx,coeff_a
+	mov edx,coeff_b
+	movzx ecx,lgth
+	
+VectorInvSubD_AVX_1:	
+	vmovapd ymm0,YMMWORD ptr[edx]
+	vsubpd ymm0,ymm0,YMMWORD ptr[ebx]
+	add edx,eax
+	vmovapd YMMWORD ptr[ebx],ymm0
+	add ebx,eax
+	loop VectorInvSubD_AVX_1
+	
+	vzeroupper
+	
+	pop ebx
+	
+	ret
+	
+VectorInvSubD_AVX endp
 
 
 VectorProd2D_AVX proc coeff_a:dword,coeff_b:dword,lgth:word

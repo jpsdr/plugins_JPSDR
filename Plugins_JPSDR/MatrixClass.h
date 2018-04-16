@@ -81,6 +81,7 @@ public :
 	bool Add_X(const Vector &x);
 	bool Sub_X(const Vector &x,const Vector &y);
 	bool Sub_X(const Vector &x);
+	bool InvSub_X(const Vector &x);
 	bool Mult_X(const Vector &x,const Vector &y);
 	bool Mult_X(const Vector &x);
 
@@ -102,6 +103,7 @@ protected :
 	void AddF_X(const Vector &x);
 	void SubF_X(const Vector &x,const Vector &y);
 	void SubF_X(const Vector &x);
+	void InvSubF_X(const Vector &x);
 	void MultF_X(const Vector &x,const Vector &y);
 	void MultF_X(const Vector &x);
 
@@ -120,6 +122,7 @@ protected :
 	void AddD_X(const Vector &x);
 	void SubD_X(const Vector &x,const Vector &y);
 	void SubD_X(const Vector &x);
+	void InvSubD_X(const Vector &x);
 	void MultD_X(const Vector &x,const Vector &y);
 	void MultD_X(const Vector &x);
 
@@ -218,6 +221,7 @@ public :
 	bool Add_A(const Matrix &ma);
 	bool Sub_A(const Matrix &ma,const Matrix &mb);
 	bool Sub_A(const Matrix &ma);
+	bool InvSub_A(const Matrix &ma);
 
 	bool Product_AB(const Matrix &ma,const Matrix &mb);
 	bool Product_AtB(const Matrix &ma,const Matrix &mb);
@@ -241,6 +245,7 @@ protected :
 	void AddF_A(const Matrix &ma);
 	void SubF_A(const Matrix &ma,const Matrix &mb);
 	void SubF_A(const Matrix &ma);
+	void InvSubF_A(const Matrix &ma);
 
 	void ProductF_AB(const Matrix &ma,const Matrix &mb);
 	void ProductF_AtB(const Matrix &ma,const Matrix &mb);
@@ -257,6 +262,7 @@ protected :
 	void AddD_A(const Matrix &ma);
 	void SubD_A(const Matrix &ma,const Matrix &mb);
 	void SubD_A(const Matrix &ma);
+	void InvSubD_A(const Matrix &ma);
 
 	void TransposeD(const Matrix &ma);
 

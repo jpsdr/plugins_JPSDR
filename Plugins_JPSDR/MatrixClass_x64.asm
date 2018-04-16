@@ -1169,6 +1169,33 @@ VectorSub2F_SSE2_1:
 VectorSub2F_SSE2 endp
 
 
+;VectorInvSubF_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorInvSubF_SSE2 proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,16
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorInvSubF_SSE2_1:	
+	movaps xmm0,XMMWORD ptr[rdx]
+	subps xmm0,XMMWORD ptr[r9]
+	add rdx,r11
+	movaps XMMWORD ptr[r9],xmm0
+	add r9,r11
+	loop VectorInvSubF_SSE2_1
+	
+	ret
+	
+VectorInvSubF_SSE2 endp
+
+
 ;VectorProd2F_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
 ; coeff_a = rcx
 ; coeff_b = rdx
@@ -1335,6 +1362,33 @@ VectorSub2F_AVX_1:
 	ret
 	
 VectorSub2F_AVX endp
+
+
+;VectorInvSubF_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorInvSubF_AVX proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,32
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorInvSubF_AVX_1:	
+	vmovaps ymm0,YMMWORD ptr[rdx]
+	vsubps ymm0,ymm0,YMMWORD ptr[r9]
+	add rdx,r10
+	vmovaps YMMWORD ptr[r9],ymm0
+	add r9,r10
+	loop VectorInvSubF_AVX_1
+	
+	ret
+	
+VectorInvSubF_AVX endp
 
 
 ;VectorProd2F_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
@@ -1505,6 +1559,33 @@ VectorSub2D_SSE2_1:
 VectorSub2D_SSE2 endp
 
 
+;VectorInvSubD_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorInvSubD_SSE2 proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,16
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorInvSubD_SSE2_1:	
+	movapd xmm0,XMMWORD ptr[rdx]
+	subpd xmm0,XMMWORD ptr[r9]
+	add rdx,r11
+	movapd XMMWORD ptr[r9],xmm0
+	add r9,r11
+	loop VectorInvSubD_SSE2_1
+	
+	ret
+	
+VectorInvSubD_SSE2 endp
+
+
 ;VectorProd2D_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
 ; coeff_a = rcx
 ; coeff_b = rdx
@@ -1671,6 +1752,33 @@ VectorSub2D_AVX_1:
 	ret
 	
 VectorSub2D_AVX endp
+
+
+;VectorInvSubD_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorInvSubD_AVX proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,32
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorInvSubD_AVX_1:	
+	vmovapd ymm0,YMMWORD ptr[rdx]
+	vsubpd ymm0,ymm0,YMMWORD ptr[r9]
+	add rdx,r10
+	vmovapd YMMWORD ptr[r9],ymm0
+	add r9,r10
+	loop VectorInvSubD_AVX_1
+	
+	ret
+	
+VectorInvSubD_AVX endp
 
 
 ;VectorProd2D_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
