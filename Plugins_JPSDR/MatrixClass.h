@@ -9,6 +9,9 @@ typedef enum COEFF_DATA_TYPE_ {DATA_NONE,DATA_DOUBLE,DATA_FLOAT,DATA_UINT64,DATA
 	DATA_UINT32,DATA_INT32,DATA_UINT16,DATA_INT16,DATA_UINT8,DATA_INT8} COEFF_DATA_TYPE;
 
 
+void SetCPUMatrixClass(bool SSE2,bool AVX,bool AVX2);
+
+
 class Vector
 {
 public :
@@ -57,27 +60,74 @@ class Matrix;
 
 class Vector_Compute : public Vector
 {
+protected :
+	bool SSE2_Enable,AVX_Enable,AVX2_Enable;
+
 public :
 	Vector_Compute(void);
 	Vector_Compute(const uint16_t l,const COEFF_DATA_TYPE data);
 	Vector_Compute(const Vector_Compute &x);
 	virtual ~Vector_Compute(void);
 
-	void EnableSSE2(void) {SSE2_Enable=true;}
-	void DisableSSE2(void) {SSE2_Enable=false;}
-	void EnableAVX(void) {AVX_Enable=true;}
-	void DisableAVX(void) {AVX_Enable=false;}
-	void EnableAVX2(void) {AVX2_Enable=true;}
-	void DisableAVX2(void) {AVX2_Enable=false;}
+	void SetSSE2(bool val) {SSE2_Enable=val;}
+	void SetAVX(bool val) {AVX_Enable=val;}
+	void SetAVX2(bool val) {AVX2_Enable=val;}
+
+	bool Mult(const double coef,const Vector &x);
+	bool Mult(const double coef);
+	bool Add(const double coef,const Vector &x);
+	bool Add(const double coef);
+	bool Add_X(const Vector &x,const Vector &y);
+	bool Add_X(const Vector &x);
+	bool Sub_X(const Vector &x,const Vector &y);
+	bool Sub_X(const Vector &x);
+	bool Mult_X(const Vector &x,const Vector &y);
+	bool Mult_X(const Vector &x);
 
 	bool Product_AX(const Matrix &ma,const Vector &x);
 	bool Product_AX(const Matrix &ma);
+	bool Product_tAX(const Matrix &ma,const Vector &x);
+	bool Product_tAX(const Matrix &ma);
+
+	bool Norme(double &result);
+	bool Distance(const Vector &x,double &result);
 
 protected :
-	bool SSE2_Enable,AVX_Enable,AVX2_Enable;
+	// Float
+	void MultF(const double coef,const Vector &x);
+	void MultF(const double coef);
+	void AddF(const double coef,const Vector &x);
+	void AddF(const double coef);
+	void AddF_X(const Vector &x,const Vector &y);
+	void AddF_X(const Vector &x);
+	void SubF_X(const Vector &x,const Vector &y);
+	void SubF_X(const Vector &x);
+	void MultF_X(const Vector &x,const Vector &y);
+	void MultF_X(const Vector &x);
 
 	void ProductF_AX(const Matrix &ma,const Vector &x);
+	void ProductF_tAX(const Matrix &ma,const Vector &x);
+
+	double NormeF(void);
+	double DistanceF(const Vector &x);
+
+	// Double
+	void MultD(const double coef,const Vector &x);
+	void MultD(const double coef);
+	void AddD(const double coef,const Vector &x);
+	void AddD(const double coef);
+	void AddD_X(const Vector &x,const Vector &y);
+	void AddD_X(const Vector &x);
+	void SubD_X(const Vector &x,const Vector &y);
+	void SubD_X(const Vector &x);
+	void MultD_X(const Vector &x,const Vector &y);
+	void MultD_X(const Vector &x);
+
 	void ProductD_AX(const Matrix &ma,const Vector &x);
+	void ProductD_tAX(const Matrix &ma,const Vector &x);
+
+	double NormeD(void);
+	double DistanceD(const Vector &x);
 
 private :
 	Vector_Compute& operator = (const Vector_Compute &other);
@@ -138,64 +188,106 @@ private :
 
 class Matrix_Compute : public Matrix
 {
+protected :
+	double zero_value;
+	bool SSE2_Enable,AVX_Enable,AVX2_Enable;
+
 public :
 	Matrix_Compute(void);
 	Matrix_Compute(const uint16_t l,const uint16_t c,const COEFF_DATA_TYPE data);
 	Matrix_Compute(const Matrix_Compute &m);
 	virtual ~Matrix_Compute(void);
 
-	void EnableSSE2(void) {SSE2_Enable=true;}
-	void DisableSSE2(void) {SSE2_Enable=false;}
-	void EnableAVX(void) {AVX_Enable=true;}
-	void DisableAVX(void) {AVX_Enable=false;}
-	void EnableAVX2(void) {AVX2_Enable=true;}
-	void DisableAVX2(void) {AVX2_Enable=false;}
+	void SetSSE2(bool val) {SSE2_Enable=val;}
+	void SetAVX(bool val) {AVX_Enable=val;}
+	void SetAVX2(bool val) {AVX2_Enable=val;}
 
 	bool CreateTranspose(const Matrix &m);
 	virtual bool CopyStrict(const Matrix_Compute &m);
 	void SetZeroValue(const double z) {zero_value=fabs(z);}
 	double GetZeroValue(void) const {return(zero_value);}
+
+	bool Transpose(void);
+	bool Transpose(const Matrix &ma);
+
+	bool Mult(const double coef,const Matrix &ma);
+	bool Mult(const double coef);
+	bool Add(const double coef,const Matrix &ma);
+	bool Add(const double coef);
+	bool Add_A(const Matrix &ma,const Matrix &mb);
+	bool Add_A(const Matrix &ma);
+	bool Sub_A(const Matrix &ma,const Matrix &mb);
+	bool Sub_A(const Matrix &ma);
+
 	bool Product_AB(const Matrix &ma,const Matrix &mb);
 	bool Product_AtB(const Matrix &ma,const Matrix &mb);
 	bool Product_tAA(const Matrix &ma);
 	bool Product_tAA(void);
+
 	bool Inverse(const Matrix &ma);
 	bool Inverse(void);
 	int8_t InverseSafe(const Matrix_Compute &ma);
 	int8_t InverseSafe(void);
-	bool Transpose(void);
-	bool Transpose(const Matrix &ma);
 
 protected :
-	double zero_value;
-	bool SSE2_Enable,AVX_Enable,AVX2_Enable;
+	// Float
+	void TransposeF(const Matrix &ma);
 
-	void ProductD_AB(const Matrix &ma,const Matrix &mb);
-	void ProductD_AtB(const Matrix &ma,const Matrix &mb);
-	bool InverseD(const Matrix &ma);
-	int8_t InverseSafeD(const Matrix_Compute &ma);
-	void TransposeD(const Matrix &ma);
+	void MultF(const double coef,const Matrix &ma);
+	void MultF(const double coef);
+	void AddF(const double coef,const Matrix &ma);
+	void AddF(const double coef);
+	void AddF_A(const Matrix &ma,const Matrix &mb);
+	void AddF_A(const Matrix &ma);
+	void SubF_A(const Matrix &ma,const Matrix &mb);
+	void SubF_A(const Matrix &ma);
 
 	void ProductF_AB(const Matrix &ma,const Matrix &mb);
 	void ProductF_AtB(const Matrix &ma,const Matrix &mb);
+
 	bool InverseF(const Matrix &ma);
 	int8_t InverseSafeF(const Matrix_Compute &ma);
-	void TransposeF(const Matrix &ma);
 
+	// Double
+	void MultD(const double coef,const Matrix &ma);
+	void MultD(const double coef);
+	void AddD(const double coef,const Matrix &ma);
+	void AddD(const double coef);
+	void AddD_A(const Matrix &ma,const Matrix &mb);
+	void AddD_A(const Matrix &ma);
+	void SubD_A(const Matrix &ma,const Matrix &mb);
+	void SubD_A(const Matrix &ma);
+
+	void TransposeD(const Matrix &ma);
+
+	void ProductD_AB(const Matrix &ma,const Matrix &mb);
+	void ProductD_AtB(const Matrix &ma,const Matrix &mb);
+
+	bool InverseD(const Matrix &ma);
+	int8_t InverseSafeD(const Matrix_Compute &ma);
+
+	// U64
 	void TransposeU64(const Matrix &ma);
 
+	// I64
 	void TransposeI64(const Matrix &ma);
 
+	// U32
 	void TransposeU32(const Matrix &ma);
 
+	// I32
 	void TransposeI32(const Matrix &ma);
 
+	// U16
 	void TransposeU16(const Matrix &ma);
 
+	// I16
 	void TransposeI16(const Matrix &ma);
 
+	// U8
 	void TransposeU8(const Matrix &ma);
 
+	// I8
 	void TransposeI8(const Matrix &ma);
 
 	Matrix_Compute& operator=(const Matrix_Compute&){return(*this);}

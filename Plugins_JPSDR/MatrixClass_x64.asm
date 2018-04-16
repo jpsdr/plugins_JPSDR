@@ -31,6 +31,34 @@ CoeffProductF_SSE2_1:
 CoeffProductF_SSE2 endp	
 
 
+;CoeffProduct2F_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+CoeffProduct2F_SSE2 proc public frame
+
+	.endprolog
+	
+	movss xmm0,dword ptr[rcx]
+	pshufd xmm0,xmm0,0
+
+	xor rcx,rcx
+	mov rax,16
+	mov ecx,r8d
+	
+CoeffProduct2F_SSE2_1:	
+	movaps xmm1,XMMWORD ptr[rdx]
+	mulps xmm1,xmm0
+	movaps XMMWORD ptr[rdx],xmm1
+	add rdx,rax
+	loop CoeffProduct2F_SSE2_1
+	
+	ret
+	
+CoeffProduct2F_SSE2 endp	
+
+
 ;CoeffProductF_AVX proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
 ; coeff_a = rcx
 ; coeff_b = rdx
@@ -59,6 +87,34 @@ CoeffProductF_AVX_1:
 	ret
 	
 CoeffProductF_AVX endp	
+
+
+;CoeffProduct2F_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+CoeffProduct2F_AVX proc public frame
+
+	.endprolog
+	
+	vbroadcastss ymm0,dword ptr[rcx]
+
+	xor rcx,rcx
+	mov rax,32
+	mov ecx,r8d
+	
+CoeffProduct2F_AVX_1:	
+	vmulps ymm1,ymm0,YMMWORD ptr[rdx]
+	vmovaps YMMWORD ptr[rdx],ymm1
+	add rdx,rax
+	loop CoeffProduct2F_AVX_1
+	
+	vzeroupper
+	
+	ret
+	
+CoeffProduct2F_AVX endp	
 
 
 ;CoeffProductD_SSE2 proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
@@ -91,6 +147,34 @@ CoeffProductD_SSE2_1:
 CoeffProductD_SSE2 endp		
 
 
+;CoeffProduct2D_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+CoeffProduct2D_SSE2 proc public frame
+	
+	.endprolog
+	
+	movsd xmm0,qword ptr[rcx]
+	movlhps xmm0,xmm0
+	
+	xor rcx,rcx
+	mov rax,16
+	mov ecx,r8d
+	
+CoeffProduct2D_SSE2_1:	
+	movapd xmm1,XMMWORD ptr[rdx]
+	mulpd xmm1,xmm0
+	movapd XMMWORD ptr[rdx],xmm1
+	add rdx,rax
+	loop CoeffProduct2D_SSE2_1
+	
+	ret
+	
+CoeffProduct2D_SSE2 endp	
+
+
 ;CoeffProductD_AVX proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
 ; coeff_a = rcx
 ; coeff_b = rdx
@@ -119,6 +203,34 @@ CoeffProductD_AVX_1:
 	ret
 	
 CoeffProductD_AVX endp	
+
+
+;CoeffProduct2D_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+CoeffProduct2D_AVX proc public frame
+
+	.endprolog
+	
+	vbroadcastsd ymm0,qword ptr[rcx]
+	
+	xor rcx,rcx
+	mov rax,32
+	mov ecx,r8d
+	
+CoeffProduct2D_AVX_1:	
+	vmulpd ymm1,ymm0,YMMWORD ptr[rdx]
+	vmovapd YMMWORD ptr[rdx],ymm1
+	add rdx,rax
+	loop CoeffProduct2D_AVX_1
+	
+	vzeroupper
+		
+	ret
+	
+CoeffProduct2D_AVX endp
 
 
 ;CoeffAddProductF_SSE2 proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
@@ -247,6 +359,528 @@ CoeffAddProductD_AVX_1:
 CoeffAddProductD_AVX endp	
 
 
+;CoeffAddF_SSE2 proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+CoeffAddF_SSE2 proc public frame
+
+	.endprolog
+	
+	movss xmm0,dword ptr[rcx]
+	pshufd xmm0,xmm0,0
+
+	xor rcx,rcx
+	mov rax,16
+	mov ecx,r9d
+	
+CoeffAddF_SSE2_1:	
+	movaps xmm1,XMMWORD ptr[rdx]
+	add rdx,rax
+	addps xmm1,xmm0
+	movaps XMMWORD ptr[r8],xmm1
+	add r8,rax
+	loop CoeffAddF_SSE2_1
+	
+	ret
+	
+CoeffAddF_SSE2 endp	
+
+
+;CoeffAdd2F_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+CoeffAdd2F_SSE2 proc public frame
+
+	.endprolog
+	
+	movss xmm0,dword ptr[rcx]
+	pshufd xmm0,xmm0,0
+
+	xor rcx,rcx
+	mov rax,16
+	mov ecx,r8d
+	
+CoeffAdd2F_SSE2_1:	
+	movaps xmm1,XMMWORD ptr[rdx]
+	addps xmm1,xmm0
+	movaps XMMWORD ptr[rdx],xmm1
+	add rdx,rax
+	loop CoeffAdd2F_SSE2_1
+	
+	ret
+	
+CoeffAdd2F_SSE2 endp	
+
+
+;CoeffAddF_AVX proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+CoeffAddF_AVX proc public frame
+
+	.endprolog
+	
+	vbroadcastss ymm0,dword ptr[rcx]
+
+	xor rcx,rcx
+	mov rax,32
+	mov ecx,r9d
+	
+CoeffAddF_AVX_1:	
+	vaddps ymm1,ymm0,YMMWORD ptr[rdx]
+	add rdx,rax
+	vmovaps YMMWORD ptr[r8],ymm1
+	add r8,rax
+	loop CoeffAddF_AVX_1
+	
+	vzeroupper
+	
+	ret
+	
+CoeffAddF_AVX endp	
+
+
+;CoeffAdd2F_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+CoeffAdd2F_AVX proc public frame
+
+	.endprolog
+	
+	vbroadcastss ymm0,dword ptr[rcx]
+
+	xor rcx,rcx
+	mov rax,32
+	mov ecx,r8d
+	
+CoeffAdd2F_AVX_1:	
+	vaddps ymm1,ymm0,YMMWORD ptr[rdx]
+	vmovaps YMMWORD ptr[rdx],ymm1
+	add rdx,rax
+	loop CoeffAdd2F_AVX_1
+	
+	vzeroupper
+	
+	ret
+	
+CoeffAdd2F_AVX endp	
+
+
+;CoeffAddD_SSE2 proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+CoeffAddD_SSE2 proc public frame
+	
+	.endprolog
+	
+	movsd xmm0,qword ptr[rcx]
+	movlhps xmm0,xmm0
+	
+	xor rcx,rcx
+	mov rax,16
+	mov ecx,r9d
+	
+CoeffAddD_SSE2_1:	
+	movapd xmm1,XMMWORD ptr[rdx]
+	add rdx,rax
+	addpd xmm1,xmm0
+	movapd XMMWORD ptr[r8],xmm1
+	add r8,rax
+	loop CoeffAddD_SSE2_1
+	
+	ret
+	
+CoeffAddD_SSE2 endp		
+
+
+;CoeffAdd2D_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+CoeffAdd2D_SSE2 proc public frame
+	
+	.endprolog
+	
+	movsd xmm0,qword ptr[rcx]
+	movlhps xmm0,xmm0
+	
+	xor rcx,rcx
+	mov rax,16
+	mov ecx,r8d
+	
+CoeffAdd2D_SSE2_1:	
+	movapd xmm1,XMMWORD ptr[rdx]
+	addpd xmm1,xmm0
+	movapd XMMWORD ptr[rdx],xmm1
+	add rdx,rax
+	loop CoeffAdd2D_SSE2_1
+	
+	ret
+	
+CoeffAdd2D_SSE2 endp	
+
+
+;CoeffAddD_AVX proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+CoeffAddD_AVX proc public frame
+
+	.endprolog
+	
+	vbroadcastsd ymm0,qword ptr[rcx]
+	
+	xor rcx,rcx
+	mov rax,32
+	mov ecx,r9d
+	
+CoeffAddD_AVX_1:	
+	vaddpd ymm1,ymm0,YMMWORD ptr[rdx]
+	add rdx,rax
+	vmovapd YMMWORD ptr[r8],ymm1
+	add r8,rax
+	loop CoeffAddD_AVX_1
+	
+	vzeroupper
+		
+	ret
+	
+CoeffAddD_AVX endp	
+
+
+;CoeffAdd2D_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+CoeffAdd2D_AVX proc public frame
+
+	.endprolog
+	
+	vbroadcastsd ymm0,qword ptr[rcx]
+	
+	xor rcx,rcx
+	mov rax,32
+	mov ecx,r8d
+	
+CoeffAdd2D_AVX_1:	
+	vaddpd ymm1,ymm0,YMMWORD ptr[rdx]
+	vmovapd YMMWORD ptr[rdx],ymm1
+	add rdx,rax
+	loop CoeffAdd2D_AVX_1
+	
+	vzeroupper
+		
+	ret
+	
+CoeffAdd2D_AVX endp
+
+
+;VectorNormeF_SSE2 proc coeff_x:dword,result:dword,lgth:word
+; coeff_x = rcx
+; result = rdx
+; lgth = r8d
+
+VectorNormeF_SSE2 proc public frame
+		
+	.endprolog
+		
+	mov r9,rcx
+	xorps xmm0,xmm0
+	xor rcx,rcx
+	mov rax,16
+	mov ecx,r8d
+		
+VectorNormeF_SSE2_1:
+	movaps xmm1,XMMWORD ptr[r9]
+	mulps xmm1,xmm1
+	add r9,rax
+	addps xmm0,xmm1
+	loop VectorNormeF_SSE2_1
+		
+	movhlps xmm1,xmm0
+	addps xmm0,xmm1
+	movaps xmm1,xmm0
+	psrldq xmm1,4
+	addps xmm0,xmm1
+	movss dword ptr[rdx],xmm0
+		
+	ret
+		
+VectorNormeF_SSE2 endp	
+
+
+;VectorNormeF_AVX proc coeff_x:dword,result:dword,lgth:word
+; coeff_x = rcx
+; result = rdx
+; lgth = r8d
+
+VectorNormeF_AVX proc public frame
+
+	.endprolog
+		
+	mov r9,rcx
+	vxorps ymm0,ymm0,ymm0
+	xor rcx,rcx
+	mov rax,32
+	mov ecx,r8d
+		
+VectorNormeF_AVX_1:
+	vmovaps ymm1,YMMWORD ptr[r9]
+	vmulps ymm1,ymm1,ymm1
+	add r9,rax
+	vaddps ymm0,ymm0,ymm1
+	loop VectorNormeF_AVX_1
+		
+	vextractf128 xmm1,ymm0,1
+	vaddps xmm0,xmm0,xmm1
+		
+	vmovhlps xmm1,xmm1,xmm0
+	vaddps xmm0,xmm0,xmm1
+	vpsrldq xmm1,xmm0,4
+	vaddps xmm0,xmm0,xmm1
+	vmovss dword ptr[rdx],xmm0
+		
+	vzeroupper
+	
+	ret
+		
+VectorNormeF_AVX endp
+
+
+;VectorNormeD_SSE2 proc coeff_x:dword,result:dword,lgth:word
+; coeff_x = rcx
+; result = rdx
+; lgth = r8d
+
+VectorNormeD_SSE2 proc public frame
+		
+	.endprolog
+		
+	mov r9,rcx
+	xorpd xmm0,xmm0
+	xor rcx,rcx
+	mov rax,16
+	mov ecx,r8d
+		
+VectorNormeD_SSE2_1:
+	movapd xmm1,XMMWORD ptr[r9]
+	mulpd xmm1,xmm1
+	add r9,rax
+	addpd xmm0,xmm1
+	loop VectorNormeD_SSE2_1
+		
+	movhlps xmm1,xmm0
+	addpd xmm0,xmm1
+	movsd qword ptr[rdx],xmm0
+		
+	ret
+		
+VectorNormeD_SSE2 endp	
+
+
+;VectorNormeD_AVX proc coeff_x:dword,result:dword,lgth:word
+; coeff_x = rcx
+; result = rdx
+; lgth = r8d
+
+VectorNormeD_AVX proc public frame
+
+	.endprolog
+	
+	mov r9,rcx
+	vxorpd ymm0,ymm0,ymm0
+	xor rcx,rcx
+	mov rax,32
+	mov ecx,r8d
+		
+VectorNormeD_AVX_1:
+	vmovapd ymm1,YMMWORD ptr[r9]
+	vmulpd ymm1,ymm1,ymm1
+	add r9,rax
+	vaddpd ymm0,ymm0,ymm1
+	loop VectorNormeD_AVX_1
+		
+	vextractf128 xmm1,ymm0,1
+	vaddpd xmm0,xmm0,xmm1
+		
+	vmovhlps xmm1,xmm1,xmm0
+	vaddpd xmm0,xmm0,xmm1
+	vmovsd qword ptr[rdx],xmm0
+		
+	vzeroupper
+		
+	ret
+		
+VectorNormeD_AVX endp	
+
+
+;VectorDistF_SSE2 proc coeff_x:dword,coeff_y:dword,result:dword,lgth:word
+; coeff_x = rcx
+; coeff_y = rdx
+; result = r8
+; lgth = r9d
+
+VectorDistF_SSE2 proc public frame
+		
+	.endprolog
+		
+	mov r10,rcx
+	xorps xmm0,xmm0
+	xor rcx,rcx
+	mov rax,16
+	mov ecx,r9d
+		
+VectorDistF_SSE2_1:
+	movaps xmm1,XMMWORD ptr[r10]
+	subps xmm1,XMMWORD ptr[rdx]
+	add r10,rax
+	mulps xmm1,xmm1
+	add rdx,rax
+	addps xmm0,xmm1
+	loop VectorDistF_SSE2_1
+		
+	movhlps xmm1,xmm0
+	addps xmm0,xmm1
+	movaps xmm1,xmm0
+	psrldq xmm1,4
+	addps xmm0,xmm1
+	movss dword ptr[r8],xmm0
+		
+	ret
+		
+VectorDistF_SSE2 endp
+
+
+;VectorDistF_AVX proc coeff_x:dword,coeff_y:dword,result:dword,lgth:word
+; coeff_x = rcx
+; coeff_y = rdx
+; result = r8
+; lgth = r9d
+
+VectorDistF_AVX proc public frame
+
+	.endprolog
+		
+	mov r10,rcx
+	vxorps ymm0,ymm0,ymm0
+	xor rcx,rcx
+	mov rax,32
+	mov ecx,r9d
+		
+VectorDistF_AVX_1:
+	vmovaps ymm1,YMMWORD ptr[r10]
+	vsubps ymm1,ymm1,YMMWORD ptr[rdx]
+	add r10,rax
+	vmulps ymm1,ymm1,ymm1
+	add rdx,rax
+	vaddps ymm0,ymm0,ymm1
+	loop VectorDistF_AVX_1
+		
+	vextractf128 xmm1,ymm0,1
+	vaddps xmm0,xmm0,xmm1
+		
+	vmovhlps xmm1,xmm1,xmm0
+	vaddps xmm0,xmm0,xmm1
+	vpsrldq xmm1,xmm0,4
+	vaddps xmm0,xmm0,xmm1
+	vmovss dword ptr[r8],xmm0
+		
+	vzeroupper
+	
+	ret
+		
+VectorDistF_AVX endp
+
+
+;VectorDistD_SSE2 proc coeff_a:dword,coeff_x:dword,result:dword,lgth:word
+; coeff_a = rcx
+; coeff_x = rdx
+; result = r8
+; lgth = r9d
+
+VectorDistD_SSE2 proc public frame
+		
+	.endprolog
+		
+	mov r10,rcx
+	xorpd xmm0,xmm0
+	xor rcx,rcx
+	mov rax,16
+	mov ecx,r9d
+		
+VectorDistD_SSE2_1:
+	movapd xmm1,XMMWORD ptr[r10]
+	subpd xmm1,XMMWORD ptr[rdx]
+	add r10,rax
+	mulpd xmm1,xmm1
+	add rdx,rax
+	addpd xmm0,xmm1
+	loop VectorDistD_SSE2_1
+		
+	movhlps xmm1,xmm0
+	addpd xmm0,xmm1
+	movsd qword ptr[r8],xmm0
+		
+	ret
+		
+VectorDistD_SSE2 endp
+
+
+;VectorDistD_AVX proc coeff_a:dword,coeff_x:dword,result:dword,lgth:word
+; coeff_a = rcx
+; coeff_x = rdx
+; result = r8
+; lgth = r9d
+
+VectorDistD_AVX proc public frame
+
+	.endprolog
+	
+	mov r10,rcx
+	vxorpd ymm0,ymm0,ymm0
+	xor rcx,rcx
+	mov rax,32
+	mov ecx,r9d
+		
+VectorDistD_AVX_1:
+	vmovapd ymm1,YMMWORD ptr[r10]
+	vsubpd ymm1,ymm1,YMMWORD ptr[rdx]
+	add r10,rax
+	vmulpd ymm1,ymm1,ymm1
+	add rdx,rax
+	vaddpd ymm0,ymm0,ymm1
+	loop VectorDistD_AVX_1
+		
+	vextractf128 xmm1,ymm0,1
+	vaddpd xmm0,xmm0,xmm1
+		
+	vmovhlps xmm1,xmm1,xmm0
+	vaddpd xmm0,xmm0,xmm1
+	vmovsd qword ptr[r8],xmm0
+		
+	vzeroupper
+		
+	ret
+		
+VectorDistD_AVX endp	
+
+
 ;VectorProductF_SSE2 proc coeff_a:dword,coeff_x:dword,result:dword,lgth:word
 ; coeff_a = rcx
 ; coeff_x = rdx
@@ -258,7 +892,7 @@ VectorProductF_SSE2 proc public frame
 	.endprolog
 		
 	mov r10,rcx
-	pxor xmm0,xmm0
+	xorps xmm0,xmm0
 	xor rcx,rcx
 	mov rax,16
 	mov ecx,r9d
@@ -334,7 +968,7 @@ VectorProductD_SSE2 proc public frame
 	.endprolog
 		
 	mov r10,rcx
-	pxor xmm0,xmm0
+	xorpd xmm0,xmm0
 	xor rcx,rcx
 	mov rax,16
 	mov ecx,r9d
@@ -367,7 +1001,7 @@ VectorProductD_AVX proc public frame
 	.endprolog
 	
 	mov r10,rcx
-	vxorps ymm0,ymm0,ymm0
+	vxorpd ymm0,ymm0,ymm0
 	xor rcx,rcx
 	mov rax,32
 	mov ecx,r9d
@@ -384,7 +1018,7 @@ VectorProductD_AVX_1:
 	vaddpd xmm0,xmm0,xmm1
 		
 	vmovhlps xmm1,xmm1,xmm0
-	vaddps xmm0,xmm0,xmm1
+	vaddpd xmm0,xmm0,xmm1
 	vmovsd qword ptr[r8],xmm0
 		
 	vzeroupper
@@ -393,5 +1027,677 @@ VectorProductD_AVX_1:
 		
 VectorProductD_AVX endp	
 
-		
+
+;VectorAddF_SSE2 proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+VectorAddF_SSE2 proc public frame
+
+	.endprolog
+
+	mov r10,rcx
+	mov r11,16
+	xor rcx,rcx
+	mov ecx,r9d
+	
+VectorAddF_SSE2_1:	
+	movaps xmm0,XMMWORD ptr[r10]
+	add r10,r11
+	addps xmm0,XMMWORD ptr[rdx]
+	add rdx,r11
+	movaps XMMWORD ptr[r8],xmm0
+	add r8,r11
+	loop VectorAddF_SSE2_1
+	
+	ret
+	
+VectorAddF_SSE2 endp	
+
+
+;VectorSubF_SSE2 proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+VectorSubF_SSE2 proc public frame
+
+	.endprolog
+
+	mov r10,rcx
+	mov r11,16
+	xor rcx,rcx
+	mov ecx,r9d
+	
+VectorSubF_SSE2_1:	
+	movaps xmm0,XMMWORD ptr[r10]
+	add r10,r11
+	subps xmm0,XMMWORD ptr[rdx]
+	add rdx,r11
+	movaps XMMWORD ptr[r8],xmm0
+	add r8,r11
+	loop VectorSubF_SSE2_1
+	
+	ret
+	
+VectorSubF_SSE2 endp
+
+
+;VectorProdF_SSE2 proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+VectorProdF_SSE2 proc public frame
+
+	.endprolog
+
+	mov r10,rcx
+	mov r11,16
+	xor rcx,rcx
+	mov ecx,r9d
+	
+VectorProdF_SSE2_1:	
+	movaps xmm0,XMMWORD ptr[r10]
+	add r10,r11
+	mulps xmm0,XMMWORD ptr[rdx]
+	add rdx,r11
+	movaps XMMWORD ptr[r8],xmm0
+	add r8,r11
+	loop VectorProdF_SSE2_1
+	
+	ret
+	
+VectorProdF_SSE2 endp
+
+
+;VectorAdd2F_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorAdd2F_SSE2 proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,16
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorAdd2F_SSE2_1:	
+	movaps xmm0,XMMWORD ptr[r9]
+	addps xmm0,XMMWORD ptr[rdx]
+	add rdx,r11
+	movaps XMMWORD ptr[r9],xmm0
+	add r9,r11
+	loop VectorAdd2F_SSE2_1
+	
+	ret
+	
+VectorAdd2F_SSE2 endp
+
+
+;VectorSub2F_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorSub2F_SSE2 proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,16
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorSub2F_SSE2_1:	
+	movaps xmm0,XMMWORD ptr[r9]
+	subps xmm0,XMMWORD ptr[rdx]
+	add rdx,r11
+	movaps XMMWORD ptr[r9],xmm0
+	add r9,r11
+	loop VectorSub2F_SSE2_1
+	
+	ret
+	
+VectorSub2F_SSE2 endp
+
+
+;VectorProd2F_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorProd2F_SSE2 proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,16
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorProd2F_SSE2_1:	
+	movaps xmm0,XMMWORD ptr[r9]
+	mulps xmm0,XMMWORD ptr[rdx]
+	add rdx,r11
+	movaps XMMWORD ptr[r9],xmm0
+	add r9,r11
+	loop VectorProd2F_SSE2_1
+	
+	ret
+	
+VectorProd2F_SSE2 endp
+
+
+;VectorAddF_AVX proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+VectorAddF_AVX proc public frame
+
+	.endprolog
+
+	mov r10,rcx
+	mov r11,32
+	xor rcx,rcx
+	mov ecx,r9d
+	
+VectorAddF_AVX_1:	
+	vmovaps ymm0,YMMWORD ptr[r10]
+	add r10,r11
+	vaddps ymm0,ymm0,YMMWORD ptr[rdx]
+	add rdx,r11
+	vmovaps YMMWORD ptr[r8],ymm0
+	add r8,r11
+	loop VectorAddF_AVX_1
+	
+	ret
+	
+VectorAddF_AVX endp
+
+
+;VectorSubF_AVX proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+VectorSubF_AVX proc public frame
+
+	.endprolog
+
+	mov r10,rcx
+	mov r11,32
+	xor rcx,rcx
+	mov ecx,r9d
+	
+VectorSubF_AVX_1:	
+	vmovaps ymm0,YMMWORD ptr[r10]
+	add r10,r11
+	vsubps ymm0,ymm0,YMMWORD ptr[rdx]
+	add rdx,r11
+	vmovaps YMMWORD ptr[r8],ymm0
+	add r8,r11
+	loop VectorSubF_AVX_1
+	
+	ret
+	
+VectorSubF_AVX endp
+
+
+;VectorProdF_AVX proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+VectorProdF_AVX proc public frame
+
+	.endprolog
+
+	mov r10,rcx
+	mov r11,32
+	xor rcx,rcx
+	mov ecx,r9d
+	
+VectorProdF_AVX_1:	
+	vmovaps ymm0,YMMWORD ptr[r10]
+	add r10,r11
+	vmulps ymm0,ymm0,YMMWORD ptr[rdx]
+	add rdx,r11
+	vmovaps YMMWORD ptr[r8],ymm0
+	add r8,r11
+	loop VectorProdF_AVX_1
+	
+	ret
+	
+VectorProdF_AVX endp
+
+
+;VectorAdd2F_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorAdd2F_AVX proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,32
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorAdd2F_AVX_1:	
+	vmovaps ymm0,YMMWORD ptr[r9]
+	vaddps ymm0,ymm0,YMMWORD ptr[rdx]
+	add rdx,r10
+	vmovaps YMMWORD ptr[r9],ymm0
+	add r9,r10
+	loop VectorAdd2F_AVX_1
+	
+	ret
+	
+VectorAdd2F_AVX endp
+
+
+;VectorSub2F_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorSub2F_AVX proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,32
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorSub2F_AVX_1:	
+	vmovaps ymm0,YMMWORD ptr[r9]
+	vsubps ymm0,ymm0,YMMWORD ptr[rdx]
+	add rdx,r10
+	vmovaps YMMWORD ptr[r9],ymm0
+	add r9,r10
+	loop VectorSub2F_AVX_1
+	
+	ret
+	
+VectorSub2F_AVX endp
+
+
+;VectorProd2F_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorProd2F_AVX proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,32
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorProd2F_AVX_1:	
+	vmovaps ymm0,YMMWORD ptr[r9]
+	vmulps ymm0,ymm0,YMMWORD ptr[rdx]
+	add rdx,r10
+	vmovaps YMMWORD ptr[r9],ymm0
+	add r9,r10
+	loop VectorProd2F_AVX_1
+	
+	ret
+	
+VectorProd2F_AVX endp
+
+
+;VectorAddD_SSE2 proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+VectorAddD_SSE2 proc public frame
+
+	.endprolog
+
+	mov r10,rcx
+	mov r11,16
+	xor rcx,rcx
+	mov ecx,r9d
+	
+VectorAddD_SSE2_1:	
+	movapd xmm0,XMMWORD ptr[r10]
+	add r10,r11
+	addpd xmm0,XMMWORD ptr[rdx]
+	add rdx,r11
+	movapd XMMWORD ptr[r8],xmm0
+	add r8,r11
+	loop VectorAddD_SSE2_1
+	
+	ret
+	
+VectorAddD_SSE2 endp	
+
+
+;VectorSubD_SSE2 proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+VectorSubD_SSE2 proc public frame
+
+	.endprolog
+
+	mov r10,rcx
+	mov r11,16
+	xor rcx,rcx
+	mov ecx,r9d
+	
+VectorSubD_SSE2_1:	
+	movapd xmm0,XMMWORD ptr[r10]
+	add r10,r11
+	subpd xmm0,XMMWORD ptr[rdx]
+	add rdx,r11
+	movapd XMMWORD ptr[r8],xmm0
+	add r8,r11
+	loop VectorSubD_SSE2_1
+	
+	ret
+	
+VectorSubD_SSE2 endp
+
+
+;VectorProdD_SSE2 proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+VectorProdD_SSE2 proc public frame
+
+	.endprolog
+
+	mov r10,rcx
+	mov r11,16
+	xor rcx,rcx
+	mov ecx,r9d
+	
+VectorProdD_SSE2_1:	
+	movapd xmm0,XMMWORD ptr[r10]
+	add r10,r11
+	mulpd xmm0,XMMWORD ptr[rdx]
+	add rdx,r11
+	movapd XMMWORD ptr[r8],xmm0
+	add r8,r11
+	loop VectorProdD_SSE2_1
+	
+	ret
+	
+VectorProdD_SSE2 endp
+
+
+;VectorAdd2D_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorAdd2D_SSE2 proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,16
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorAdd2D_SSE2_1:	
+	movapd xmm0,XMMWORD ptr[r9]
+	addpd xmm0,XMMWORD ptr[rdx]
+	add rdx,r11
+	movapd XMMWORD ptr[r9],xmm0
+	add r9,r11
+	loop VectorAdd2D_SSE2_1
+	
+	ret
+	
+VectorAdd2D_SSE2 endp
+
+
+;VectorSub2D_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorSub2D_SSE2 proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,16
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorSub2D_SSE2_1:	
+	movapd xmm0,XMMWORD ptr[r9]
+	subpd xmm0,XMMWORD ptr[rdx]
+	add rdx,r11
+	movapd XMMWORD ptr[r9],xmm0
+	add r9,r11
+	loop VectorSub2D_SSE2_1
+	
+	ret
+	
+VectorSub2D_SSE2 endp
+
+
+;VectorProd2D_SSE2 proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorProd2D_SSE2 proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,16
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorProd2D_SSE2_1:	
+	movapd xmm0,XMMWORD ptr[r9]
+	mulpd xmm0,XMMWORD ptr[rdx]
+	add rdx,r11
+	movapd XMMWORD ptr[r9],xmm0
+	add r9,r11
+	loop VectorProd2D_SSE2_1
+	
+	ret
+	
+VectorProd2D_SSE2 endp
+
+
+;VectorAddD_AVX proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+VectorAddD_AVX proc public frame
+
+	.endprolog
+
+	mov r10,rcx
+	mov r11,32
+	xor rcx,rcx
+	mov ecx,r9d
+	
+VectorAddD_AVX_1:	
+	vmovapd ymm0,YMMWORD ptr[r10]
+	add r10,r11
+	vaddpd ymm0,ymm0,YMMWORD ptr[rdx]
+	add rdx,r11
+	vmovapd YMMWORD ptr[r8],ymm0
+	add r8,r11
+	loop VectorAddD_AVX_1
+	
+	ret
+	
+VectorAddD_AVX endp
+
+
+;VectorSubD_AVX proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+VectorSubD_AVX proc public frame
+
+	.endprolog
+
+	mov r10,rcx
+	mov r11,32
+	xor rcx,rcx
+	mov ecx,r9d
+	
+VectorSubD_AVX_1:	
+	vmovapd ymm0,YMMWORD ptr[r10]
+	add r10,r11
+	vsubpd ymm0,ymm0,YMMWORD ptr[rdx]
+	add rdx,r11
+	vmovapd YMMWORD ptr[r8],ymm0
+	add r8,r11
+	loop VectorSubD_AVX_1
+	
+	ret
+	
+VectorSubD_AVX endp
+
+
+;VectorProdD_AVX proc coeff_a:dword,coeff_b:dword,coeff_c:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; coeff_c = r8
+; lgth = r9d
+
+VectorProdD_AVX proc public frame
+
+	.endprolog
+
+	mov r10,rcx
+	mov r11,32
+	xor rcx,rcx
+	mov ecx,r9d
+	
+VectorProdD_AVX_1:	
+	vmovapd ymm0,YMMWORD ptr[r10]
+	add r10,r11
+	vmulpd ymm0,ymm0,YMMWORD ptr[rdx]
+	add rdx,r11
+	vmovapd YMMWORD ptr[r8],ymm0
+	add r8,r11
+	loop VectorProdD_AVX_1
+	
+	ret
+	
+VectorProdD_AVX endp
+
+
+;VectorAdd2D_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorAdd2D_AVX proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,32
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorAdd2D_AVX_1:	
+	vmovapd ymm0,YMMWORD ptr[r9]
+	vaddpd ymm0,ymm0,YMMWORD ptr[rdx]
+	add rdx,r10
+	vmovapd YMMWORD ptr[r9],ymm0
+	add r9,r10
+	loop VectorAdd2D_AVX_1
+	
+	ret
+	
+VectorAdd2D_AVX endp
+
+
+;VectorSub2D_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorSub2D_AVX proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,32
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorSub2D_AVX_1:	
+	vmovapd ymm0,YMMWORD ptr[r9]
+	vsubpd ymm0,ymm0,YMMWORD ptr[rdx]
+	add rdx,r10
+	vmovapd YMMWORD ptr[r9],ymm0
+	add r9,r10
+	loop VectorSub2D_AVX_1
+	
+	ret
+	
+VectorSub2D_AVX endp
+
+
+;VectorProd2D_AVX proc coeff_a:dword,coeff_b:dword,lgth:word
+; coeff_a = rcx
+; coeff_b = rdx
+; lgth = r8d
+
+VectorProd2D_AVX proc public frame
+
+	.endprolog
+
+	mov r9,rcx
+	mov r10,32
+	xor rcx,rcx
+	mov ecx,r8d
+	
+VectorProd2D_AVX_1:	
+	vmovapd ymm0,YMMWORD ptr[r9]
+	vmulpd ymm0,ymm0,YMMWORD ptr[rdx]
+	add rdx,r10
+	vmovapd YMMWORD ptr[r9],ymm0
+	add r9,r10
+	loop VectorProd2D_AVX_1
+	
+	ret
+	
+VectorProd2D_AVX endp
+
+
 end

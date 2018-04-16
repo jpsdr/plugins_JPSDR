@@ -10,7 +10,7 @@ bool aWarpSharp_Enable_SSE2,aWarpSharp_Enable_SSE41,aWarpSharp_Enable_AVX;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 2.1.1"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 2.1.2"
 
 /*
   threshold : int, default value : 4
@@ -1390,11 +1390,13 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 
 	poolInterface=ThreadPoolInterface::Init(0);
 
+	if (!poolInterface->GetThreadPoolInterfaceStatus()) env->ThrowError("plugins_JPSDR: Error with the TheadPool status!");
+
 	aWarpSharp_Enable_SSE2=(env->GetCPUFlags() & CPUF_SSE2)!=0;
 	aWarpSharp_Enable_SSE41=(env->GetCPUFlags() & CPUF_SSE4_1)!=0;
 	aWarpSharp_Enable_AVX=(env->GetCPUFlags() & CPUF_AVX)!=0;
 
-	if (!poolInterface->GetThreadPoolInterfaceStatus()) env->ThrowError("plugins_JPSDR: Error with the TheadPool status!");
+	SetCPUMatrixClass((env->GetCPUFlags() & CPUF_SSE2)!=0,(env->GetCPUFlags() & CPUF_AVX)!=0,(env->GetCPUFlags() & CPUF_AVX2)!=0);
 
     env->AddFunction("AutoYUY2",
 		"c[threshold]i[mode]i[output]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",

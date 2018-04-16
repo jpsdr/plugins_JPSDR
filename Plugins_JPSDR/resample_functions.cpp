@@ -461,14 +461,6 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
 
   Matrix_Compute A(target_size,SizeS0,DATA_FLOAT),B(SizeS0,SizeS0,DATA_FLOAT),C(SizeS0,target_size,DATA_FLOAT);
 
-  if ((env->GetCPUFlags()&CPUF_SSE2)!=0) A.EnableSSE2();
-  if ((env->GetCPUFlags()&CPUF_SSE2)!=0) B.EnableSSE2();
-  if ((env->GetCPUFlags()&CPUF_SSE2)!=0) C.EnableSSE2();
-
-  if ((env->GetCPUFlags()&CPUF_AVX)!=0) A.EnableAVX();
-  if ((env->GetCPUFlags()&CPUF_AVX)!=0) B.EnableAVX();
-  if ((env->GetCPUFlags()&CPUF_AVX)!=0) C.EnableAVX();
-
   A.FillZero();
 
   for (int i=0; i<target_size; i++)
