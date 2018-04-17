@@ -25,6 +25,8 @@ public :
 	bool Create(const uint16_t l,const COEFF_DATA_TYPE data);
 	bool Create(const Vector &x);
 	bool CopyStrict(const Vector &x);
+	bool CopyRaw(const void *ptr);
+	bool CopyRaw(const void *ptr,uint16_t lgth);
 	void Destroy(void);
 	bool FillD(const double data);
 	bool FillF(const float data);
@@ -158,6 +160,9 @@ public :
 	bool Create(const uint16_t l,const uint16_t c,const COEFF_DATA_TYPE data);
 	bool Create(const Matrix &m);
 	virtual bool CopyStrict(const Matrix &m);
+	bool CopyRaw(const void *ptr);
+	bool CopyRaw(const void *ptr,ptrdiff_t ptr_pitch);
+	bool CopyRaw(const void *ptr,ptrdiff_t ptr_pitch,uint16_t ln,uint16_t co);
 	void Destroy(void);
 	bool FillD(const double data);
 	bool FillF(const float data);
@@ -230,6 +235,8 @@ public :
 	bool Sub_A(const Matrix &ma,const Matrix &mb);
 	bool Sub_A(const Matrix &ma);
 	bool InvSub_A(const Matrix &ma);
+	bool Mult_A(const Matrix &ma,const Matrix &mb);
+	bool Mult_A(const Matrix &ma);
 
 	bool Product_AB(const Matrix &ma,const Matrix &mb);
 	bool Product_AtB(const Matrix &ma,const Matrix &mb);
@@ -256,6 +263,8 @@ protected :
 	void SubF_A(const Matrix &ma,const Matrix &mb);
 	void SubF_A(const Matrix &ma);
 	void InvSubF_A(const Matrix &ma);
+	void MultF_A(const Matrix &ma,const Matrix &mb);
+	void MultF_A(const Matrix &ma);
 
 	void ProductF_AB(const Matrix &ma,const Matrix &mb);
 	void ProductF_AtB(const Matrix &ma,const Matrix &mb);
@@ -275,6 +284,8 @@ protected :
 	void SubD_A(const Matrix &ma,const Matrix &mb);
 	void SubD_A(const Matrix &ma);
 	void InvSubD_A(const Matrix &ma);
+	void MultD_A(const Matrix &ma,const Matrix &mb);
+	void MultD_A(const Matrix &ma);
 
 	void TransposeD(const Matrix &ma);
 
