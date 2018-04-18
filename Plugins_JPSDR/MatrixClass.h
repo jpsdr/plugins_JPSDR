@@ -94,8 +94,10 @@ public :
 	bool Product_tAX(const Matrix &ma,const Vector &x);
 	bool Product_tAX(const Matrix &ma);
 
-	bool Norme(double &result);
-	bool Distance(const Vector &x,double &result);
+	bool Norme2(double &result);
+	bool Distance2(const Vector &x,double &result);
+	bool Norme1(double &result);
+	bool Distance1(const Vector &x,double &result);
 
 protected :
 	// Float
@@ -116,8 +118,10 @@ protected :
 	void ProductF_AX(const Matrix &ma,const Vector &x);
 	void ProductF_tAX(const Matrix &ma,const Vector &x);
 
-	double NormeF(void);
-	double DistanceF(const Vector &x);
+	double Norme2F(void);
+	double Distance2F(const Vector &x);
+	double Norme1F(void);
+	double Distance1F(const Vector &x);
 
 	// Double
 	void MultD(const double coef,const Vector &x);
@@ -137,8 +141,10 @@ protected :
 	void ProductD_AX(const Matrix &ma,const Vector &x);
 	void ProductD_tAX(const Matrix &ma,const Vector &x);
 
-	double NormeD(void);
-	double DistanceD(const Vector &x);
+	double Norme2D(void);
+	double Distance2D(const Vector &x);
+	double Norme1D(void);
+	double Distance1D(const Vector &x);
 
 private :
 	Vector_Compute& operator = (const Vector_Compute &other);
@@ -248,6 +254,11 @@ public :
 	int8_t InverseSafe(const Matrix_Compute &ma);
 	int8_t InverseSafe(void);
 
+	bool Norme2(double &result);
+	bool Distance2(const Matrix &ma,double &result);
+	bool Norme1(double &result);
+	bool Distance1(const Matrix &ma,double &result);
+
 protected :
 	// Float
 	void TransposeF(const Matrix &ma);
@@ -272,6 +283,11 @@ protected :
 	bool InverseF(const Matrix &ma);
 	int8_t InverseSafeF(const Matrix_Compute &ma);
 
+	double Norme2F(void);
+	double Distance2F(const Matrix &ma);
+	double Norme1F(void);
+	double Distance1F(const Matrix &ma);
+
 	// Double
 	void MultD(const double coef,const Matrix &ma);
 	void MultD(const double coef);
@@ -294,6 +310,11 @@ protected :
 
 	bool InverseD(const Matrix &ma);
 	int8_t InverseSafeD(const Matrix_Compute &ma);
+
+	double Norme2D(void);
+	double Distance2D(const Matrix &ma);
+	double Norme1D(void);
+	double Distance1D(const Matrix &ma);
 
 	// U64
 	void TransposeU64(const Matrix &ma);

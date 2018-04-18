@@ -1,6 +1,11 @@
 .xmm
 .model flat,c
 
+data segment align(32)
+
+sign_bits_f_32 dword 8 dup(7FFFFFFFh)
+sign_bits_f_64 qword 4 dup(7FFFFFFFFFFFFFFFh)
+
 .code
 
 
@@ -806,9 +811,293 @@ CoeffSub2D_AVX_1:
 CoeffSub2D_AVX endp
 
 
+VectorNorme2F_SSE2 proc coeff_x:dword,result:dword,lgth:word
+
+    public VectorNorme2F_SSE2
+	
+	mov eax,16
+	mov edx,coeff_x
+		
+	xorps xmm0,xmm0
+	movzx ecx,lgth
+		
+VectorNorme2F_SSE2_1:
+	movaps xmm1,XMMWORD ptr[edx]
+	mulps xmm1,xmm1
+	add edx,eax
+	addps xmm0,xmm1
+	loop VectorNorme2F_SSE2_1
+		
+	movhlps xmm1,xmm0
+	addps xmm0,xmm1
+	mov edx,result
+	movaps xmm1,xmm0
+	psrldq xmm1,4
+	addss xmm0,xmm1
+	sqrtss xmm0,xmm0
+	movss dword ptr[edx],xmm0
+		
+	ret
+		
+VectorNorme2F_SSE2 endp
+
+
+VectorNorme2F_AVX proc coeff_x:dword,result:dword,lgth:word
+
+    public VectorNorme2F_AVX
+	
+	mov eax,32
+	mov edx,coeff_x
+		
+	vxorps ymm0,ymm0,ymm0
+	movzx ecx,lgth
+		
+VectorNorme2F_AVX_1:
+	vmovaps ymm1,YMMWORD ptr[edx]
+	vmulps ymm1,ymm1,ymm1
+	add edx,eax
+	vaddps ymm0,ymm0,ymm1
+	loop VectorNorme2F_AVX_1
+	
+	vextractf128 xmm1,ymm0,1
+	vaddps xmm0,xmm0,xmm1
+		
+	vmovhlps xmm1,xmm1,xmm0
+	vaddps xmm0,xmm0,xmm1
+	mov edx,result
+	vpsrldq xmm1,xmm0,4
+	vaddss xmm0,xmm0,xmm1
+	vsqrtss xmm0,xmm0,xmm0
+	vmovss dword ptr[edx],xmm0
+	
+	vzeroupper
+	
+	ret
+		
+VectorNorme2F_AVX endp
+
+
+VectorNorme2D_SSE2 proc coeff_x:dword,result:dword,lgth:word
+
+    public VectorNorme2D_SSE2
+	
+	mov eax,16
+	mov edx,coeff_x
+		
+	xorpd xmm0,xmm0
+	movzx ecx,lgth
+		
+VectorNorme2D_SSE2_1:
+	movapd xmm1,XMMWORD ptr[edx]
+	mulpd xmm1,xmm1
+	add edx,eax
+	addpd xmm0,xmm1
+	loop VectorNorme2D_SSE2_1
+	
+	movhlps xmm1,xmm0
+	mov edx,result
+	addsd xmm0,xmm1
+	sqrtsd xmm0,xmm0
+	movsd qword ptr[edx],xmm0
+		
+	ret
+		
+VectorNorme2D_SSE2 endp
+
+
+VectorNorme2D_AVX proc coeff_x:dword,result:dword,lgth:word
+
+    public VectorNorme2D_AVX
+	
+	mov eax,32
+	mov edx,coeff_x
+		
+	vxorpd ymm0,ymm0,ymm0
+	movzx ecx,lgth
+		
+VectorNorme2D_AVX_1:
+	vmovapd ymm1,YMMWORD ptr[edx]
+	vmulpd ymm1,ymm1,ymm1
+	add edx,eax
+	vaddpd ymm0,ymm0,ymm1
+	loop VectorNorme2D_AVX_1
+	
+	vextractf128 xmm1,ymm0,1
+	vaddpd xmm0,xmm0,xmm1
+		
+	vmovhlps xmm1,xmm1,xmm0
+	mov edx,result
+	vaddsd xmm0,xmm0,xmm1
+	vsqrtsd xmm0,xmm0,xmm0
+	vmovsd qword ptr[edx],xmm0
+		
+	vzeroupper	
+		
+	ret
+		
+VectorNorme2D_AVX endp
+
+
+VectorDist2F_SSE2 proc coeff_x:dword,coeff_y:dword,result:dword,lgth:word
+
+    public VectorDist2F_SSE2
+	
+	push ebx
+		
+	mov eax,16
+	mov ebx,coeff_x
+	mov edx,coeff_y
+		
+	xorps xmm0,xmm0
+	movzx ecx,lgth
+		
+VectorDist2F_SSE2_1:
+	movaps xmm1,XMMWORD ptr[ebx]
+	subps xmm1,XMMWORD ptr[edx]
+	add ebx,eax
+	mulps xmm1,xmm1
+	add edx,eax
+	addps xmm0,xmm1
+	loop VectorDist2F_SSE2_1
+		
+	movhlps xmm1,xmm0
+	addps xmm0,xmm1
+	mov edx,result
+	movaps xmm1,xmm0
+	psrldq xmm1,4
+	addss xmm0,xmm1
+	sqrtss xmm0,xmm0
+	movss dword ptr[edx],xmm0
+		
+	pop ebx
+		
+	ret
+		
+VectorDist2F_SSE2 endp
+
+
+VectorDist2F_AVX proc coeff_x:dword,coeff_y:dword,result:dword,lgth:word
+
+    public VectorDist2F_AVX
+	
+	push ebx
+		
+	mov eax,32
+	mov ebx,coeff_x
+	mov edx,coeff_y
+		
+	vxorps ymm0,ymm0,ymm0
+		
+	movzx ecx,lgth
+		
+VectorDist2F_AVX_1:
+	vmovaps ymm1,YMMWORD ptr[ebx]
+	vsubps ymm1,ymm1,YMMWORD ptr[edx]
+	add ebx,eax
+	vmulps ymm1,ymm1,ymm1
+	add edx,eax
+	vaddps ymm0,ymm0,ymm1
+	loop VectorDist2F_AVX_1
+		
+	vextractf128 xmm1,ymm0,1
+	vaddps xmm0,xmm0,xmm1
+		
+	vmovhlps xmm1,xmm1,xmm0
+	vaddps xmm0,xmm0,xmm1
+	mov edx,result
+	vpsrldq xmm1,xmm0,4
+	vaddss xmm0,xmm0,xmm1
+	vsqrtss xmm0,xmm0,xmm0
+	vmovss dword ptr[edx],xmm0
+		
+	vzeroupper
+		
+	pop ebx
+		
+	ret
+		
+VectorDist2F_AVX endp	
+
+
+VectorDist2D_SSE2 proc coeff_x:dword,coeff_y:dword,result:dword,lgth:word
+
+    public VectorDist2D_SSE2
+	
+	push ebx
+		
+	mov eax,16
+	mov ebx,coeff_x
+	mov edx,coeff_y
+		
+	xorpd xmm0,xmm0
+	movzx ecx,lgth
+		
+VectorDist2D_SSE2_1:
+	movapd xmm1,XMMWORD ptr[ebx]
+	subpd xmm1,XMMWORD ptr[edx]
+	add ebx,eax
+	mulpd xmm1,xmm1
+	add edx,eax
+	addpd xmm0,xmm1
+	loop VectorDist2D_SSE2_1
+		
+	movhlps xmm1,xmm0
+	mov edx,result
+	addsd xmm0,xmm1
+	sqrtsd xmm0,xmm0
+	movsd qword ptr[edx],xmm0
+		
+	pop ebx
+		
+	ret
+		
+VectorDist2D_SSE2 endp
+
+
+VectorDist2D_AVX proc coeff_x:dword,coeff_y:dword,result:dword,lgth:word
+
+    public VectorDist2D_AVX
+	
+	push ebx
+		
+	mov eax,32
+	mov ebx,coeff_x
+	mov edx,coeff_y
+		
+	vxorpd ymm0,ymm0,ymm0
+		
+	movzx ecx,lgth
+		
+VectorDist2D_AVX_1:
+	vmovapd ymm1,YMMWORD ptr[ebx]
+	vsubpd ymm1,ymm1,YMMWORD ptr[edx]
+	add ebx,eax
+	vmulpd ymm1,ymm1,ymm1
+	add edx,eax
+	vaddpd ymm0,ymm0,ymm1
+	loop VectorDist2D_AVX_1
+		
+	vextractf128 xmm1,ymm0,1
+	vaddpd xmm0,xmm0,xmm1
+		
+	vmovhlps xmm1,xmm1,xmm0
+	mov edx,result
+	vaddsd xmm0,xmm0,xmm1
+	vsqrtsd xmm0,xmm0,xmm0
+	vmovsd qword ptr[edx],xmm0
+		
+	vzeroupper
+		
+	pop ebx
+		
+	ret
+		
+VectorDist2D_AVX endp	
+
+
 VectorNormeF_SSE2 proc coeff_x:dword,result:dword,lgth:word
 
-    public VectorNormeF_SSE2
+    public VectorNorme2F_SSE2
 	
 	mov eax,16
 	mov edx,coeff_x
@@ -828,8 +1117,7 @@ VectorNormeF_SSE2_1:
 	mov edx,result
 	movaps xmm1,xmm0
 	psrldq xmm1,4
-	addps xmm0,xmm1
-	sqrtss xmm0,xmm0
+	addss xmm0,xmm1
 	movss dword ptr[edx],xmm0
 		
 	ret
@@ -861,8 +1149,7 @@ VectorNormeF_AVX_1:
 	vaddps xmm0,xmm0,xmm1
 	mov edx,result
 	vpsrldq xmm1,xmm0,4
-	vaddps xmm0,xmm0,xmm1
-	vsqrtss xmm0,xmm0,xmm0
+	vaddss xmm0,xmm0,xmm1
 	vmovss dword ptr[edx],xmm0
 	
 	vzeroupper
@@ -891,8 +1178,7 @@ VectorNormeD_SSE2_1:
 	
 	movhlps xmm1,xmm0
 	mov edx,result
-	addpd xmm0,xmm1
-	sqrtsd xmm0,xmm0
+	addsd xmm0,xmm1
 	movsd qword ptr[edx],xmm0
 		
 	ret
@@ -922,8 +1208,7 @@ VectorNormeD_AVX_1:
 		
 	vmovhlps xmm1,xmm1,xmm0
 	mov edx,result
-	vaddpd xmm0,xmm0,xmm1
-	vsqrtsd xmm0,xmm0,xmm0
+	vaddsd xmm0,xmm0,xmm1
 	vmovsd qword ptr[edx],xmm0
 		
 	vzeroupper	
@@ -960,8 +1245,7 @@ VectorDistF_SSE2_1:
 	mov edx,result
 	movaps xmm1,xmm0
 	psrldq xmm1,4
-	addps xmm0,xmm1
-	sqrtss xmm0,xmm0
+	addss xmm0,xmm1
 	movss dword ptr[edx],xmm0
 		
 	pop ebx
@@ -1001,8 +1285,7 @@ VectorDistF_AVX_1:
 	vaddps xmm0,xmm0,xmm1
 	mov edx,result
 	vpsrldq xmm1,xmm0,4
-	vaddps xmm0,xmm0,xmm1
-	vsqrtss xmm0,xmm0,xmm0
+	vaddss xmm0,xmm0,xmm1
 	vmovss dword ptr[edx],xmm0
 		
 	vzeroupper
@@ -1038,8 +1321,7 @@ VectorDistD_SSE2_1:
 		
 	movhlps xmm1,xmm0
 	mov edx,result
-	addpd xmm0,xmm1
-	sqrtsd xmm0,xmm0
+	addsd xmm0,xmm1
 	movsd qword ptr[edx],xmm0
 		
 	pop ebx
@@ -1077,8 +1359,7 @@ VectorDistD_AVX_1:
 		
 	vmovhlps xmm1,xmm1,xmm0
 	mov edx,result
-	vaddpd xmm0,xmm0,xmm1
-	vsqrtsd xmm0,xmm0,xmm0
+	vaddsd xmm0,xmm0,xmm1
 	vmovsd qword ptr[edx],xmm0
 		
 	vzeroupper
@@ -1087,7 +1368,289 @@ VectorDistD_AVX_1:
 		
 	ret
 		
-VectorDistD_AVX endp	
+VectorDistD_AVX endp
+
+
+VectorNorme1F_SSE2 proc coeff_x:dword,result:dword,lgth:word
+
+    public VectorNorme1F_SSE2
+	
+	mov eax,16
+	mov edx,coeff_x
+		
+	xorps xmm0,xmm0
+	movaps xmm2,XMMWORD ptr sign_bits_f_32
+	movzx ecx,lgth
+		
+VectorNorme1F_SSE2_1:
+	movaps xmm1,XMMWORD ptr[edx]
+	andps xmm1,xmm2
+	add edx,eax
+	addps xmm0,xmm1
+	loop VectorNorme1F_SSE2_1
+		
+	movhlps xmm1,xmm0
+	addps xmm0,xmm1
+	mov edx,result
+	movaps xmm1,xmm0
+	psrldq xmm1,4
+	addss xmm0,xmm1
+	movss dword ptr[edx],xmm0
+		
+	ret
+		
+VectorNorme1F_SSE2 endp
+
+
+VectorNorme1F_AVX proc coeff_x:dword,result:dword,lgth:word
+
+    public VectorNorme1F_AVX
+	
+	mov eax,32
+	mov edx,coeff_x
+		
+	vxorps ymm0,ymm0,ymm0
+	vmovaps ymm2,YMMWORD ptr sign_bits_f_32
+	movzx ecx,lgth
+		
+VectorNorme1F_AVX_1:
+	vandps ymm1,ymm2,YMMWORD ptr[edx]
+	add edx,eax
+	vaddps ymm0,ymm0,ymm1
+	loop VectorNorme1F_AVX_1
+	
+	vextractf128 xmm1,ymm0,1
+	vaddps xmm0,xmm0,xmm1
+		
+	vmovhlps xmm1,xmm1,xmm0
+	vaddps xmm0,xmm0,xmm1
+	mov edx,result
+	vpsrldq xmm1,xmm0,4
+	vaddss xmm0,xmm0,xmm1
+	vmovss dword ptr[edx],xmm0
+	
+	vzeroupper
+	
+	ret
+		
+VectorNorme1F_AVX endp
+
+
+VectorNorme1D_SSE2 proc coeff_x:dword,result:dword,lgth:word
+
+    public VectorNorme1D_SSE2
+	
+	mov eax,16
+	mov edx,coeff_x
+		
+	xorpd xmm0,xmm0
+	movapd xmm2,XMMWORD ptr sign_bits_f_64
+	movzx ecx,lgth
+		
+VectorNorme1D_SSE2_1:
+	movapd xmm1,XMMWORD ptr[edx]
+	andpd xmm1,xmm2
+	add edx,eax
+	addpd xmm0,xmm1
+	loop VectorNorme1D_SSE2_1
+	
+	movhlps xmm1,xmm0
+	mov edx,result
+	addsd xmm0,xmm1
+	movsd qword ptr[edx],xmm0
+		
+	ret
+		
+VectorNorme1D_SSE2 endp
+
+
+VectorNorme1D_AVX proc coeff_x:dword,result:dword,lgth:word
+
+    public VectorNorme1D_AVX
+	
+	mov eax,32
+	mov edx,coeff_x
+		
+	vxorpd ymm0,ymm0,ymm0
+	vmovapd ymm2,YMMWORD ptr sign_bits_f_64
+	movzx ecx,lgth
+		
+VectorNorme1D_AVX_1:
+	vandpd ymm1,ymm2,YMMWORD ptr[edx]
+	add edx,eax
+	vaddpd ymm0,ymm0,ymm1
+	loop VectorNorme1D_AVX_1
+	
+	vextractf128 xmm1,ymm0,1
+	vaddpd xmm0,xmm0,xmm1
+		
+	vmovhlps xmm1,xmm1,xmm0
+	mov edx,result
+	vaddsd xmm0,xmm0,xmm1
+	vmovsd qword ptr[edx],xmm0
+		
+	vzeroupper	
+		
+	ret
+		
+VectorNorme1D_AVX endp
+
+
+VectorDist1F_SSE2 proc coeff_x:dword,coeff_y:dword,result:dword,lgth:word
+
+    public VectorDist1F_SSE2
+	
+	push ebx
+		
+	mov eax,16
+	mov ebx,coeff_x
+	mov edx,coeff_y
+		
+	xorps xmm0,xmm0
+	movaps xmm2,XMMWORD ptr sign_bits_f_32
+	movzx ecx,lgth
+		
+VectorDist1F_SSE2_1:
+	movaps xmm1,XMMWORD ptr[ebx]
+	subps xmm1,XMMWORD ptr[edx]
+	add ebx,eax
+	andps xmm1,xmm2
+	add edx,eax
+	addps xmm0,xmm1
+	loop VectorDist1F_SSE2_1
+		
+	movhlps xmm1,xmm0
+	addps xmm0,xmm1
+	mov edx,result
+	movaps xmm1,xmm0
+	psrldq xmm1,4
+	addss xmm0,xmm1
+	movss dword ptr[edx],xmm0
+		
+	pop ebx
+		
+	ret
+		
+VectorDist1F_SSE2 endp
+
+
+VectorDist1F_AVX proc coeff_x:dword,coeff_y:dword,result:dword,lgth:word
+
+    public VectorDist1F_AVX
+	
+	push ebx
+		
+	mov eax,32
+	mov ebx,coeff_x
+	mov edx,coeff_y
+		
+	vxorps ymm0,ymm0,ymm0
+	vmovaps ymm2,YMMWORD ptr sign_bits_f_32
+		
+	movzx ecx,lgth
+		
+VectorDist1F_AVX_1:
+	vmovaps ymm1,YMMWORD ptr[ebx]
+	vsubps ymm1,ymm1,YMMWORD ptr[edx]
+	add ebx,eax
+	vandps ymm1,ymm1,ymm2
+	add edx,eax
+	vaddps ymm0,ymm0,ymm1
+	loop VectorDist1F_AVX_1
+		
+	vextractf128 xmm1,ymm0,1
+	vaddps xmm0,xmm0,xmm1
+		
+	vmovhlps xmm1,xmm1,xmm0
+	vaddps xmm0,xmm0,xmm1
+	mov edx,result
+	vpsrldq xmm1,xmm0,4
+	vaddss xmm0,xmm0,xmm1
+	vmovss dword ptr[edx],xmm0
+		
+	vzeroupper
+		
+	pop ebx
+		
+	ret
+		
+VectorDist1F_AVX endp	
+
+
+VectorDist1D_SSE2 proc coeff_x:dword,coeff_y:dword,result:dword,lgth:word
+
+    public VectorDist1D_SSE2
+	
+	push ebx
+		
+	mov eax,16
+	mov ebx,coeff_x
+	mov edx,coeff_y
+		
+	xorpd xmm0,xmm0
+	movapd xmm2,XMMWORD ptr sign_bits_f_64
+	movzx ecx,lgth
+		
+VectorDist1D_SSE2_1:
+	movapd xmm1,XMMWORD ptr[ebx]
+	subpd xmm1,XMMWORD ptr[edx]
+	add ebx,eax
+	andpd xmm1,xmm2
+	add edx,eax
+	addpd xmm0,xmm1
+	loop VectorDist1D_SSE2_1
+		
+	movhlps xmm1,xmm0
+	mov edx,result
+	addsd xmm0,xmm1
+	movsd qword ptr[edx],xmm0
+		
+	pop ebx
+		
+	ret
+		
+VectorDist1D_SSE2 endp
+
+
+VectorDist1D_AVX proc coeff_x:dword,coeff_y:dword,result:dword,lgth:word
+
+    public VectorDist1D_AVX
+	
+	push ebx
+		
+	mov eax,32
+	mov ebx,coeff_x
+	mov edx,coeff_y
+		
+	vxorpd ymm0,ymm0,ymm0
+	vmovapd ymm2,YMMWORD ptr sign_bits_f_64
+		
+	movzx ecx,lgth
+		
+VectorDist1D_AVX_1:
+	vmovapd ymm1,YMMWORD ptr[ebx]
+	vsubpd ymm1,ymm1,YMMWORD ptr[edx]
+	add ebx,eax
+	vandpd ymm1,ymm1,ymm2
+	add edx,eax
+	vaddpd ymm0,ymm0,ymm1
+	loop VectorDist1D_AVX_1
+		
+	vextractf128 xmm1,ymm0,1
+	vaddpd xmm0,xmm0,xmm1
+		
+	vmovhlps xmm1,xmm1,xmm0
+	mov edx,result
+	vaddsd xmm0,xmm0,xmm1
+	vmovsd qword ptr[edx],xmm0
+		
+	vzeroupper
+		
+	pop ebx
+		
+	ret
+		
+VectorDist1D_AVX endp	
 
 
 VectorProductF_SSE2 proc coeff_a:dword,coeff_x:dword,result:dword,lgth:word
@@ -1116,7 +1679,7 @@ VectorProductF_SSE2_1:
 	mov edx,result
 	movaps xmm1,xmm0
 	psrldq xmm1,4
-	addps xmm0,xmm1
+	addss xmm0,xmm1
 	movss dword ptr[edx],xmm0
 		
 	pop ebx
@@ -1155,7 +1718,7 @@ VectorProductF_AVX_1:
 	vaddps xmm0,xmm0,xmm1
 	mov edx,result
 	vpsrldq xmm1,xmm0,4
-	vaddps xmm0,xmm0,xmm1
+	vaddss xmm0,xmm0,xmm1
 	vmovss dword ptr[edx],xmm0
 		
 	vzeroupper
@@ -1190,7 +1753,7 @@ VectorProductD_SSE2_1:
 		
 	movhlps xmm1,xmm0
 	mov edx,result
-	addpd xmm0,xmm1
+	addsd xmm0,xmm1
 	movsd qword ptr[edx],xmm0
 		
 	pop ebx
@@ -1227,7 +1790,7 @@ VectorProductD_AVX_1:
 		
 	vmovhlps xmm1,xmm1,xmm0
 	mov edx,result
-	vaddpd xmm0,xmm0,xmm1
+	vaddsd xmm0,xmm0,xmm1
 	vmovsd qword ptr[edx],xmm0
 		
 	vzeroupper
