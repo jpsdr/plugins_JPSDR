@@ -497,6 +497,66 @@ bool Vector::CopyRaw(const void *ptr,uint16_t lgth)
 }
 
 
+bool Vector::ExportRaw(void *ptr)
+{
+	if ((Coeff==NULL) || (ptr==NULL) || (length==0)) return(false);
+
+	size_t coeff_size;
+
+	switch(data_type)
+	{
+		case DATA_FLOAT : coeff_size=sizeof(float); break;
+		case DATA_DOUBLE : coeff_size=sizeof(double); break;
+		case DATA_UINT64 : coeff_size=sizeof(uint64_t); break;
+		case DATA_INT64 : coeff_size=sizeof(int64_t); break;
+		case DATA_UINT32 : coeff_size=sizeof(uint32_t); break;
+		case DATA_INT32 : coeff_size=sizeof(int32_t); break;
+		case DATA_UINT16 : coeff_size=sizeof(uint16_t); break;
+		case DATA_INT16 : coeff_size=sizeof(int16_t); break;
+		case DATA_UINT8 : coeff_size=sizeof(uint8_t); break;
+		case DATA_INT8 : coeff_size=sizeof(int8_t); break;
+		default : coeff_size=0; break;
+	}
+	if (coeff_size==0) return(false);
+
+	const size_t size_line=(size_t)length*coeff_size;
+
+	memcpy(ptr,Coeff,size_line);
+
+	return(true);
+}
+
+
+bool Vector::ExportRaw(void *ptr,uint16_t lgth)
+{
+	if ((Coeff==NULL) || (ptr==NULL) || (length==0) || (lgth>length)) return(false);
+
+	size_t coeff_size;
+
+	switch(data_type)
+	{
+		case DATA_FLOAT : coeff_size=sizeof(float); break;
+		case DATA_DOUBLE : coeff_size=sizeof(double); break;
+		case DATA_UINT64 : coeff_size=sizeof(uint64_t); break;
+		case DATA_INT64 : coeff_size=sizeof(int64_t); break;
+		case DATA_UINT32 : coeff_size=sizeof(uint32_t); break;
+		case DATA_INT32 : coeff_size=sizeof(int32_t); break;
+		case DATA_UINT16 : coeff_size=sizeof(uint16_t); break;
+		case DATA_INT16 : coeff_size=sizeof(int16_t); break;
+		case DATA_UINT8 : coeff_size=sizeof(uint8_t); break;
+		case DATA_INT8 : coeff_size=sizeof(int8_t); break;
+		default : coeff_size=0; break;
+	}
+	if (coeff_size==0) return(false);
+
+	const size_t size_line=(size_t)lgth*coeff_size;
+
+	memcpy(ptr,Coeff,size_line);
+
+	return(true);
+}
+
+
 bool Vector::FillD(const double data)
 {
 	if ((Coeff==NULL) || (length==0) || (data_type!=DATA_DOUBLE)) return(false);
@@ -3012,6 +3072,116 @@ bool Matrix::CopyRaw(const void *ptr,ptrdiff_t ptr_pitch,uint16_t ln,uint16_t co
 	return(true);
 }
 
+
+bool Matrix::ExportRaw(void *ptr)
+{
+	if ((Coeff==NULL) || (ptr==NULL) || (columns==0) || (lines==0)) return(false);
+
+	size_t coeff_size;
+
+	switch(data_type)
+	{
+		case DATA_FLOAT : coeff_size=sizeof(float); break;
+		case DATA_DOUBLE : coeff_size=sizeof(double); break;
+		case DATA_UINT64 : coeff_size=sizeof(uint64_t); break;
+		case DATA_INT64 : coeff_size=sizeof(int64_t); break;
+		case DATA_UINT32 : coeff_size=sizeof(uint32_t); break;
+		case DATA_INT32 : coeff_size=sizeof(int32_t); break;
+		case DATA_UINT16 : coeff_size=sizeof(uint16_t); break;
+		case DATA_INT16 : coeff_size=sizeof(int16_t); break;
+		case DATA_UINT8 : coeff_size=sizeof(uint8_t); break;
+		case DATA_INT8 : coeff_size=sizeof(int8_t); break;
+		default : coeff_size=0; break;
+	}
+	if (coeff_size==0) return(false);
+
+	uint8_t *a=(uint8_t *)ptr;
+	uint8_t *b=(uint8_t *)Coeff;
+	const size_t size_line=(size_t)columns*coeff_size;
+
+	for (uint16_t i=0; i<lines; i++)
+	{
+		memcpy(a,b,size_line);
+		a+=size_line;
+		b+=pitch;
+	}
+
+	return(true);
+}
+
+
+bool Matrix::ExportRaw(void *ptr,ptrdiff_t ptr_pitch)
+{
+	if ((Coeff==NULL) || (ptr==NULL) || (columns==0) || (lines==0)) return(false);
+
+	size_t coeff_size;
+
+	switch(data_type)
+	{
+		case DATA_FLOAT : coeff_size=sizeof(float); break;
+		case DATA_DOUBLE : coeff_size=sizeof(double); break;
+		case DATA_UINT64 : coeff_size=sizeof(uint64_t); break;
+		case DATA_INT64 : coeff_size=sizeof(int64_t); break;
+		case DATA_UINT32 : coeff_size=sizeof(uint32_t); break;
+		case DATA_INT32 : coeff_size=sizeof(int32_t); break;
+		case DATA_UINT16 : coeff_size=sizeof(uint16_t); break;
+		case DATA_INT16 : coeff_size=sizeof(int16_t); break;
+		case DATA_UINT8 : coeff_size=sizeof(uint8_t); break;
+		case DATA_INT8 : coeff_size=sizeof(int8_t); break;
+		default : coeff_size=0; break;
+	}
+	if (coeff_size==0) return(false);
+
+	uint8_t *a=(uint8_t *)ptr;
+	uint8_t *b=(uint8_t *)Coeff;
+	const size_t size_line=(size_t)columns*coeff_size;
+
+	for (uint16_t i=0; i<lines; i++)
+	{
+		memcpy(a,b,size_line);
+		a+=ptr_pitch;
+		b+=pitch;
+	}
+
+	return(true);
+}
+
+
+bool Matrix::ExportRaw(void *ptr,ptrdiff_t ptr_pitch,uint16_t ln,uint16_t co)
+{
+	if ((Coeff==NULL) || (ptr==NULL) || (columns==0) || (lines==0) || (ln>lines) || (co>columns)) return(false);
+
+	size_t coeff_size;
+
+	switch(data_type)
+	{
+		case DATA_FLOAT : coeff_size=sizeof(float); break;
+		case DATA_DOUBLE : coeff_size=sizeof(double); break;
+		case DATA_UINT64 : coeff_size=sizeof(uint64_t); break;
+		case DATA_INT64 : coeff_size=sizeof(int64_t); break;
+		case DATA_UINT32 : coeff_size=sizeof(uint32_t); break;
+		case DATA_INT32 : coeff_size=sizeof(int32_t); break;
+		case DATA_UINT16 : coeff_size=sizeof(uint16_t); break;
+		case DATA_INT16 : coeff_size=sizeof(int16_t); break;
+		case DATA_UINT8 : coeff_size=sizeof(uint8_t); break;
+		case DATA_INT8 : coeff_size=sizeof(int8_t); break;
+		default : coeff_size=0; break;
+	}
+	if (coeff_size==0) return(false);
+
+	uint8_t *a=(uint8_t *)ptr;
+	uint8_t *b=(uint8_t *)Coeff;
+	const size_t size_line=(size_t)co*coeff_size;
+
+	for (uint16_t i=0; i<ln; i++)
+	{
+		memcpy(a,b,size_line);
+		a+=ptr_pitch;
+		b+=pitch;
+	}
+
+	return(true);
+}
 
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

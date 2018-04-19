@@ -27,6 +27,8 @@ public :
 	bool CopyStrict(const Vector &x);
 	bool CopyRaw(const void *ptr);
 	bool CopyRaw(const void *ptr,uint16_t lgth);
+	bool ExportRaw(void *ptr);
+	bool ExportRaw(void *ptr,uint16_t lgth);
 	void Destroy(void);
 	bool FillD(const double data);
 	bool FillF(const float data);
@@ -169,6 +171,9 @@ public :
 	bool CopyRaw(const void *ptr);
 	bool CopyRaw(const void *ptr,ptrdiff_t ptr_pitch);
 	bool CopyRaw(const void *ptr,ptrdiff_t ptr_pitch,uint16_t ln,uint16_t co);
+	bool ExportRaw(void *ptr);
+	bool ExportRaw(void *ptr,ptrdiff_t ptr_pitch);
+	bool ExportRaw(void *ptr,ptrdiff_t ptr_pitch,uint16_t ln,uint16_t co);
 	void Destroy(void);
 	bool FillD(const double data);
 	bool FillF(const float data);
