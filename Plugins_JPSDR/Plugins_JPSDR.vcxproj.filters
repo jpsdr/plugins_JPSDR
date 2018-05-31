@@ -109,6 +109,12 @@
     <MASM Include="aWarpSharp_asm_x64.asm">
       <Filter>Fichiers sources</Filter>
     </MASM>
+    <MASM Include="AutoYUY2_AVX2_asm.asm">
+      <Filter>Fichiers sources</Filter>
+    </MASM>
+    <MASM Include="AutoYUY2_AVX2_asm_x64.asm">
+      <Filter>Fichiers sources</Filter>
+    </MASM>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="AutoYUY2_asm_x64.asm">

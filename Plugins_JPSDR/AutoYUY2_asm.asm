@@ -1179,126 +1179,10 @@ _AVX_4b_c:
 JPSDR_AutoYUY2_AVX_4b endp
 
 
-JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_2 proc src1:dword,src2:dword,dst:dword,w:dword
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x1_8_SSE2 proc src1:dword,src2:dword,dst:dword,w16:dword
 
-	public JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_2
-
-	push esi
-	push edi
+	public JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x1_8_SSE2
 	
-	pcmpeqb xmm3,xmm3
-	
-	mov edi,dst
-	mov esi,src1
-	mov edx,src2
-	xor eax,eax
-	
-	mov ecx,w
-	shr ecx,1
-	jz short SSE2_2_b
-
-SSE2_2_a:	
-	movq xmm0,qword ptr[edx+8*eax]
-	movq xmm1,qword ptr[esi+8*eax]
-	movq xmm2,xmm0
-	pxor xmm0,xmm3
-	pxor xmm1,xmm3
-	pavgb xmm0,xmm1
-	pavgb xmm0,xmm1
-	pxor xmm0,xmm3
-	pavgb xmm0,xmm2
-
-	movq qword ptr[edi+8*eax],xmm0
-	inc eax
-	loop SSE2_2_a
-
-SSE2_2_b:
-	mov ecx,w
-	and ecx,1
-	jz short SSE2_2_c
-	
-	movd xmm0,dword ptr[edx+8*eax]
-	movd xmm1,dword ptr[esi+8*eax]
-	movq xmm2,xmm0
-	pxor xmm0,xmm3
-	pxor xmm1,xmm3
-	pavgb xmm0,xmm1
-	pavgb xmm0,xmm1
-	pxor xmm0,xmm3
-	pavgb xmm0,xmm2
-
-	movd dword ptr[edi+8*eax],xmm0
-	
-SSE2_2_c:	
-	pop edi
-	pop esi
-
-	ret
-
-JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_2 endp
-
-
-JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_2 proc src1:dword,src2:dword,dst:dword,w:dword
-
-	public JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_2
-
-	push esi
-	push edi
-	
-	vpcmpeqb xmm3,xmm3,xmm3
-	
-	mov edi,dst
-	mov esi,src1
-	mov edx,src2
-	xor eax,eax
-	
-	mov ecx,w
-	shr ecx,1
-	jz short AVX_2_b
-
-AVX_2_a:	
-	vmovq xmm0,qword ptr[edx+8*eax]
-	vmovq xmm1,qword ptr[esi+8*eax]
-	vpxor xmm2,xmm0,xmm3
-	vpxor xmm1,xmm1,xmm3
-	vpavgb xmm2,xmm2,xmm1
-	vpavgb xmm2,xmm2,xmm1
-	vpxor xmm2,xmm2,xmm3
-	vpavgb xmm2,xmm2,xmm0
-
-	vmovq qword ptr[edi+8*eax],xmm2
-	inc eax
-	loop AVX_2_a
-
-AVX_2_b:
-	mov ecx,w
-	and ecx,1
-	jz short AVX_2_c
-	
-	vmovd xmm0,dword ptr[edx+8*eax]
-	vmovd xmm1,dword ptr[esi+8*eax]
-	vpxor xmm2,xmm0,xmm3
-	vpxor xmm1,xmm1,xmm3
-	vpavgb xmm2,xmm2,xmm1
-	vpavgb xmm2,xmm2,xmm1
-	vpxor xmm2,xmm2,xmm3
-	vpavgb xmm2,xmm2,xmm0
-
-	vmovd dword ptr[edi+8*eax],xmm2
-	
-AVX_2_c:	
-	pop edi
-	pop esi
-
-	ret
-
-JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_2 endp
-
-
-JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_2b proc src1:dword,src2:dword,dst:dword,w:dword
-
-	public JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_2b
-
 	push esi
 	push edi
 	push ebx
@@ -1308,16 +1192,173 @@ JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_2b proc src1:dword,src2:dword,dst:dw
 	mov edi,dst
 	mov esi,src1
 	mov edx,src2
-	xor eax,eax
-	
-	mov ecx,w
-	shr ecx,1
-	jz short SSE2_2b_b
-
+	xor eax,eax	
+	mov ecx,w16	
 	mov ebx,16
-SSE2_2b_a:	
-	movdqa xmm0,XMMWORD ptr[edx+eax]
-	movdqa xmm1,XMMWORD ptr[esi+eax]
+	
+Convert_Planar420_to_Planar422_x3x1_8_SSE2_1:
+	movdqa xmm0,XMMWORD ptr[esi+eax]
+	movdqa xmm1,XMMWORD ptr[edx+eax]
+	movdqa xmm2,xmm0
+	pxor xmm0,xmm3
+	pxor xmm1,xmm3
+	pavgb xmm0,xmm1
+	pxor xmm0,xmm3
+	pavgb xmm0,xmm2
+	
+	movdqa XMMWORD ptr[edi+eax],xmm0
+	add eax,ebx
+	loop Convert_Planar420_to_Planar422_x3x1_8_SSE2_1
+	
+
+	pop ebx
+	pop edi
+	pop esi
+
+	ret
+
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x1_8_SSE2 endp
+
+
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x1_8_AVX proc src1:dword,src2:dword,dst:dword,w16:dword
+
+	public JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x1_8_AVX
+	
+	push esi
+	push edi
+	push ebx
+	
+	vpcmpeqb xmm3,xmm3,xmm3
+	
+	mov edi,dst
+	mov esi,src1
+	mov edx,src2
+	xor eax,eax	
+	mov ecx,w16	
+	mov ebx,16
+	
+Convert_Planar420_to_Planar422_x3x1_8_AVX_1:
+	vmovdqa xmm0,XMMWORD ptr[esi+eax]
+	vmovdqa xmm1,XMMWORD ptr[edx+eax]
+	vpxor xmm2,xmm0,xmm3
+	vpxor xmm1,xmm1,xmm3
+	vpavgb xmm2,xmm2,xmm1
+	vpxor xmm2,xmm2,xmm3
+	vpavgb xmm2,xmm2,xmm0
+	
+	vmovdqa XMMWORD ptr[edi+eax],xmm2
+	add eax,ebx
+	loop Convert_Planar420_to_Planar422_x3x1_8_AVX_1
+	
+	pop ebx
+	pop edi
+	pop esi
+
+	ret
+
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x1_8_AVX endp
+
+
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x1_16_SSE2 proc src1:dword,src2:dword,dst:dword,w8:dword
+
+	public JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x1_16_SSE2
+	
+	push esi
+	push edi
+	push ebx
+	
+	pcmpeqb xmm3,xmm3
+	
+	mov edi,dst
+	mov esi,src1
+	mov edx,src2
+	xor eax,eax	
+	mov ecx,w8
+	mov ebx,16
+	
+Convert_Planar420_to_Planar422_x3x1_16_SSE2_1:
+	movdqa xmm0,XMMWORD ptr[esi+eax]
+	movdqa xmm1,XMMWORD ptr[edx+eax]
+	movdqa xmm2,xmm0
+	pxor xmm0,xmm3
+	pxor xmm1,xmm3
+	pavgw xmm0,xmm1
+	pxor xmm0,xmm3
+	pavgw xmm0,xmm2
+	
+	movdqa XMMWORD ptr[edi+eax],xmm0
+	add eax,ebx
+	loop Convert_Planar420_to_Planar422_x3x1_16_SSE2_1
+	
+
+	pop ebx
+	pop edi
+	pop esi
+
+	ret
+
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x1_16_SSE2 endp
+
+
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x1_16_AVX proc src1:dword,src2:dword,dst:dword,w8:dword
+
+	public JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x1_16_AVX
+	
+	push esi
+	push edi
+	push ebx
+	
+	vpcmpeqb xmm3,xmm3,xmm3
+	
+	mov edi,dst
+	mov esi,src1
+	mov edx,src2
+	xor eax,eax	
+	mov ecx,w8
+	mov ebx,16
+	
+Convert_Planar420_to_Planar422_x3x1_16_AVX_1:
+	vmovdqa xmm0,XMMWORD ptr[esi+eax]
+	vmovdqa xmm1,XMMWORD ptr[edx+eax]
+	vpxor xmm2,xmm0,xmm3
+	vpxor xmm1,xmm1,xmm3
+	vpavgw xmm2,xmm2,xmm1
+	vpxor xmm2,xmm2,xmm3
+	vpavgw xmm2,xmm2,xmm0
+	
+	vmovdqa XMMWORD ptr[edi+eax],xmm2
+	add eax,ebx
+	loop Convert_Planar420_to_Planar422_x3x1_16_AVX_1
+	
+	pop ebx
+	pop edi
+	pop esi
+
+	ret
+
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x1_16_AVX endp
+
+
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x5_8_SSE2 proc src1:dword,src2:dword,dst:dword,w16:dword
+
+	public JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x5_8_SSE2
+	
+	push esi
+	push edi
+	push ebx
+	
+	pcmpeqb xmm3,xmm3
+	
+	mov edi,dst
+	mov esi,src1
+	mov edx,src2
+	xor eax,eax	
+	mov ecx,w16
+	mov ebx,16
+	
+Convert_Planar420_to_Planar422_x3x5_8_SSE2_1:
+	movdqa xmm0,XMMWORD ptr[esi+eax]
+	movdqa xmm1,XMMWORD ptr[edx+eax]
 	movdqa xmm2,xmm0
 	pxor xmm0,xmm3
 	pxor xmm1,xmm3
@@ -1325,42 +1366,25 @@ SSE2_2b_a:
 	pavgb xmm0,xmm1
 	pxor xmm0,xmm3
 	pavgb xmm0,xmm2
-
+	
 	movdqa XMMWORD ptr[edi+eax],xmm0
 	add eax,ebx
-	loop SSE2_2b_a
+	loop Convert_Planar420_to_Planar422_x3x5_8_SSE2_1
 	
-SSE2_2b_b:
-	mov ecx,w
-	and ecx,1
-	jz short SSE2_2b_c
-	
-	movq xmm0,qword ptr[edx+eax]
-	movq xmm1,qword ptr[esi+eax]
-	movq xmm2,xmm0
-	pxor xmm0,xmm3
-	pxor xmm1,xmm3
-	pavgb xmm0,xmm1
-	pavgb xmm0,xmm1
-	pxor xmm0,xmm3
-	pavgb xmm0,xmm2
 
-	movq qword ptr[edi+eax],xmm0
-	
-SSE2_2b_c:	
 	pop ebx
 	pop edi
 	pop esi
 
 	ret
 
-JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_2b endp
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x5_8_SSE2 endp
 
 
-JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_2b proc src1:dword,src2:dword,dst:dword,w:dword
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x5_8_AVX proc src1:dword,src2:dword,dst:dword,w16:dword
 
-	public JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_2b
-
+	public JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x5_8_AVX
+	
 	push esi
 	push edi
 	push ebx
@@ -1370,172 +1394,36 @@ JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_2b proc src1:dword,src2:dword,dst:dwo
 	mov edi,dst
 	mov esi,src1
 	mov edx,src2
-	xor eax,eax
-	
-	mov ecx,w
-	shr ecx,1
-	jz short AVX_2b_b
-
+	xor eax,eax	
+	mov ecx,w16	
 	mov ebx,16
-AVX_2b_a:	
-	vmovdqa xmm0,XMMWORD ptr[edx+eax]
-	vmovdqa xmm1,XMMWORD ptr[esi+eax]
+	
+Convert_Planar420_to_Planar422_x3x5_8_AVX_1:
+	vmovdqa xmm0,XMMWORD ptr[esi+eax]
+	vmovdqa xmm1,XMMWORD ptr[edx+eax]
 	vpxor xmm2,xmm0,xmm3
 	vpxor xmm1,xmm1,xmm3
 	vpavgb xmm2,xmm2,xmm1
 	vpavgb xmm2,xmm2,xmm1
 	vpxor xmm2,xmm2,xmm3
 	vpavgb xmm2,xmm2,xmm0
-
+	
 	vmovdqa XMMWORD ptr[edi+eax],xmm2
 	add eax,ebx
-	loop AVX_2b_a
+	loop Convert_Planar420_to_Planar422_x3x5_8_AVX_1
 	
-AVX_2b_b:
-	mov ecx,w
-	and ecx,1
-	jz short AVX_2b_c
-	
-	vmovq xmm0,qword ptr[edx+eax]
-	vmovq xmm1,qword ptr[esi+eax]
-	vpxor xmm2,xmm0,xmm3
-	vpxor xmm1,xmm1,xmm3
-	vpavgb xmm2,xmm2,xmm1
-	vpavgb xmm2,xmm2,xmm1
-	vpxor xmm2,xmm2,xmm3
-	vpavgb xmm2,xmm2,xmm0
-
-	vmovq qword ptr[edi+eax],xmm2
-	
-AVX_2b_c:	
 	pop ebx
 	pop edi
 	pop esi
 
 	ret
 
-JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_2b endp
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x5_8_AVX endp
 
 
-JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_3 proc src1:dword,src2:dword,dst:dword,w:dword
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x5_16_SSE2 proc src1:dword,src2:dword,dst:dword,w8:dword
 
-	public JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_3
-	
-	push esi
-	push edi
-	
-	pcmpeqb xmm3,xmm3
-	
-	mov edi,dst
-	mov esi,src1
-	mov edx,src2
-	xor eax,eax
-	
-	mov ecx,w
-	shr ecx,1
-	jz short SSE2_3_b
-	
-SSE2_3_a:
-	movq xmm0,qword ptr[esi+8*eax]
-	movq xmm1,qword ptr[edx+8*eax]
-	movq xmm2,xmm0
-	pxor xmm0,xmm3
-	pxor xmm1,xmm3
-	pavgb xmm1,xmm0
-	pavgb xmm1,xmm0
-	pxor xmm1,xmm3
-	pavgb xmm1,xmm2
-	
-	movq qword ptr[edi+8*eax],xmm1
-	inc eax
-	loop SSE2_3_a
-	
-SSE2_3_b:
-	mov ecx,w
-	and ecx,1
-	jz short SSE2_3_c
-	
-	movd xmm0,dword ptr[esi+8*eax]
-	movd xmm1,dword ptr[edx+8*eax]
-	movq xmm2,xmm0
-	pxor xmm0,xmm3
-	pxor xmm1,xmm3
-	pavgb xmm1,xmm0
-	pavgb xmm1,xmm0
-	pxor xmm1,xmm3
-	pavgb xmm1,xmm2
-	
-	movd dword ptr[edi+8*eax],xmm1	
-
-SSE2_3_c:
-	pop edi
-	pop esi
-	
-	ret
-
-JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_3 endp
-
-
-JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_3 proc src1:dword,src2:dword,dst:dword,w:dword
-
-	public JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_3
-	
-	push esi
-	push edi
-	
-	vpcmpeqb xmm3,xmm3,xmm3
-	
-	mov edi,dst
-	mov esi,src1
-	mov edx,src2
-	xor eax,eax
-	
-	mov ecx,w
-	shr ecx,1
-	jz short AVX_3_b
-	
-AVX_3_a:
-	vmovq xmm0,qword ptr[esi+8*eax]
-	vmovq xmm1,qword ptr[edx+8*eax]
-	vpxor xmm2,xmm0,xmm3
-	vpxor xmm1,xmm1,xmm3
-	vpavgb xmm1,xmm1,xmm2
-	vpavgb xmm1,xmm1,xmm2
-	vpxor xmm1,xmm1,xmm3
-	vpavgb xmm1,xmm1,xmm0
-	
-	vmovq qword ptr[edi+8*eax],xmm1
-	inc eax
-	loop AVX_3_a
-	
-AVX_3_b:
-	mov ecx,w
-	and ecx,1
-	jz short AVX_3_c
-	
-	vmovd xmm0,dword ptr[esi+8*eax]
-	vmovd xmm1,dword ptr[edx+8*eax]
-	vpxor xmm2,xmm0,xmm3
-	vpxor xmm1,xmm1,xmm3
-	vpavgb xmm1,xmm1,xmm2
-	vpavgb xmm1,xmm1,xmm2
-	vpxor xmm1,xmm1,xmm3
-	vpavgb xmm1,xmm1,xmm0
-	
-	vmovd dword ptr[edi+8*eax],xmm1	
-
-AVX_3_c:
-	pop edi
-	pop esi
-	
-	ret
-
-JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_3 endp
-
-
-JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_3b proc src1:dword,src2:dword,dst:dword,w:dword
-
-	public JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_3b
+	public JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x5_16_SSE2
 	
 	push esi
 	push edi
@@ -1546,14 +1434,93 @@ JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_3b proc src1:dword,src2:dword,dst:dw
 	mov edi,dst
 	mov esi,src1
 	mov edx,src2
-	xor eax,eax
-	
-	mov ecx,w
-	shr ecx,1
-	jz short SSE2_3b_b
-	
+	xor eax,eax	
+	mov ecx,w8
 	mov ebx,16
-SSE2_3b_a:
+	
+Convert_Planar420_to_Planar422_x3x5_16_SSE2_1:
+	movdqa xmm0,XMMWORD ptr[esi+eax]
+	movdqa xmm1,XMMWORD ptr[edx+eax]
+	movdqa xmm2,xmm0
+	pxor xmm0,xmm3
+	pxor xmm1,xmm3
+	pavgw xmm0,xmm1
+	pavgw xmm0,xmm1
+	pxor xmm0,xmm3
+	pavgw xmm0,xmm2
+	
+	movdqa XMMWORD ptr[edi+eax],xmm0
+	add eax,ebx
+	loop Convert_Planar420_to_Planar422_x3x5_16_SSE2_1
+	
+
+	pop ebx
+	pop edi
+	pop esi
+
+	ret
+
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x5_16_SSE2 endp
+
+
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x5_16_AVX proc src1:dword,src2:dword,dst:dword,w8:dword
+
+	public JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x5_16_AVX
+	
+	push esi
+	push edi
+	push ebx
+	
+	vpcmpeqb xmm3,xmm3,xmm3
+	
+	mov edi,dst
+	mov esi,src1
+	mov edx,src2
+	xor eax,eax	
+	mov ecx,w8
+	mov ebx,16
+	
+Convert_Planar420_to_Planar422_x3x5_16_AVX_1:
+	vmovdqa xmm0,XMMWORD ptr[esi+eax]
+	vmovdqa xmm1,XMMWORD ptr[edx+eax]
+	vpxor xmm2,xmm0,xmm3
+	vpxor xmm1,xmm1,xmm3
+	vpavgw xmm2,xmm2,xmm1
+	vpavgw xmm2,xmm2,xmm1
+	vpxor xmm2,xmm2,xmm3
+	vpavgw xmm2,xmm2,xmm0
+	
+	vmovdqa XMMWORD ptr[edi+eax],xmm2
+	add eax,ebx
+	loop Convert_Planar420_to_Planar422_x3x5_16_AVX_1
+	
+	pop ebx
+	pop edi
+	pop esi
+
+	ret
+
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x3x5_16_AVX endp
+
+
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x7x1_8_SSE2 proc src1:dword,src2:dword,dst:dword,w16:dword
+
+	public JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x7x1_8_SSE2
+	
+	push esi
+	push edi
+	push ebx
+	
+	pcmpeqb xmm3,xmm3
+	
+	mov edi,dst
+	mov esi,src1
+	mov edx,src2
+	xor eax,eax	
+	mov ecx,w16
+	mov ebx,16
+	
+Convert_Planar420_to_Planar422_x7x1_8_SSE2_1:
 	movdqa xmm0,XMMWORD ptr[esi+eax]
 	movdqa xmm1,XMMWORD ptr[edx+eax]
 	movdqa xmm2,xmm0
@@ -1566,38 +1533,21 @@ SSE2_3b_a:
 	
 	movdqa XMMWORD ptr[edi+eax],xmm1
 	add eax,ebx
-	loop SSE2_3b_a
+	loop Convert_Planar420_to_Planar422_x7x1_8_SSE2_1
 	
-SSE2_3b_b:	
-	mov ecx,w
-	and ecx,1
-	jz short SSE2_3b_c
-	
-	movq xmm0,qword ptr[esi+eax]
-	movq xmm1,qword ptr[edx+eax]
-	movq xmm2,xmm0
-	pxor xmm0,xmm3
-	pxor xmm1,xmm3
-	pavgb xmm1,xmm0
-	pavgb xmm1,xmm0
-	pxor xmm1,xmm3
-	pavgb xmm1,xmm2
-	
-	movq qword ptr[edi+eax],xmm1
-	
-SSE2_3b_c:	
+
 	pop ebx
 	pop edi
 	pop esi
-	
+
 	ret
 
-JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_3b endp
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x7x1_8_SSE2 endp
 
 
-JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_3b proc src1:dword,src2:dword,dst:dword,w:dword
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x7x1_8_AVX proc src1:dword,src2:dword,dst:dword,w16:dword
 
-	public JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_3b
+	public JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x7x1_8_AVX
 	
 	push esi
 	push edi
@@ -1608,14 +1558,11 @@ JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_3b proc src1:dword,src2:dword,dst:dwo
 	mov edi,dst
 	mov esi,src1
 	mov edx,src2
-	xor eax,eax
-	
-	mov ecx,w
-	shr ecx,1
-	jz short AVX_3b_b
-	
+	xor eax,eax	
+	mov ecx,w16	
 	mov ebx,16
-AVX_3b_a:
+	
+Convert_Planar420_to_Planar422_x7x1_8_AVX_1:
 	vmovdqa xmm0,XMMWORD ptr[esi+eax]
 	vmovdqa xmm1,XMMWORD ptr[edx+eax]
 	vpxor xmm2,xmm0,xmm3
@@ -1624,152 +1571,22 @@ AVX_3b_a:
 	vpavgb xmm1,xmm1,xmm2
 	vpxor xmm1,xmm1,xmm3
 	vpavgb xmm1,xmm1,xmm0
-	
 	vmovdqa XMMWORD ptr[edi+eax],xmm1
 	add eax,ebx
-	loop AVX_3b_a
+	loop Convert_Planar420_to_Planar422_x7x1_8_AVX_1
 	
-AVX_3b_b:	
-	mov ecx,w
-	and ecx,1
-	jz short AVX_3b_c
-	
-	vmovq xmm0,qword ptr[esi+eax]
-	vmovq xmm1,qword ptr[edx+eax]
-	vpxor xmm2,xmm0,xmm3
-	vpxor xmm1,xmm1,xmm3
-	vpavgb xmm1,xmm1,xmm2
-	vpavgb xmm1,xmm1,xmm2
-	vpxor xmm1,xmm1,xmm3
-	vpavgb xmm1,xmm1,xmm0
-	
-	vmovq qword ptr[edi+eax],xmm1
-	
-AVX_3b_c:	
 	pop ebx
 	pop edi
 	pop esi
-	
-	ret
-
-JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_3b endp
-
-
-JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_4 proc src1:dword,src2:dword,dst:dword,w:dword
-
-	public JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_4
-	
-	push esi
-	push edi
-	
-	pcmpeqb xmm3,xmm3
-	
-	mov edi,dst
-	mov esi,src1
-	mov edx,src2
-	xor eax,eax
-	
-	mov ecx,w
-	shr ecx,1
-	jz short SSE2_4_b
-	
-SSE2_4_a:
-	movq xmm0,qword ptr[esi+8*eax]
-	movq xmm1,qword ptr[edx+8*eax]
-	movq xmm2,xmm0
-	pxor xmm0,xmm3
-	pxor xmm1,xmm3
-	pavgb xmm0,xmm1
-	pxor xmm0,xmm3
-	pavgb xmm0,xmm2
-	
-	movq qword ptr[edi+8*eax],xmm0
-	inc eax
-	loop SSE2_4_a
-	
-SSE2_4_b:
-	mov ecx,w
-	and ecx,1
-	jz short SSE2_4_c
-
-	movd xmm0,dword ptr[esi+8*eax]
-	movd xmm1,dword ptr[edx+8*eax]
-	movq xmm2,xmm0
-	pxor xmm0,xmm3
-	pxor xmm1,xmm3
-	pavgb xmm0,xmm1
-	pxor xmm0,xmm3
-	pavgb xmm0,xmm2
-	
-	movd dword ptr[edi+8*eax],xmm0
-	
-SSE2_4_c:
-	pop edi
-	pop esi
 
 	ret
 
-JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_4 endp
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x7x1_8_AVX endp
 
 
-JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_4 proc src1:dword,src2:dword,dst:dword,w:dword
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x7x1_16_SSE2 proc src1:dword,src2:dword,dst:dword,w8:dword
 
-	public JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_4
-	
-	push esi
-	push edi
-	
-	vpcmpeqb xmm3,xmm3,xmm3
-	
-	mov edi,dst
-	mov esi,src1
-	mov edx,src2
-	xor eax,eax
-	
-	mov ecx,w
-	shr ecx,1
-	jz short AVX_4_b
-	
-AVX_4_a:
-	vmovq xmm0,qword ptr[esi+8*eax]
-	vmovq xmm1,qword ptr[edx+8*eax]
-	vpxor xmm2,xmm0,xmm3
-	vpxor xmm1,xmm1,xmm3
-	vpavgb xmm2,xmm2,xmm1
-	vpxor xmm2,xmm2,xmm3
-	vpavgb xmm2,xmm2,xmm0
-	
-	vmovq qword ptr[edi+8*eax],xmm2
-	inc eax
-	loop AVX_4_a
-	
-AVX_4_b:
-	mov ecx,w
-	and ecx,1
-	jz short AVX_4_c
-
-	vmovd xmm0,dword ptr[esi+8*eax]
-	vmovd xmm1,dword ptr[edx+8*eax]
-	vpxor xmm2,xmm0,xmm3
-	vpxor xmm1,xmm1,xmm3
-	vpavgb xmm2,xmm2,xmm1
-	vpxor xmm2,xmm2,xmm3
-	vpavgb xmm2,xmm2,xmm0
-	
-	vmovd dword ptr[edi+8*eax],xmm2
-	
-AVX_4_c:
-	pop edi
-	pop esi
-
-	ret
-
-JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_4 endp
-
-
-JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_4b proc src1:dword,src2:dword,dst:dword,w:dword
-
-	public JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_4b
+	public JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x7x1_16_SSE2
 	
 	push esi
 	push edi
@@ -1780,56 +1597,38 @@ JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_4b proc src1:dword,src2:dword,dst:dw
 	mov edi,dst
 	mov esi,src1
 	mov edx,src2
-	xor eax,eax
-	
-	mov ecx,w
-	shr ecx,1
-	jz short SSE2_4b_b
-	
+	xor eax,eax	
+	mov ecx,w8
 	mov ebx,16
-SSE2_4b_a:
+	
+Convert_Planar420_to_Planar422_x7x1_16_SSE2_1:
 	movdqa xmm0,XMMWORD ptr[esi+eax]
 	movdqa xmm1,XMMWORD ptr[edx+eax]
 	movdqa xmm2,xmm0
 	pxor xmm0,xmm3
 	pxor xmm1,xmm3
-	pavgb xmm0,xmm1
-	pxor xmm0,xmm3
-	pavgb xmm0,xmm2
-	
-	movdqa XMMWORD ptr[edi+eax],xmm0
-	add eax,ebx
-	loop SSE2_4b_a
-	
-SSE2_4b_b:
-	mov ecx,w
-	and ecx,1
-	jz short SSE2_4b_c
-
-	movq xmm0,qword ptr[esi+eax]
-	movq xmm1,qword ptr[edx+eax]
-	movq xmm2,xmm0
-	pxor xmm0,xmm3
+	pavgw xmm1,xmm0
+	pavgw xmm1,xmm0
 	pxor xmm1,xmm3
-	pavgb xmm0,xmm1
-	pxor xmm0,xmm3
-	pavgb xmm0,xmm2
+	pavgw xmm1,xmm2
 	
-	movq qword ptr[edi+eax],xmm0
-		
-SSE2_4b_c:	
+	movdqa XMMWORD ptr[edi+eax],xmm1
+	add eax,ebx
+	loop Convert_Planar420_to_Planar422_x7x1_16_SSE2_1
+	
+
 	pop ebx
 	pop edi
 	pop esi
 
 	ret
 
-JPSDR_AutoYUY2_Convert420_to_Planar422_SSE2_4b endp
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x7x1_16_SSE2 endp
 
 
-JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_4b proc src1:dword,src2:dword,dst:dword,w:dword
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x7x1_16_AVX proc src1:dword,src2:dword,dst:dword,w8:dword
 
-	public JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_4b
+	public JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x7x1_16_AVX
 	
 	push esi
 	push edi
@@ -1840,49 +1639,31 @@ JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_4b proc src1:dword,src2:dword,dst:dwo
 	mov edi,dst
 	mov esi,src1
 	mov edx,src2
-	xor eax,eax
-	
-	mov ecx,w
-	shr ecx,1
-	jz short AVX_4b_b
-	
+	xor eax,eax	
+	mov ecx,w8
 	mov ebx,16
-AVX_4b_a:
+	
+Convert_Planar420_to_Planar422_x7x1_16_AVX_1:
 	vmovdqa xmm0,XMMWORD ptr[esi+eax]
 	vmovdqa xmm1,XMMWORD ptr[edx+eax]
 	vpxor xmm2,xmm0,xmm3
 	vpxor xmm1,xmm1,xmm3
-	vpavgb xmm2,xmm2,xmm1
-	vpxor xmm2,xmm2,xmm3
-	vpavgb xmm2,xmm2,xmm0
-	
-	vmovdqa XMMWORD ptr[edi+eax],xmm2
-	add eax,ebx
-	loop AVX_4b_a
-	
-AVX_4b_b:
-	mov ecx,w
-	and ecx,1
-	jz short AVX_4b_c
-
-	vmovq xmm0,qword ptr[esi+eax]
-	vmovq xmm1,qword ptr[edx+eax]
-	vpxor xmm2,xmm0,xmm3
+	vpavgw xmm1,xmm1,xmm2
+	vpavgw xmm1,xmm1,xmm2
 	vpxor xmm1,xmm1,xmm3
-	vpavgb xmm2,xmm2,xmm1
-	vpxor xmm2,xmm2,xmm3
-	vpavgb xmm2,xmm2,xmm0
+	vpavgw xmm1,xmm1,xmm0
+	vmovdqa XMMWORD ptr[edi+eax],xmm1
+	add eax,ebx
+	loop Convert_Planar420_to_Planar422_x7x1_16_AVX_1
 	
-	vmovq qword ptr[edi+eax],xmm2
-		
-AVX_4b_c:	
 	pop ebx
 	pop edi
 	pop esi
 
 	ret
 
-JPSDR_AutoYUY2_Convert420_to_Planar422_AVX_4b endp
+JPSDR_AutoYUY2_Convert_Planar420_to_Planar422_x7x1_16_AVX endp
+
 
 end
 

@@ -2919,8 +2919,8 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 
   if (desample && ((SizeH>vi.width) || (SizeH==-1)))
   {
-	  if (threads>1) poolInterface->DeAllocateAllThreads(true);
 	  FreeData();
+	  if (threads>1) poolInterface->DeAllocateAllThreads(true);
 	  if (SizeH>vi.width) env->ThrowError("ResizeHMT: Desampling can only downscale!");
 	  else env->ThrowError("ResizeHMT: Matrix can't be reversed!");
   }
@@ -2945,8 +2945,8 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 		  env);
 		if (SizeOut==-1)
 		{
-			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			FreeData();
+			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			env->ThrowError("ResizeHMT: Matrix can't be reversed!");
 		}
 	}
@@ -2971,8 +2971,8 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 	{
 		if (!poolInterface->GetUserId(UserId))
 		{
-			poolInterface->DeAllocateAllThreads(true);
 			FreeData();
+			poolInterface->DeAllocateAllThreads(true);
 			env->ThrowError("ResizeHMT: Error with the TheadPool while getting UserId!");
 		}
 	}
@@ -3562,8 +3562,8 @@ void FilteredResizeH::FreeData(void)
 FilteredResizeH::~FilteredResizeH(void)
 {
 	if (threads_number>1) poolInterface->RemoveUserId(UserId);
-	if (threads>1) poolInterface->DeAllocateAllThreads(true);
 	FreeData();
+	if (threads>1) poolInterface->DeAllocateAllThreads(true);
 }
 
 
@@ -3670,8 +3670,8 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 
   if (desample && ((SizeV>vi.height) || (SizeV==-1)))
   {
-	  if (threads>1) poolInterface->DeAllocateAllThreads(true);
 	  FreeData();
+	  if (threads>1) poolInterface->DeAllocateAllThreads(true);
 	  if (SizeV>vi.height) env->ThrowError("ResizeVMT: Desampling can only downscale!");
 	  else env->ThrowError("ResizeVMT: Matrix can't be reversed!");
   }
@@ -3681,8 +3681,8 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   src_pitch_table_luma = (int *)_aligned_malloc(sizeof(int) * vi.height, 64);
   if (src_pitch_table_luma==NULL)
   {
-	  if (threads>1) poolInterface->DeAllocateAllThreads(true);
 	  FreeData();
+	  if (threads>1) poolInterface->DeAllocateAllThreads(true);
 	  env->ThrowError("ResizeVMT: Could not reserve memory in a resampler.");
   }
   
@@ -3707,8 +3707,8 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 						              env);
 		if (SizeOut==-1)
 		{
-			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			FreeData();
+			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			env->ThrowError("ResizeVMT: Matrix can't be reversed!");
 		}
 	}
@@ -3726,8 +3726,8 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 	src_pitch_table_chromaV = (int *)_aligned_malloc(sizeof(int) * (vi.height >> shift_h), 64);
 	if ((src_pitch_table_chromaU==NULL) || (src_pitch_table_chromaV==NULL))
 	{
-		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		FreeData();
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		env->ThrowError("ResizeVMT: Could not reserve memory in a resampler.");
 	}	
     resampler_chroma_aligned = GetResampler(true,filter_storage_chroma_aligned,resampling_program_chroma);
@@ -3738,8 +3738,8 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 	{
 		if (!poolInterface->GetUserId(UserId))
 		{
-			poolInterface->DeAllocateAllThreads(true);
 			FreeData();
+			poolInterface->DeAllocateAllThreads(true);
 			env->ThrowError("ResizeVMT: Error with the TheadPool while getting UserId!");
 		}
 	}
@@ -4422,8 +4422,8 @@ void FilteredResizeV::FreeData(void)
 FilteredResizeV::~FilteredResizeV(void)
 {
 	if (threads_number>1) poolInterface->RemoveUserId(UserId);
-	if (threads>1) poolInterface->DeAllocateAllThreads(true);
 	FreeData();
+	if (threads>1) poolInterface->DeAllocateAllThreads(true);
 }
 
 
