@@ -45,6 +45,9 @@
     <ClCompile Include="aWarpSharp.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
+    <ClCompile Include="HDRTools.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="avisynth.h">
@@ -83,6 +86,9 @@
     <ClInclude Include="AutoYUY2.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
+    <ClInclude Include="HDRTools.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="AutoYUY2_asm.asm">
@@ -113,6 +119,18 @@
       <Filter>Fichiers sources</Filter>
     </MASM>
     <MASM Include="AutoYUY2_AVX2_asm_x64.asm">
+      <Filter>Fichiers sources</Filter>
+    </MASM>
+    <MASM Include="HDRTools_asm.asm">
+      <Filter>Fichiers sources</Filter>
+    </MASM>
+    <MASM Include="HDRTools_asm_x64.asm">
+      <Filter>Fichiers sources</Filter>
+    </MASM>
+    <MASM Include="HDRTools_AVX2_asm.asm">
+      <Filter>Fichiers sources</Filter>
+    </MASM>
+    <MASM Include="HDRTools_AVX2_asm_x64.asm">
       <Filter>Fichiers sources</Filter>
     </MASM>
   </ItemGroup>
