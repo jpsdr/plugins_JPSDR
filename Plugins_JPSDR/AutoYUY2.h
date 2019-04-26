@@ -4,6 +4,7 @@
  *  Adaptive YV12 upsampling. Progressive picture areas are upsampled
  *  progressively and interlaced areas are upsampled interlaced.
  *  Copyright (C) 2005 Donald A. Graft
+ *  Modified by JPSDR
  *	
  *  AutoYUY2 is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
