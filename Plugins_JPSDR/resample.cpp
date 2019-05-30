@@ -3277,7 +3277,7 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 
   if (threads_number>1)
   {
-	if ((!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,nPool,false,true)) || (nPool==-1))
+	if ((!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,NoneThreadLevel,nPool,false,true)) || (nPool==-1))
 		env->ThrowError("ResizeHMT: Error with the TheadPool while requesting threadpool!");
   }
   
@@ -4124,7 +4124,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 
   if (threads_number>1)
   {
-	if ((!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,nPool,false,true)) || (nPool==-1))
+	if ((!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,NoneThreadLevel,nPool,false,true)) || (nPool==-1))
 		env->ThrowError("ResizeHMT: Error with the TheadPool while requesting threadpool!");
   }
 
@@ -4452,8 +4452,8 @@ PClip FilteredResizeMT::CreateResizeH(PClip clip, double subrange_top, double su
 
 PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_height,int _threads,
 	bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,bool _sleep,int prefetch,
-	int range_mode,bool desample,int accuracy,int order,const AVSValue* args,ResamplingFunction* f,
-	IScriptEnvironment* env)
+	int range_mode,bool desample,int accuracy,int order,int thread_level,
+	const AVSValue* args,ResamplingFunction* f,IScriptEnvironment* env)
 {
   const VideoInfo& vi = clip->GetVideoInfo();
   const double subrange_left = args[0].AsFloat(0), subrange_top = args[1].AsFloat(0);
@@ -4472,6 +4472,8 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
   if ((_threads<0) || (_threads>MAX_MT_THREADS)) env->ThrowError("ResizeMT: [threads] must be between 0 and %d.",MAX_MT_THREADS);
   if ((accuracy<0) || (accuracy>2)) env->ThrowError("ResizeMT: [accuracy] must be between 0 and 2.");
   if ((order<0) || (order>2)) env->ThrowError("ResizeMT: [order] must be between 0 and 2.");
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ResizeMT: [ThreadLevel] must be between 1 and 7.");
 
   const bool avsp=env->FunctionExists("ConvertBits");  
   const bool isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
@@ -4661,6 +4663,9 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 
 	if ((_threads!=1) && (step1 || step2))
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ResizeMT: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(_threads,_LogicalCores);
@@ -4677,7 +4682,8 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,_MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,_MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("ResizeMT: Error with the TheadPool while allocating threadpool!");
@@ -4687,7 +4693,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,_MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,_MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("ResizeMT: Error with the TheadPool while allocating threadpool!");
@@ -4696,7 +4702,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,_MaxPhysCores,_SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,_MaxPhysCores,_SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("ResizeMT: Error with the TheadPool while allocating threadpool!");
@@ -5157,25 +5163,23 @@ AVSValue __cdecl FilteredResizeMT::Create_PointResize(AVSValue args, void*, IScr
   PointFilter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3],&f,env);
+	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,args[14].AsInt(6),&args[3],&f,env);
 }
-
 
 AVSValue __cdecl FilteredResizeMT::Create_BilinearResize(AVSValue args, void*, IScriptEnvironment* env)
 {
   TriangleFilter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3],&f,env);
+	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,args[14].AsInt(6),&args[3],&f,env);
 }
-
 
 AVSValue __cdecl FilteredResizeMT::Create_BicubicResize(AVSValue args, void*, IScriptEnvironment* env)
 {
   MitchellNetravaliFilter f(args[3].AsDblDef(1./3.), args[4].AsDblDef(1./3.));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[9].AsInt(0),
 	  args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(false),args[13].AsBool(false),
-	  args[14].AsInt(0),args[15].AsInt(1),false,0,0,&args[5],&f,env);
+	  args[14].AsInt(0),args[15].AsInt(1),false,0,0,args[16].AsInt(6),&args[5],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_LanczosResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5183,7 +5187,7 @@ AVSValue __cdecl FilteredResizeMT::Create_LanczosResize(AVSValue args, void*, IS
   LanczosFilter f(args[7].AsInt(3));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,&args[3],&f,env);
+	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,args[15].AsInt(6),&args[3],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5191,7 +5195,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Lanczos4Resize(AVSValue args, void*, I
   LanczosFilter f(4);
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3],&f,env);
+	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,args[14].AsInt(6),&args[3],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_BlackmanResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5199,7 +5203,7 @@ AVSValue __cdecl FilteredResizeMT::Create_BlackmanResize(AVSValue args, void*, I
   BlackmanFilter f(args[7].AsInt(4));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,&args[3],&f,env);
+	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,args[15].AsInt(6),&args[3],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_Spline16Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5207,7 +5211,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Spline16Resize(AVSValue args, void*, I
   Spline16Filter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3],&f,env);
+	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,args[14].AsInt(6),&args[3],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_Spline36Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5215,7 +5219,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Spline36Resize(AVSValue args, void*, I
   Spline36Filter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3],&f,env);
+	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,args[14].AsInt(6),&args[3],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_Spline64Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5223,7 +5227,7 @@ AVSValue __cdecl FilteredResizeMT::Create_Spline64Resize(AVSValue args, void*, I
   Spline64Filter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,&args[3],&f,env);
+	  args[12].AsInt(0),args[13].AsInt(1),false,0,0,args[14].AsInt(6),&args[3],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_GaussianResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5231,7 +5235,7 @@ AVSValue __cdecl FilteredResizeMT::Create_GaussianResize(AVSValue args, void*, I
   GaussianFilter f(args[7].AsFloat(30.0f));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,&args[3],&f,env);
+	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,args[15].AsInt(6),&args[3],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_SincResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5239,7 +5243,7 @@ AVSValue __cdecl FilteredResizeMT::Create_SincResize(AVSValue args, void*, IScri
   SincFilter f(args[7].AsInt(4));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,&args[3],&f,env);
+	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,args[15].AsInt(6),&args[3],&f,env);
 }
 
 
@@ -5248,7 +5252,8 @@ AVSValue __cdecl FilteredResizeMT::Create_DeBilinearResize(AVSValue args, void*,
   TriangleFilter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),&args[3],&f,env);
+	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),args[16].AsInt(6),
+	  &args[3],&f,env);
 }
 
 
@@ -5257,7 +5262,8 @@ AVSValue __cdecl FilteredResizeMT::Create_DeBicubicResize(AVSValue args, void*, 
   MitchellNetravaliFilter f(args[3].AsDblDef(1./3.), args[4].AsDblDef(1./3.));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[9].AsInt(0),
 	  args[10].AsBool(true),args[11].AsBool(true),args[12].AsBool(false),args[13].AsBool(false),
-	  args[14].AsInt(0),args[15].AsInt(1),true,args[16].AsInt(0),args[17].AsInt(0),&args[5],&f,env);
+	  args[14].AsInt(0),args[15].AsInt(1),true,args[16].AsInt(0),args[17].AsInt(0),args[18].AsInt(6),
+	  &args[5],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_DeLanczosResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5265,7 +5271,8 @@ AVSValue __cdecl FilteredResizeMT::Create_DeLanczosResize(AVSValue args, void*, 
   LanczosFilter f(args[7].AsInt(3));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),&args[3],&f,env);
+	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),args[17].AsInt(6),
+	  &args[3],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_DeLanczos4Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5273,7 +5280,8 @@ AVSValue __cdecl FilteredResizeMT::Create_DeLanczos4Resize(AVSValue args, void*,
   LanczosFilter f(4);
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),&args[3],&f,env);
+	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),args[16].AsInt(6),
+	  &args[3],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_DeBlackmanResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5281,7 +5289,8 @@ AVSValue __cdecl FilteredResizeMT::Create_DeBlackmanResize(AVSValue args, void*,
   BlackmanFilter f(args[7].AsInt(4));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),&args[3],&f,env);
+	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),args[17].AsInt(6),
+	  &args[3],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_DeSpline16Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5289,7 +5298,8 @@ AVSValue __cdecl FilteredResizeMT::Create_DeSpline16Resize(AVSValue args, void*,
   Spline16Filter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),&args[3],&f,env);
+	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),args[16].AsInt(6),
+	  &args[3],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_DeSpline36Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5297,7 +5307,8 @@ AVSValue __cdecl FilteredResizeMT::Create_DeSpline36Resize(AVSValue args, void*,
   Spline36Filter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),&args[3],&f,env);
+	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),args[16].AsInt(6),
+	  &args[3],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_DeSpline64Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5305,7 +5316,8 @@ AVSValue __cdecl FilteredResizeMT::Create_DeSpline64Resize(AVSValue args, void*,
   Spline64Filter f;
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[7].AsInt(0),
 	  args[8].AsBool(true),args[9].AsBool(true),args[10].AsBool(false),args[11].AsBool(false),
-	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),&args[3],&f,env);
+	  args[12].AsInt(0),args[13].AsInt(1),true,args[14].AsInt(0),args[15].AsInt(0),args[16].AsInt(6),
+	  &args[3],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_DeGaussianResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5313,7 +5325,8 @@ AVSValue __cdecl FilteredResizeMT::Create_DeGaussianResize(AVSValue args, void*,
   GaussianFilter f(args[7].AsFloat(30.0f));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),&args[3],&f,env);
+	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),args[17].AsInt(6),
+	  &args[3],&f,env);
 }
 
 AVSValue __cdecl FilteredResizeMT::Create_DeSincResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5321,5 +5334,6 @@ AVSValue __cdecl FilteredResizeMT::Create_DeSincResize(AVSValue args, void*, ISc
   SincFilter f(args[7].AsInt(4));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
-	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),&args[3],&f,env);
+	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),args[17].AsInt(6),
+	  &args[3],&f,env);
 }

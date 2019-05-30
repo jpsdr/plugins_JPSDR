@@ -41,7 +41,7 @@
 #include "resample_functions.h"
 #include "ThreadPoolInterface.h"
 
-#define RESAMPLE_MT_VERSION "ResampleMT 2.1.2 JPSDR"
+#define RESAMPLE_MT_VERSION "ResampleMT 2.2.0 JPSDR"
 
 // Resizer function pointer
 typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2);
@@ -217,7 +217,7 @@ static PClip CreateResizeH( PClip clip, double subrange_top, double subrange_hei
 
 static PClip CreateResize( PClip clip, int target_width, int target_height, int _threads,
 	bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,bool _sleep,int prefetch,int range_mode,
-	bool desample,int accuracy,int order,
+	bool desample,int accuracy,int order,int thread_level,
 	const AVSValue* args, ResamplingFunction* f, IScriptEnvironment* env );
 
 static AVSValue __cdecl Create_PointResize(AVSValue args, void*, IScriptEnvironment* env);

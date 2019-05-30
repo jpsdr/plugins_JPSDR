@@ -11,7 +11,7 @@ bool aWarpSharp_Enable_SSE2,aWarpSharp_Enable_SSE41,aWarpSharp_Enable_AVX;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.0.0"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.1.0"
 
 /*
   threshold : int, default value : 4
@@ -35,8 +35,10 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 
 	VideoInfo vi = args[0].AsClip()->GetVideoInfo();
 
-	if (!vi.IsYV12())
-		env->ThrowError("AutoYUY2: Input format must be YV12 or I420");
+	const uint8_t pixelsize = (uint8_t)vi.ComponentSize();
+
+	if ((pixelsize>16) || !vi.Is420())
+		env->ThrowError("AutoYUY2: Input format must be YUV420, 8 to 16 bits");
 	if ((vi.width & 1)!=0)
 		env->ThrowError("AutoYUY2: Input width must be a multiple of 2.");
 	if ((vi.height & 3)!=0)
@@ -53,6 +55,7 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 	const bool SetAffinity=args[7].AsBool(false);
 	const bool sleep = args[8].AsBool(false);
 	int prefetch=args[9].AsInt(0);
+	int thread_level=args[10].AsInt(6);
 
 	if ((mode<-1) || (mode>2))
 		env->ThrowError("AutoYUY2: [mode] must be -1 (Automatic), 0 (Progessive) , 1 (Interlaced) or 2 (Test).");
@@ -60,6 +63,8 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 		env->ThrowError("AutoYUY2: [output] must be 0 (YUY2) or 1 (YV16)");
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("AutoYUY2: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("AutoYUY2: [ThreadLevel] must be between 1 and 7.");
 
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("AutoYUY2: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
@@ -68,6 +73,9 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("AutoYUY2: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -84,7 +92,8 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("AutoYUY2: Error with the TheadPool while allocating threadpool!");
@@ -94,7 +103,7 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("AutoYUY2: Error with the TheadPool while allocating threadpool!");
@@ -103,7 +112,7 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("AutoYUY2: Error with the TheadPool while allocating threadpool!");
@@ -112,7 +121,7 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 		}
 	}
 
-	return new AutoYUY2(args[0].AsClip(), thrs, mode, output, threads_number, sleep, env);
+	return new AutoYUY2(args[0].AsClip(), thrs, mode, output, threads_number,sleep, env);
 }
 
 
@@ -144,12 +153,15 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 	const bool SetAffinity=args[16].AsBool(false);
 	const bool sleep = args[18].AsBool(false);
 	int prefetch = args[19].AsInt(0);
+	int thread_level=args[20].AsInt(6);
 
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("nnedi3: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("nnedi3: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("nnedi3: [ThreadLevel] must be between 1 and 7.");
 			
 	const bool dh = args[2].AsBool(false);
 	if (((vi.height&1)!=0) && !dh)
@@ -159,6 +171,9 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("nnedi3: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -175,7 +190,8 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool!");
@@ -185,7 +201,7 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool!");
@@ -194,7 +210,7 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool!");
@@ -288,6 +304,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	const bool sleep = args[24].AsBool(false);
 	int prefetch = args[25].AsInt(0);
 	int range_mode = args[26].AsInt(1);
+	int thread_level=args[27].AsInt(6);
+	int thread_level_rs=args[28].AsInt(6);
 
 	if ((rfactor<2) || (rfactor>1024)) env->ThrowError("nnedi3_rpow2: 2 <= rfactor <= 1024, and rfactor be a power of 2!\n");
 	int rf=1,ct=0;
@@ -319,11 +337,18 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("nnedi3_rpow2: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("nnedi3_rpow2: [ThreadLevel] must be between 1 and 7.");
+	if ((thread_level_rs<1) || (thread_level_rs>7))
+		env->ThrowError("nnedi3_rpow2: [ThreadLevel_rs] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("nnedi3_rpow2: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -340,7 +365,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("nnedi3_rpow2: Error with the TheadPool while allocating threadpool!");
@@ -350,7 +376,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("nnedi3_rpow2: Error with the TheadPool while allocating threadpool!");
@@ -359,7 +385,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("nnedi3_rpow2: Error with the TheadPool while allocating threadpool!");
@@ -594,11 +620,12 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			if ((type==0) || ((type!=3) && (ep0==-FLT_MAX)) ||
 				((type==3) && (ep0==-FLT_MAX) && (ep1==-FLT_MAX)))
 			{
-				AVSValue sargs[14] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
+				AVSValue sargs[15] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
 					vi.width*rfactor, vi.height*rfactor,threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs,sleep,
-					prefetch,range_mode };
-				const char *nargs[14] = { 0, 0, 0, "src_left", "src_top", 
-					"src_width", "src_height","threads","logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch","range" };
+					prefetch,range_mode,thread_level_rs };
+				const char *nargs[15] = { 0, 0, 0, "src_left", "src_top", 
+					"src_width", "src_height","threads","logicalCores","MaxPhysCore","SetAffinity","sleep",
+					"prefetch","range","ThreadLevel" };
 				const uint8_t nbarg=(use_rs_mt) ? 14:7;
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
@@ -674,12 +701,13 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			}
 			else if ((type!=3) || (min(ep0,ep1)==-FLT_MAX))
 			{
-				AVSValue sargs[15] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
+				AVSValue sargs[16] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
 					vi.width*rfactor, vi.height*rfactor, type==1?AVSValue((int)(ep0+0.5f)):
-					(type==2?ep0:max(ep0,ep1)),threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs,sleep,prefetch,range_mode };
-				const char *nargs[15] = { 0, 0, 0, "src_left", "src_top", 
+					(type==2?ep0:max(ep0,ep1)),threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs,
+					sleep,prefetch,range_mode,thread_level_rs };
+				const char *nargs[16] = { 0, 0, 0, "src_left", "src_top", 
 					"src_width", "src_height", type==1?"taps":(type==2?"p":(max(ep0,ep1)==ep0?"b":"c")),
-					"threads","logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch","range" };
+					"threads","logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch","range","ThreadLevel" };
 				const uint8_t nbarg=(use_rs_mt) ? 15:8;
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
@@ -755,12 +783,12 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			}
 			else
 			{
-				AVSValue sargs[16] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
+				AVSValue sargs[17] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
 					vi.width*rfactor, vi.height*rfactor, ep0, ep1,threads_rs,LogicalCores_rs,MaxPhysCores_rs,
-					SetAffinity_rs,sleep,prefetch,range_mode };
-				const char *nargs[16] = { 0, 0, 0, "src_left", "src_top", 
+					SetAffinity_rs,sleep,prefetch,range_mode,thread_level_rs };
+				const char *nargs[17] = { 0, 0, 0, "src_left", "src_top", 
 					"src_width", "src_height", "b", "c", "threads","logicalCores","MaxPhysCore","SetAffinity",
-					"sleep","prefetch","range" };
+					"sleep","prefetch","range","ThreadLevel" };
 				const uint8_t nbarg=(use_rs_mt) ? 16:9;
 
 				v = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
@@ -841,11 +869,11 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				if (vi.Is420())
 				{
-					AVSValue sargs[14]={vu,(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,0.0,-0.25,
+					AVSValue sargs[15]={vu,(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,0.0,-0.25,
 						(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,threads_rs,LogicalCores_rs,MaxPhysCores_rs,
-						SetAffinity_rs,sleep,prefetch,plane_range[1]};
-					const char *nargs[14]={0,0,0,"src_left","src_top","src_width","src_height","threads",
-					"logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch","range" };
+						SetAffinity_rs,sleep,prefetch,plane_range[1],thread_level_rs};
+					const char *nargs[15]={0,0,0,"src_left","src_top","src_width","src_height","threads",
+					"logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch","range","ThreadLevel" };
 					const uint8_t nbarg=(SplineMT) ? 14:7;
 
 					vu = env->Invoke(Spline36,AVSValue(sargs,nbarg),nargs).AsClip();
@@ -915,7 +943,7 @@ static bool is_cplace_mpeg2(const AVSValue &args, int pos)
 // remap from MarcFD's aWarpSharp: thresh=_thresh*256, blur=_blurlevel, type= (bm=0)->1, (bm=2)->0, depth=_depth*_blurlevel/2, chroma= 0->2, 1->4, 2->3
 AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnvironment *env)
 {
-	int threads,prefetch;
+	int threads,prefetch,thread_level;
 	bool LogicalCores,MaxPhysCores,SetAffinity,sleep;
 
 	uint8_t threads_number=1;
@@ -926,6 +954,9 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	const bool avsp=env->FunctionExists("ConvertBits");
 
 	int thresh,blur,blurt,depth,depthC,blurV,depthV,depthVC,blurC,blurVC,threshC;
+
+	const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+		BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
 
   switch ((int)(size_t)user_data)
   {
@@ -939,12 +970,15 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  SetAffinity=args[17].AsBool(false);
 	  sleep = args[18].AsBool(false);
 	  prefetch=args[19].AsInt(0);
+	  thread_level=args[20].AsInt(6);
 
 	  if ((threads<0) || (threads>MAX_MT_THREADS))
 		  env->ThrowError("aWarpSharp2: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	  if (prefetch==0) prefetch=1;
 	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		  env->ThrowError("aWarpSharp2: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("aWarpSharp2: [ThreadLevel] must be between 1 and 7.");
 
 	  if (threads!=1)
 	  {
@@ -954,42 +988,43 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 		  if (threads_number==0) env->ThrowError("aWarpSharp2: Error with the TheadPool while getting CPU info!");
 
-		if (threads_number>1)
-		{
-			if (prefetch>1)
-			{
-				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
-				{
-					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+		  if (threads_number>1)
+		  {
+			  if (prefetch>1)
+			  {
+				  if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				  {
+					  float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
 
-					for(uint8_t i=0; i<prefetch; i++)
-					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
-						{
-							poolInterface->DeAllocateAllThreads(true);
-							env->ThrowError("aWarpSharp2: Error with the TheadPool while allocating threadpool!");
-						}
-						Offset+=delta;
-					}
-				}
-				else
-				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
-					{
-						poolInterface->DeAllocateAllThreads(true);
-						env->ThrowError("aWarpSharp2: Error with the TheadPool while allocating threadpool!");
-					}
-				}
-			}
-			else
-			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-				{
-					poolInterface->DeAllocateAllThreads(true);
-					env->ThrowError("aWarpSharp2: Error with the TheadPool while allocating threadpool!");
-				}
-			}
-		}
+					  for(uint8_t i=0; i<prefetch; i++)
+					  {
+						  if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,
+							  MaxPhysCores,true,true,TabLevel[thread_level],i))
+						  {
+							  poolInterface->DeAllocateAllThreads(true);
+							  env->ThrowError("aWarpSharp2: Error with the TheadPool while allocating threadpool!");
+						  }
+						  Offset+=delta;
+					  }
+				  }
+				  else
+				  {
+					  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
+					  {
+						  poolInterface->DeAllocateAllThreads(true);
+						  env->ThrowError("aWarpSharp2: Error with the TheadPool while allocating threadpool!");
+					  }
+				  }
+			  }
+			  else
+			  {
+				  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
+				  {
+					  poolInterface->DeAllocateAllThreads(true);
+					  env->ThrowError("aWarpSharp2: Error with the TheadPool while allocating threadpool!");
+				  }
+			  }
+		  }
 	  }
 
 	  thresh=args[1].AsInt(0x80);
@@ -1023,12 +1058,15 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  SetAffinity=args[10].AsBool(false);
 	  sleep = args[11].AsBool(false);
 	  prefetch=args[12].AsInt(0);
+	  thread_level=args[13].AsInt(6);
 
 	  if ((threads<0) || (threads>MAX_MT_THREADS))
 		  env->ThrowError("aWarpSharp: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	  if (prefetch==0) prefetch=1;
 	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		  env->ThrowError("aWarpSharp: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("aWarpSharp: [ThreadLevel] must be between 1 and 7.");
 
 	  if (threads!=1)
 	  {
@@ -1038,42 +1076,43 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 		  if (threads_number==0) env->ThrowError("aWarpSharp: Error with the TheadPool while getting CPU info!");
 
-		if (threads_number>1)
-		{
-			if (prefetch>1)
-			{
-				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
-				{
-					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+		  if (threads_number>1)
+		  {
+			  if (prefetch>1)
+			  {
+				  if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				  {
+					  float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
 
-					for(uint8_t i=0; i<prefetch; i++)
-					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
-						{
-							poolInterface->DeAllocateAllThreads(true);
-							env->ThrowError("aWarpSharp: Error with the TheadPool while allocating threadpool!");
-						}
-						Offset+=delta;
-					}
-				}
-				else
-				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
-					{
-						poolInterface->DeAllocateAllThreads(true);
-						env->ThrowError("aWarpSharp: Error with the TheadPool while allocating threadpool!");
-					}
-				}
-			}
-			else
-			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-				{
-					poolInterface->DeAllocateAllThreads(true);
-					env->ThrowError("aWarpSharp: Error with the TheadPool while allocating threadpool!");
-				}
-			}
-		}
+					  for(uint8_t i=0; i<prefetch; i++)
+					  {
+						  if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,
+							  MaxPhysCores,true,true,TabLevel[thread_level],i))
+						  {
+							  poolInterface->DeAllocateAllThreads(true);
+							  env->ThrowError("aWarpSharp: Error with the TheadPool while allocating threadpool!");
+						  }
+						  Offset+=delta;
+					  }
+				  }
+				  else
+				  {
+					  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
+					  {
+						  poolInterface->DeAllocateAllThreads(true);
+						  env->ThrowError("aWarpSharp: Error with the TheadPool while allocating threadpool!");
+					  }
+				  }
+			  }
+			  else
+			  {
+				  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
+				  {
+					  poolInterface->DeAllocateAllThreads(true);
+					  env->ThrowError("aWarpSharp: Error with the TheadPool while allocating threadpool!");
+				  }
+			  }
+		  }
 	  }
 
 	  thresh=int(args[3].AsFloat(0.5)*256.0);
@@ -1100,6 +1139,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  SetAffinity=args[7].AsBool(false);
 	  sleep = args[8].AsBool(false);
 	  prefetch=args[9].AsInt(0);
+	  thread_level=args[10].AsInt(6);
 
 	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aSobel: SSE2 capable CPU is required");
 
@@ -1108,6 +1148,8 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  if (prefetch==0) prefetch=1;
 	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		  env->ThrowError("aSobel: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("aSobel: [ThreadLevel] must be between 1 and 7.");
 
 	  if (threads!=1)
 	  {
@@ -1117,42 +1159,43 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 		  if (threads_number==0) env->ThrowError("aSobel: Error with the TheadPool while getting CPU info!");
 
-		if (threads_number>1)
-		{
-			if (prefetch>1)
-			{
-				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
-				{
-					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+		  if (threads_number>1)
+		  {
+			  if (prefetch>1)
+			  {
+				  if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				  {
+					  float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
 
-					for(uint8_t i=0; i<prefetch; i++)
-					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
-						{
-							poolInterface->DeAllocateAllThreads(true);
-							env->ThrowError("aSobel: Error with the TheadPool while allocating threadpool!");
-						}
-						Offset+=delta;
-					}
-				}
-				else
-				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
-					{
-						poolInterface->DeAllocateAllThreads(true);
-						env->ThrowError("aSobel: Error with the TheadPool while allocating threadpool!");
-					}
-				}
-			}
-			else
-			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-				{
-					poolInterface->DeAllocateAllThreads(true);
-					env->ThrowError("aSobel: Error with the TheadPool while allocating threadpool!");
-				}
-			}
-		}
+					  for(uint8_t i=0; i<prefetch; i++)
+					  {
+						  if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,
+							  MaxPhysCores,true,true,TabLevel[thread_level],i))
+						  {
+							  poolInterface->DeAllocateAllThreads(true);
+							  env->ThrowError("aSobel: Error with the TheadPool while allocating threadpool!");
+						  }
+						  Offset+=delta;
+					  }
+				  }
+				  else
+				  {
+					  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
+					  {
+						  poolInterface->DeAllocateAllThreads(true);
+						  env->ThrowError("aSobel: Error with the TheadPool while allocating threadpool!");
+					  }
+				  }
+			  }
+			  else
+			  {
+				  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
+				  {
+					  poolInterface->DeAllocateAllThreads(true);
+					  env->ThrowError("aSobel: Error with the TheadPool while allocating threadpool!");
+				  }
+			  }
+		  }
 	  }
 
 	  thresh=args[1].AsInt(0x80);
@@ -1170,6 +1213,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  SetAffinity=args[10].AsBool(false);
 	  sleep = args[11].AsBool(false);
 	  prefetch=args[12].AsInt(0);
+	  thread_level=args[13].AsInt(6);
 
 	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aBlur: SSE2 capable CPU is required");
 
@@ -1178,6 +1222,8 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  if (prefetch==0) prefetch=1;
 	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		  env->ThrowError("aBlur: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("aBlur: [ThreadLevel] must be between 1 and 7.");
 
 	  if (threads!=1)
 	  {
@@ -1187,42 +1233,43 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 		  if (threads_number==0) env->ThrowError("aBlur: Error with the TheadPool while getting CPU info!");
 
-		if (threads_number>1)
-		{
-			if (prefetch>1)
-			{
-				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
-				{
-					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+		  if (threads_number>1)
+		  {
+			  if (prefetch>1)
+			  {
+				  if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				  {
+					  float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
 
-					for(uint8_t i=0; i<prefetch; i++)
-					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
-						{
-							poolInterface->DeAllocateAllThreads(true);
-							env->ThrowError("aBlur: Error with the TheadPool while allocating threadpool!");
-						}
-						Offset+=delta;
-					}
-				}
-				else
-				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
-					{
-						poolInterface->DeAllocateAllThreads(true);
-						env->ThrowError("aBlur: Error with the TheadPool while allocating threadpool!");
-					}
-				}
-			}
-			else
-			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-				{
-					poolInterface->DeAllocateAllThreads(true);
-					env->ThrowError("aBlur: Error with the TheadPool while allocating threadpool!");
-				}
-			}
-		}
+					  for(uint8_t i=0; i<prefetch; i++)
+					  {
+						  if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,
+							  MaxPhysCores,true,true,TabLevel[thread_level],i))
+						  {
+							  poolInterface->DeAllocateAllThreads(true);
+							  env->ThrowError("aBlur: Error with the TheadPool while allocating threadpool!");
+						  }
+						  Offset+=delta;
+					  }
+				  }
+				  else
+				  {
+					  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
+					  {
+						  poolInterface->DeAllocateAllThreads(true);
+						  env->ThrowError("aBlur: Error with the TheadPool while allocating threadpool!");
+					  }
+				  }
+			  }
+			  else
+			  {
+				  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
+				  {
+					  poolInterface->DeAllocateAllThreads(true);
+					  env->ThrowError("aBlur: Error with the TheadPool while allocating threadpool!");
+				  }
+			  }
+		  }
 	  }
 
 	  blurt=args[2].AsInt(1);
@@ -1243,6 +1290,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  SetAffinity=args[11].AsBool(false);
 	  sleep = args[12].AsBool(false);
 	  prefetch=args[13].AsInt(0);
+	  thread_level=args[14].AsInt(6);
 
 	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aWarp: SSE2 capable CPU is required");
 
@@ -1251,6 +1299,8 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  if (prefetch==0) prefetch=1;
 	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		  env->ThrowError("aWarp: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("aWarp: [ThreadLevel] must be between 1 and 7.");
 
 	  if (threads!=1)
 	  {
@@ -1260,42 +1310,43 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 		  if (threads_number==0) env->ThrowError("aWarp: Error with the TheadPool while getting CPU info!");
 
-		if (threads_number>1)
-		{
-			if (prefetch>1)
-			{
-				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
-				{
-					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+		  if (threads_number>1)
+		  {
+			  if (prefetch>1)
+			  {
+				  if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				  {
+					  float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
 
-					for(uint8_t i=0; i<prefetch; i++)
-					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
-						{
-							poolInterface->DeAllocateAllThreads(true);
-							env->ThrowError("aWarp: Error with the TheadPool while allocating threadpool!");
-						}
-						Offset+=delta;
-					}
-				}
-				else
-				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
-					{
-						poolInterface->DeAllocateAllThreads(true);
-						env->ThrowError("aWarp: Error with the TheadPool while allocating threadpool!");
-					}
-				}
-			}
-			else
-			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-				{
-					poolInterface->DeAllocateAllThreads(true);
-					env->ThrowError("aWarp: Error with the TheadPool while allocating threadpool!");
-				}
-			}
-		}
+					  for(uint8_t i=0; i<prefetch; i++)
+					  {
+						  if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,
+							  MaxPhysCores,true,true,TabLevel[thread_level],i))
+						  {
+							  poolInterface->DeAllocateAllThreads(true);
+							  env->ThrowError("aWarp: Error with the TheadPool while allocating threadpool!");
+						  }
+						  Offset+=delta;
+					  }
+				  }
+				  else
+				  {
+					  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
+					  {
+						  poolInterface->DeAllocateAllThreads(true);
+						  env->ThrowError("aWarp: Error with the TheadPool while allocating threadpool!");
+					  }
+				  }
+			  }
+			  else
+			  {
+				  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
+				  {
+					  poolInterface->DeAllocateAllThreads(true);
+					  env->ThrowError("aWarp: Error with the TheadPool while allocating threadpool!");
+				  }
+			  }
+		  }
 	  }
 
 	  depth=args[2].AsInt(3);
@@ -1315,6 +1366,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  SetAffinity=args[11].AsBool(false);
 	  sleep = args[12].AsBool(false);
 	  prefetch=args[13].AsInt(0);
+	  thread_level=args[14].AsInt(6);
 
 	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aWarp4: SSE2 capable CPU is required");
 
@@ -1323,6 +1375,8 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  if (prefetch==0) prefetch=1;
 	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		  env->ThrowError("aWarp4: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("aWarp4: [ThreadLevel] must be between 1 and 7.");
 
 	  if (threads!=1)
 	  {
@@ -1332,42 +1386,43 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 		  if (threads_number==0) env->ThrowError("aWarp4: Error with the TheadPool while getting CPU info!");
 
-		if (threads_number>1)
-		{
-			if (prefetch>1)
-			{
-				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
-				{
-					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+		  if (threads_number>1)
+		  {
+			  if (prefetch>1)
+			  {
+				  if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				  {
+					  float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
 
-					for(uint8_t i=0; i<prefetch; i++)
-					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
-						{
-							poolInterface->DeAllocateAllThreads(true);
-							env->ThrowError("aWarp4: Error with the TheadPool while allocating threadpool!");
-						}
-						Offset+=delta;
-					}
-				}
-				else
-				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
-					{
-						poolInterface->DeAllocateAllThreads(true);
-						env->ThrowError("aWarp4: Error with the TheadPool while allocating threadpool!");
-					}
-				}
-			}
-			else
-			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-				{
-					poolInterface->DeAllocateAllThreads(true);
-					env->ThrowError("aWarp4: Error with the TheadPool while allocating threadpool!");
-				}
-			}
-		}
+					  for(uint8_t i=0; i<prefetch; i++)
+					  {
+						  if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,
+							  MaxPhysCores,true,true,TabLevel[thread_level],i))
+						  {
+							  poolInterface->DeAllocateAllThreads(true);
+							  env->ThrowError("aWarp4: Error with the TheadPool while allocating threadpool!");
+						  }
+						  Offset+=delta;
+					  }
+				  }
+				  else
+				  {
+					  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
+					  {
+						  poolInterface->DeAllocateAllThreads(true);
+						  env->ThrowError("aWarp4: Error with the TheadPool while allocating threadpool!");
+					  }
+				  }
+			  }
+			  else
+			  {
+				  if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
+				  {
+					  poolInterface->DeAllocateAllThreads(true);
+					  env->ThrowError("aWarp4: Error with the TheadPool while allocating threadpool!");
+				  }
+			  }
+		  }
 	  }
 
 	  depth=args[2].AsInt(3);
@@ -1431,6 +1486,7 @@ AVSValue __cdecl Create_ConvertYUVtoLinearRGB(AVSValue args, void* user_data, IS
 	const bool SetAffinity=args[14].AsBool(false);
 	const bool sleep = args[15].AsBool(false);
 	int prefetch=args[16].AsInt(0);
+	int thread_level=args[17].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -1448,11 +1504,16 @@ AVSValue __cdecl Create_ConvertYUVtoLinearRGB(AVSValue args, void* user_data, IS
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		env->ThrowError("ConvertYUVtoLinearRGB: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertYUVtoLinearRGB: [ThreadLevel] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertYUVtoLinearRGB: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -1469,7 +1530,8 @@ AVSValue __cdecl Create_ConvertYUVtoLinearRGB(AVSValue args, void* user_data, IS
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("ConvertYUVtoLinearRGB: Error with the TheadPool while allocating threadpool!");
@@ -1479,7 +1541,7 @@ AVSValue __cdecl Create_ConvertYUVtoLinearRGB(AVSValue args, void* user_data, IS
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("ConvertYUVtoLinearRGB: Error with the TheadPool while allocating threadpool!");
@@ -1488,7 +1550,7 @@ AVSValue __cdecl Create_ConvertYUVtoLinearRGB(AVSValue args, void* user_data, IS
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("ConvertYUVtoLinearRGB: Error with the TheadPool while allocating threadpool!");
@@ -1548,6 +1610,7 @@ AVSValue __cdecl Create_ConvertYUVtoXYZ(AVSValue args, void* user_data, IScriptE
 	const bool SetAffinity=args[22].AsBool(false);
 	const bool sleep = args[23].AsBool(false);
 	int prefetch=args[24].AsInt(0);
+	int thread_level=args[25].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -1614,11 +1677,16 @@ AVSValue __cdecl Create_ConvertYUVtoXYZ(AVSValue args, void* user_data, IScriptE
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		env->ThrowError("ConvertYUVtoXYZ: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertYUVtoXYZ: [ThreadLevel] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertYUVtoXYZ: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -1635,7 +1703,8 @@ AVSValue __cdecl Create_ConvertYUVtoXYZ(AVSValue args, void* user_data, IScriptE
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("ConvertYUVtoXYZ: Error with the TheadPool while allocating threadpool!");
@@ -1645,7 +1714,7 @@ AVSValue __cdecl Create_ConvertYUVtoXYZ(AVSValue args, void* user_data, IScriptE
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("ConvertYUVtoXYZ: Error with the TheadPool while allocating threadpool!");
@@ -1654,7 +1723,7 @@ AVSValue __cdecl Create_ConvertYUVtoXYZ(AVSValue args, void* user_data, IScriptE
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("ConvertYUVtoXYZ: Error with the TheadPool while allocating threadpool!");
@@ -1713,6 +1782,7 @@ AVSValue __cdecl Create_ConvertLinearRGBtoYUV(AVSValue args, void* user_data, IS
 	const bool SetAffinity=args[15].AsBool(false);
 	const bool sleep = args[16].AsBool(false);
 	int prefetch=args[17].AsInt(0);
+	int thread_level=args[18].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -1728,11 +1798,16 @@ AVSValue __cdecl Create_ConvertLinearRGBtoYUV(AVSValue args, void* user_data, IS
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		env->ThrowError("ConvertLinearRGBtoYUV: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertLinearRGBtoYUV: [ThreadLevel] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertLinearRGBtoYUV: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -1749,7 +1824,8 @@ AVSValue __cdecl Create_ConvertLinearRGBtoYUV(AVSValue args, void* user_data, IS
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("ConvertLinearRGBtoYUV: Error with the TheadPool while allocating threadpool!");
@@ -1759,7 +1835,7 @@ AVSValue __cdecl Create_ConvertLinearRGBtoYUV(AVSValue args, void* user_data, IS
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("ConvertLinearRGBtoYUV: Error with the TheadPool while allocating threadpool!");
@@ -1768,7 +1844,7 @@ AVSValue __cdecl Create_ConvertLinearRGBtoYUV(AVSValue args, void* user_data, IS
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("ConvertLinearRGBtoYUV: Error with the TheadPool while allocating threadpool!");
@@ -1827,6 +1903,7 @@ AVSValue __cdecl Create_ConvertRGBtoXYZ(AVSValue args, void* user_data, IScriptE
 	const bool SetAffinity=args[21].AsBool(false);
 	const bool sleep = args[22].AsBool(false);
 	int prefetch=args[23].AsInt(0);
+	int thread_level=args[24].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -1893,11 +1970,16 @@ AVSValue __cdecl Create_ConvertRGBtoXYZ(AVSValue args, void* user_data, IScriptE
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		env->ThrowError("ConvertRGBtoXYZ: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertRGBtoXYZ: [ThreadLevel] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertRGBtoXYZ: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -1914,7 +1996,8 @@ AVSValue __cdecl Create_ConvertRGBtoXYZ(AVSValue args, void* user_data, IScriptE
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("ConvertRGBtoXYZ: Error with the TheadPool while allocating threadpool!");
@@ -1924,7 +2007,7 @@ AVSValue __cdecl Create_ConvertRGBtoXYZ(AVSValue args, void* user_data, IScriptE
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("ConvertRGBtoXYZ: Error with the TheadPool while allocating threadpool!");
@@ -1933,7 +2016,7 @@ AVSValue __cdecl Create_ConvertRGBtoXYZ(AVSValue args, void* user_data, IScriptE
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("ConvertRGBtoXYZ: Error with the TheadPool while allocating threadpool!");
@@ -2001,6 +2084,7 @@ AVSValue __cdecl Create_ConvertXYZtoYUV(AVSValue args, void* user_data, IScriptE
 	const bool SetAffinity=args[32].AsBool(false);
 	const bool sleep = args[33].AsBool(false);
 	int prefetch=args[34].AsInt(0);
+	int thread_level=args[35].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -2141,11 +2225,16 @@ AVSValue __cdecl Create_ConvertXYZtoYUV(AVSValue args, void* user_data, IScriptE
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		env->ThrowError("ConvertXYZtoYUV: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertXYZtoYUV: [ThreadLevel] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertXYZtoYUV: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -2162,7 +2251,8 @@ AVSValue __cdecl Create_ConvertXYZtoYUV(AVSValue args, void* user_data, IScriptE
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("ConvertXYZtoYUV: Error with the TheadPool while allocating threadpool!");
@@ -2172,7 +2262,7 @@ AVSValue __cdecl Create_ConvertXYZtoYUV(AVSValue args, void* user_data, IScriptE
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("ConvertXYZtoYUV: Error with the TheadPool while allocating threadpool!");
@@ -2181,7 +2271,7 @@ AVSValue __cdecl Create_ConvertXYZtoYUV(AVSValue args, void* user_data, IScriptE
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("ConvertXYZtoYUV: Error with the TheadPool while allocating threadpool!");
@@ -2245,6 +2335,7 @@ AVSValue __cdecl Create_ConvertXYZtoRGB(AVSValue args, void* user_data, IScriptE
 	const bool SetAffinity=args[30].AsBool(false);
 	const bool sleep = args[31].AsBool(false);
 	int prefetch=args[32].AsInt(0);
+	int thread_level=args[33].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -2386,11 +2477,16 @@ AVSValue __cdecl Create_ConvertXYZtoRGB(AVSValue args, void* user_data, IScriptE
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		env->ThrowError("ConvertXYZtoRGB: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertXYZtoRGB: [ThreadLevel] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertXYZtoRGB: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -2407,7 +2503,8 @@ AVSValue __cdecl Create_ConvertXYZtoRGB(AVSValue args, void* user_data, IScriptE
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("ConvertXYZtoRGB: Error with the TheadPool while allocating threadpool!");
@@ -2417,7 +2514,7 @@ AVSValue __cdecl Create_ConvertXYZtoRGB(AVSValue args, void* user_data, IScriptE
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("ConvertXYZtoRGB: Error with the TheadPool while allocating threadpool!");
@@ -2426,7 +2523,7 @@ AVSValue __cdecl Create_ConvertXYZtoRGB(AVSValue args, void* user_data, IScriptE
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("ConvertXYZtoRGB: Error with the TheadPool while allocating threadpool!");
@@ -2462,6 +2559,7 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_HDRtoSDR(AVSValue args, void* user_data
 	const bool SetAffinity=args[7].AsBool(false);
 	const bool sleep = args[8].AsBool(false);
 	int prefetch=args[9].AsInt(0);
+	int thread_level=args[10].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -2470,11 +2568,16 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_HDRtoSDR(AVSValue args, void* user_data
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		env->ThrowError("ConvertXYZ_Scale_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertXYZ_Scale_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertXYZ_Scale_HDRtoSDR: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -2491,7 +2594,8 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_HDRtoSDR(AVSValue args, void* user_data
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("ConvertXYZ_Scale_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -2501,7 +2605,7 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_HDRtoSDR(AVSValue args, void* user_data
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("ConvertXYZ_Scale_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -2510,7 +2614,7 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_HDRtoSDR(AVSValue args, void* user_data
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("ConvertXYZ_Scale_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -2541,6 +2645,7 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_SDRtoHDR(AVSValue args, void* user_data
 	const bool SetAffinity=args[7].AsBool(false);
 	const bool sleep = args[8].AsBool(false);
 	int prefetch=args[9].AsInt(0);
+	int thread_level=args[10].AsInt(6);
 
 	if ((Coeff_X==0.0f) || (Coeff_Y==0.0f) || (Coeff_Z==0.0f))
 		env->ThrowError("ConvertXYZ_Scale_SDRtoHDR: Wrong parameter value!");
@@ -2552,11 +2657,16 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_SDRtoHDR(AVSValue args, void* user_data
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		env->ThrowError("ConvertXYZ_Scale_SDRtoHDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertXYZ_Scale_SDRtoHDR: [ThreadLevel] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertXYZ_Scale_SDRtoHDR: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -2573,7 +2683,8 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_SDRtoHDR(AVSValue args, void* user_data
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("ConvertXYZ_Scale_SDRtoHDR: Error with the TheadPool while allocating threadpool!");
@@ -2583,7 +2694,7 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_SDRtoHDR(AVSValue args, void* user_data
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("ConvertXYZ_Scale_SDRtoHDR: Error with the TheadPool while allocating threadpool!");
@@ -2592,7 +2703,7 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_SDRtoHDR(AVSValue args, void* user_data
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("ConvertXYZ_Scale_SDRtoHDR: Error with the TheadPool while allocating threadpool!");
@@ -2719,6 +2830,7 @@ AVSValue __cdecl Create_ConvertXYZ_Hable_HDRtoSDR(AVSValue args, void* user_data
 	const bool SetAffinity=args[38].AsBool(false);
 	const bool sleep = args[39].AsBool(false);
 	int prefetch=args[40].AsInt(0);
+	int thread_level=args[41].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -2727,11 +2839,16 @@ AVSValue __cdecl Create_ConvertXYZ_Hable_HDRtoSDR(AVSValue args, void* user_data
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		env->ThrowError("ConvertXYZ_Hable_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertXYZ_Hable_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertXYZ_Hable_HDRtoSDR: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -2748,7 +2865,8 @@ AVSValue __cdecl Create_ConvertXYZ_Hable_HDRtoSDR(AVSValue args, void* user_data
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("ConvertXYZ_Hable_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -2758,7 +2876,7 @@ AVSValue __cdecl Create_ConvertXYZ_Hable_HDRtoSDR(AVSValue args, void* user_data
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("ConvertXYZ_Hable_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -2767,7 +2885,7 @@ AVSValue __cdecl Create_ConvertXYZ_Hable_HDRtoSDR(AVSValue args, void* user_data
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("ConvertXYZ_Hable_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -2829,6 +2947,7 @@ AVSValue __cdecl Create_ConvertRGB_Hable_HDRtoSDR(AVSValue args, void* user_data
 	const bool SetAffinity=args[29].AsBool(false);
 	const bool sleep = args[30].AsBool(false);
 	int prefetch=args[31].AsInt(0);
+	int thread_level=args[32].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -2837,11 +2956,16 @@ AVSValue __cdecl Create_ConvertRGB_Hable_HDRtoSDR(AVSValue args, void* user_data
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		env->ThrowError("ConvertRGB_Hable_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertRGB_Hable_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertRGB_Hable_HDRtoSDR: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -2858,7 +2982,8 @@ AVSValue __cdecl Create_ConvertRGB_Hable_HDRtoSDR(AVSValue args, void* user_data
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("ConvertRGB_Hable_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -2868,7 +2993,7 @@ AVSValue __cdecl Create_ConvertRGB_Hable_HDRtoSDR(AVSValue args, void* user_data
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("ConvertRGB_Hable_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -2877,7 +3002,7 @@ AVSValue __cdecl Create_ConvertRGB_Hable_HDRtoSDR(AVSValue args, void* user_data
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("ConvertRGB_Hable_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -2987,6 +3112,7 @@ AVSValue __cdecl Create_ConvertXYZ_Mobius_HDRtoSDR(AVSValue args, void* user_dat
 	const bool SetAffinity=args[23].AsBool(false);
 	const bool sleep = args[24].AsBool(false);
 	int prefetch=args[25].AsInt(0);
+	int thread_level=args[26].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -2995,11 +3121,16 @@ AVSValue __cdecl Create_ConvertXYZ_Mobius_HDRtoSDR(AVSValue args, void* user_dat
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		env->ThrowError("ConvertXYZ_Mobius_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertXYZ_Mobius_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertXYZ_Mobius_HDRtoSDR: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -3016,7 +3147,8 @@ AVSValue __cdecl Create_ConvertXYZ_Mobius_HDRtoSDR(AVSValue args, void* user_dat
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("ConvertXYZ_Mobius_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -3026,7 +3158,7 @@ AVSValue __cdecl Create_ConvertXYZ_Mobius_HDRtoSDR(AVSValue args, void* user_dat
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("ConvertXYZ_Mobius_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -3035,7 +3167,7 @@ AVSValue __cdecl Create_ConvertXYZ_Mobius_HDRtoSDR(AVSValue args, void* user_dat
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("ConvertXYZ_Mobius_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -3079,6 +3211,7 @@ AVSValue __cdecl Create_ConvertRGB_Mobius_HDRtoSDR(AVSValue args, void* user_dat
 	const bool SetAffinity=args[14].AsBool(false);
 	const bool sleep = args[15].AsBool(false);
 	int prefetch=args[16].AsInt(0);
+	int thread_level=args[17].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -3087,11 +3220,16 @@ AVSValue __cdecl Create_ConvertRGB_Mobius_HDRtoSDR(AVSValue args, void* user_dat
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		env->ThrowError("ConvertRGB_Mobius_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertRGB_Mobius_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertRGB_Mobius_HDRtoSDR: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -3108,7 +3246,8 @@ AVSValue __cdecl Create_ConvertRGB_Mobius_HDRtoSDR(AVSValue args, void* user_dat
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("ConvertRGB_Mobius_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -3118,7 +3257,7 @@ AVSValue __cdecl Create_ConvertRGB_Mobius_HDRtoSDR(AVSValue args, void* user_dat
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("ConvertRGB_Mobius_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -3127,7 +3266,7 @@ AVSValue __cdecl Create_ConvertRGB_Mobius_HDRtoSDR(AVSValue args, void* user_dat
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("ConvertRGB_Mobius_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -3241,6 +3380,7 @@ AVSValue __cdecl Create_ConvertXYZ_Reinhard_HDRtoSDR(AVSValue args, void* user_d
 	const bool SetAffinity=args[23].AsBool(false);
 	const bool sleep = args[24].AsBool(false);
 	int prefetch=args[25].AsInt(0);
+	int thread_level=args[26].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -3249,11 +3389,16 @@ AVSValue __cdecl Create_ConvertXYZ_Reinhard_HDRtoSDR(AVSValue args, void* user_d
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		env->ThrowError("ConvertXYZ_Reinhard_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertXYZ_Reinhard_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertXYZ_Reinhard_HDRtoSDR: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -3270,7 +3415,8 @@ AVSValue __cdecl Create_ConvertXYZ_Reinhard_HDRtoSDR(AVSValue args, void* user_d
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("ConvertXYZ_Reinhard_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -3280,7 +3426,7 @@ AVSValue __cdecl Create_ConvertXYZ_Reinhard_HDRtoSDR(AVSValue args, void* user_d
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("ConvertXYZ_Reinhard_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -3289,7 +3435,7 @@ AVSValue __cdecl Create_ConvertXYZ_Reinhard_HDRtoSDR(AVSValue args, void* user_d
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("ConvertXYZ_Reinhard_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -3333,6 +3479,7 @@ AVSValue __cdecl Create_ConvertRGB_Reinhard_HDRtoSDR(AVSValue args, void* user_d
 	const bool SetAffinity=args[14].AsBool(false);
 	const bool sleep = args[15].AsBool(false);
 	int prefetch=args[16].AsInt(0);
+	int thread_level=args[17].AsInt(6);
 
 	if ((contr_R==0.0) || (contr_G==0.0) || (contr_B==0.0) ||
 		(peak_R==0.0) || (peak_G==0.0) || (peak_B==0.0))
@@ -3345,11 +3492,16 @@ AVSValue __cdecl Create_ConvertRGB_Reinhard_HDRtoSDR(AVSValue args, void* user_d
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
 		env->ThrowError("ConvertRGB_Reinhard_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertRGB_Reinhard_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertRGB_Reinhard_HDRtoSDR: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -3366,7 +3518,8 @@ AVSValue __cdecl Create_ConvertRGB_Reinhard_HDRtoSDR(AVSValue args, void* user_d
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("ConvertRGB_Reinhard_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -3376,7 +3529,7 @@ AVSValue __cdecl Create_ConvertRGB_Reinhard_HDRtoSDR(AVSValue args, void* user_d
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("ConvertRGB_Reinhard_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -3385,7 +3538,7 @@ AVSValue __cdecl Create_ConvertRGB_Reinhard_HDRtoSDR(AVSValue args, void* user_d
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("ConvertRGB_Reinhard_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
@@ -3412,146 +3565,147 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 	aWarpSharp_Enable_AVX=(env->GetCPUFlags() & CPUF_AVX)!=0;
 
 	SetCPUMatrixClass((env->GetCPUFlags() & CPUF_SSE2)!=0,(env->GetCPUFlags() & CPUF_AVX)!=0,(env->GetCPUFlags() & CPUF_AVX2)!=0);
-
     env->AddFunction("AutoYUY2",
-		"c[threshold]i[mode]i[output]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",
+		"c[threshold]i[mode]i[output]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_AutoYUY2, 0);
 
 	env->AddFunction("nnedi3", "c[field]i[dh]b[Y]b[U]b[V]b[nsize]i[nns]i[qual]i[etype]i[pscrn]i" \
-		"[threads]i[opt]i[fapprox]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[A]b[sleep]b[prefetch]i[range]i", Create_nnedi3, 0);
+		"[threads]i[opt]i[fapprox]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[A]b[sleep]b[prefetch]i" \
+		"[range]i[ThreadLevel]i", Create_nnedi3, 0);
 	env->AddFunction("nnedi3_rpow2", "c[rfactor]i[nsize]i[nns]i[qual]i[etype]i[pscrn]i[cshift]s[fwidth]i" \
 		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i[csresize]b[mpeg2]b[logicalCores]b[MaxPhysCore]b" \
-		"[SetAffinity]b[threads_rs]i[logicalCores_rs]b[MaxPhysCore_rs]b[SetAffinity_rs]b[sleep]b[prefetch]i[range]i", Create_nnedi3_rpow2, 0);
+		"[SetAffinity]b[threads_rs]i[logicalCores_rs]b[MaxPhysCore_rs]b[SetAffinity_rs]b[sleep]b" \
+		"[prefetch]i[range]i[ThreadLevel]i[ThreadLevel_rs]i", Create_nnedi3_rpow2, 0);
 
-	env->AddFunction("PointResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i",
-		FilteredResizeMT::Create_PointResize, 0);
-	env->AddFunction("BilinearResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i",
-		FilteredResizeMT::Create_BilinearResize, 0);
-	env->AddFunction("BicubicResizeMT", "c[target_width]i[target_height]i[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i",
-		FilteredResizeMT::Create_BicubicResize, 0);
-	env->AddFunction("LanczosResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i",
-		FilteredResizeMT::Create_LanczosResize, 0);
-	env->AddFunction("Lanczos4ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i",
-		FilteredResizeMT::Create_Lanczos4Resize, 0);
-	env->AddFunction("BlackmanResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i",
-		FilteredResizeMT::Create_BlackmanResize, 0);
-	env->AddFunction("Spline16ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i",
-		FilteredResizeMT::Create_Spline16Resize, 0);
-	env->AddFunction("Spline36ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i",
-		FilteredResizeMT::Create_Spline36Resize, 0);
-	env->AddFunction("Spline64ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i",
-		FilteredResizeMT::Create_Spline64Resize, 0);
-	env->AddFunction("GaussResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[p]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i",
-		FilteredResizeMT::Create_GaussianResize, 0);
-	env->AddFunction("SincResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i",
-		FilteredResizeMT::Create_SincResize, 0);
+	env->AddFunction("PointResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_PointResize, 0);
+	env->AddFunction("BilinearResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_BilinearResize, 0);
+	env->AddFunction("BicubicResizeMT", "c[target_width]i[target_height]i[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_BicubicResize, 0);
+	env->AddFunction("LanczosResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_LanczosResize, 0);
+	env->AddFunction("Lanczos4ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_Lanczos4Resize, 0);
+	env->AddFunction("BlackmanResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_BlackmanResize, 0);
+	env->AddFunction("Spline16ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_Spline16Resize, 0);
+	env->AddFunction("Spline36ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_Spline36Resize, 0);
+	env->AddFunction("Spline64ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_Spline64Resize, 0);
+	env->AddFunction("GaussResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[p]f[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_GaussianResize, 0);
+	env->AddFunction("SincResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_SincResize, 0);
 
-	env->AddFunction("DeBilinearResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i",
-		FilteredResizeMT::Create_DeBilinearResize, 0);
-	env->AddFunction("DeBicubicResizeMT", "c[target_width]i[target_height]i[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i",
-		FilteredResizeMT::Create_DeBicubicResize, 0);
-	env->AddFunction("DeLanczosResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i",
-		FilteredResizeMT::Create_DeLanczosResize, 0);
-	env->AddFunction("DeLanczos4ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i",
-		FilteredResizeMT::Create_DeLanczos4Resize, 0);
-	env->AddFunction("DeBlackmanResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i",
-		FilteredResizeMT::Create_DeBlackmanResize, 0);
-	env->AddFunction("DeSpline16ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i",
-		FilteredResizeMT::Create_DeSpline16Resize, 0);
-	env->AddFunction("DeSpline36ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i",
-		FilteredResizeMT::Create_DeSpline36Resize, 0);
-	env->AddFunction("DeSpline64ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i",
-		FilteredResizeMT::Create_DeSpline64Resize, 0);
-	env->AddFunction("DeGaussResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[p]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i",
-		FilteredResizeMT::Create_DeGaussianResize, 0);
-	env->AddFunction("DeSincResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i",
-		FilteredResizeMT::Create_DeSincResize, 0);
+	env->AddFunction("DeBilinearResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeBilinearResize, 0);
+	env->AddFunction("DeBicubicResizeMT", "c[target_width]i[target_height]i[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeBicubicResize, 0);
+	env->AddFunction("DeLanczosResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeLanczosResize, 0);
+	env->AddFunction("DeLanczos4ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeLanczos4Resize, 0);
+	env->AddFunction("DeBlackmanResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeBlackmanResize, 0);
+	env->AddFunction("DeSpline16ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeSpline16Resize, 0);
+	env->AddFunction("DeSpline36ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeSpline36Resize, 0);
+	env->AddFunction("DeSpline64ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeSpline64Resize, 0);
+	env->AddFunction("DeGaussResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[p]f[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeGaussianResize, 0);
+	env->AddFunction("DeSincResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i" \
+		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeSincResize, 0);
 
   env->AddFunction("aWarpSharp2", "c[thresh]i[blur]i[type]i[depth]i[chroma]i[depthC]i[cplace]s[blurV]i[depthV]i[depthVC]i" \
-	  "[blurC]i[blurVC]i[threshC]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i", Create_aWarpSharp, (void*)0);
+	  "[blurC]i[blurVC]i[threshC]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_aWarpSharp, (void*)0);
   env->AddFunction("aWarpSharp", "c[depth]f[blurlevel]i[thresh]f[cm]i[bm]i[show]b" \
-	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i", Create_aWarpSharp, (void*)1);
+	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_aWarpSharp, (void*)1);
   env->AddFunction("aSobel", "c[thresh]i[chroma]i[threshC]i" \
-	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i", Create_aWarpSharp, (void*)2);
+	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_aWarpSharp, (void*)2);
   env->AddFunction("aBlur", "c[blur]i[type]i[chroma]i[blurV]i[blurC]i[blurVC]i" \
-	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i", Create_aWarpSharp, (void*)3);
+	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_aWarpSharp, (void*)3);
   env->AddFunction("aWarp", "cc[depth]i[chroma]i[depthC]i[cplace]s[depthV]i[depthVC]i" \
-	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i", Create_aWarpSharp, (void*)4);
+	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_aWarpSharp, (void*)4);
   env->AddFunction("aWarp4", "cc[depth]i[chroma]i[depthC]i[cplace]s[depthV]i[depthVC]i" \
-	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i", Create_aWarpSharp, (void*)5);
+	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_aWarpSharp, (void*)5);
 
     env->AddFunction("ConvertYUVtoLinearRGB",
 		"c[Color]i[OutputMode]i[HDRMode]i[HLGLb]f[HLGLw]f[HLGColor]i[OOTF]b[EOTF]b[fullrange]b[mpeg2c]b" \
-		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertYUVtoLinearRGB, 0);
     env->AddFunction("ConvertLinearRGBtoYUV",
 		"c[Color]i[OutputMode]i[HDRMode]i[HLGLb]f[HLGLw]f[HLGColor]i[OOTF]b[EOTF]b[fullrange]b[mpeg2c]b[fastmode]b" \
-		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertLinearRGBtoYUV, 0);
 
     env->AddFunction("ConvertYUVtoXYZ",
 		"c[Color]i[OutputMode]i[HDRMode]i[HLGLb]f[HLGLw]f[HLGColor]i[OOTF]b[EOTF]b[fullrange]b[mpeg2c]b[Rx]f[Ry]f[Gx]f[Gy]f[Bx]f[By]f[Wx]f[Wy]f" \
-		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertYUVtoXYZ, 0);
     env->AddFunction("ConvertXYZtoYUV",
 		"c[Color]i[OutputMode]i[HDRMode]i[HLGLb]f[HLGLw]f[HLGColor]i[OOTF]b[EOTF]b[fullrange]b[mpeg2c]b[fastmode]b" \
 		"[Rx]f[Ry]f[Gx]f[Gy]f[Bx]f[By]f[Wx]f[Wy]f[pColor]i[pRx]f[pRy]f[pGx]f[pGy]f[pBx]f[pBy]f[pWx]f[pWy]f" \
-		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertXYZtoYUV, 0);
 
     env->AddFunction("ConvertRGBtoXYZ",
 		"c[Color]i[OutputMode]i[HDRMode]i[HLGLb]f[HLGLw]f[HLGColor]i[OOTF]b[EOTF]b[fastmode]b[Rx]f[Ry]f[Gx]f[Gy]f[Bx]f[By]f[Wx]f[Wy]f" \
-		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertRGBtoXYZ, 0);
     env->AddFunction("ConvertXYZtoRGB",
 		"c[Color]i[OutputMode]i[HDRMode]i[HLGLb]f[HLGLw]f[HLGColor]i[OOTF]b[EOTF]b[fastmode]b" \
 		"[Rx]f[Ry]f[Gx]f[Gy]f[Bx]f[By]f[Wx]f[Wy]f[pColor]i[pRx]f[pRy]f[pGx]f[pGy]f[pBx]f[pBy]f[pWx]f[pWy]f" \
-		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertXYZtoRGB, 0);
 
     env->AddFunction("ConvertXYZ_Scale_HDRtoSDR",
-		"c[Coeff_X]f[Coeff_Y]f[Coeff_Z]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",
-			Create_ConvertXYZ_Scale_HDRtoSDR, 0);
+		"c[Coeff_X]f[Coeff_Y]f[Coeff_Z]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b" \
+		"[prefetch]i[ThreadLevel]i",Create_ConvertXYZ_Scale_HDRtoSDR, 0);
     env->AddFunction("ConvertXYZ_Scale_SDRtoHDR",
-		"c[Coeff_X]f[Coeff_Y]f[Coeff_Z]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",
-		Create_ConvertXYZ_Scale_SDRtoHDR, 0);
+		"c[Coeff_X]f[Coeff_Y]f[Coeff_Z]f[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b" \
+		"[prefetch]i[ThreadLevel]i",Create_ConvertXYZ_Scale_SDRtoHDR, 0);
 
     env->AddFunction("ConvertXYZ_Hable_HDRtoSDR",
 		"c[exposure_X]f[whitescale_X]f[a_X]f[b_X]f[c_X]f[d_X]f[e_X]f[f_X]f" \
 		"[exposure_Y]f[whitescale_Y]f[a_Y]f[b_Y]f[c_Y]f[d_Y]f[e_Y]f[f_Y]f" \
 		"[exposure_Z]f[whitescale_Z]f[a_Z]f[b_Z]f[c_Z]f[d_Z]f[e_Z]f[f_Z]f" \
 		"[pColor]i[pRx]f[pRy]f[pGx]f[pGy]f[pBx]f[pBy]f[pWx]f[pWy]f[fastmode]b" \
-		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertXYZ_Hable_HDRtoSDR, 0);
     env->AddFunction("ConvertRGB_Hable_HDRtoSDR",
 		"c[exposure_R]f[whitescale_R]f[a_R]f[b_R]f[c_R]f[d_R]f[e_R]f[f_R]f" \
 		"[exposure_G]f[whitescale_G]f[a_G]f[b_G]f[c_G]f[d_G]f[e_G]f[f_G]f" \
 		"[exposure_B]f[whitescale_B]f[a_B]f[b_B]f[c_B]f[d_B]f[e_B]f[f_B]f[fastmode]b" \
-		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertRGB_Hable_HDRtoSDR, 0);
 
     env->AddFunction("ConvertXYZ_Mobius_HDRtoSDR",
 		"c[exposure_X]f[transition_X]f[peak_X]f[exposure_Y]f[transition_Y]f[peak_Y]f" \
 		"[exposure_Z]f[transition_Z]f[peak_Z]f" \
 		"[pColor]i[pRx]f[pRy]f[pGx]f[pGy]f[pBx]f[pBy]f[pWx]f[pWy]f[fastmode]b" \
-		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertXYZ_Mobius_HDRtoSDR, 0);
     env->AddFunction("ConvertRGB_Mobius_HDRtoSDR",
 		"c[exposure_R]f[transition_R]f[peak_R]f[exposure_G]f[transition_G]f[peak_G]f" \
 		"[exposure_B]f[transition_B]f[peak_B]f[fastmode]b" \
-		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertRGB_Mobius_HDRtoSDR, 0);
 
     env->AddFunction("ConvertXYZ_Reinhard_HDRtoSDR",
 		"c[exposure_X]f[contrast_X]f[peak_X]f[exposure_Y]f[contrast_Y]f[peak_Y]f" \
 		"[exposure_Z]f[contrast_Z]f[peak_Z]f" \
 		"[pColor]i[pRx]f[pRy]f[pGx]f[pGy]f[pBx]f[pBy]f[pWx]f[pWy]f[fastmode]b" \
-		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertXYZ_Reinhard_HDRtoSDR, 0);
     env->AddFunction("ConvertRGB_Reinhard_HDRtoSDR",
 		"c[exposure_R]f[contrast_R]f[peak_R]f[exposure_G]f[contrast_G]f[peak_G]f" \
 		"[exposure_B]f[contrast_B]f[peak_B]f[fastmode]b" \
-		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i",
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertRGB_Reinhard_HDRtoSDR, 0);
 
 	return PLUGINS_JPSDR_VERSION;	
