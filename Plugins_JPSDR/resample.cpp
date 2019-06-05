@@ -3801,7 +3801,7 @@ uint8_t FilteredResizeV::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 	int32_t _y_min,_dh;
 	int32_t src_dh_Y,src_dh_UV,dst_dh_Y,dst_dh_UV;
 	int32_t h_y;
-	uint8_t i,max_src=0,max_dst=0,max;
+	uint8_t i,max_src=1,max_dst=1,max;
 
 	dst_dh_Y=(dst_size_y+(uint32_t)max_threads-1)/(uint32_t)max_threads;
 	if (dst_dh_Y<16) dst_dh_Y=16;
@@ -3817,7 +3817,7 @@ uint8_t FilteredResizeV::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 
 	_y_min=src_size_y;
 	_dh=src_dh_Y;
-	h_y=0;
+	h_y=_dh;
 	while (h_y<(_y_min-16))
 	{
 		max_src++;
@@ -3826,7 +3826,7 @@ uint8_t FilteredResizeV::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 
 	_y_min=dst_size_y;
 	_dh=dst_dh_Y;
-	h_y=0;
+	h_y=_dh;
 	while (h_y<(_y_min-16))
 	{
 		max_dst++;
@@ -4528,7 +4528,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
   PClip result;
   // ensure that the intermediate area is maximal
   const double area_FirstH = (desample)?subrange_height*vi.width:subrange_height*target_width;
-  const double area_FirstV = (desample)?subrange_width*target_height:subrange_width*vi.height;
+  const double area_FirstV = (desample)?subrange_width*vi.height:subrange_width*target_height;
 
   bool VFirst;
 
@@ -4727,7 +4727,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 					if (desample) result=clip;
 					else
 					{
-						AVSValue sargs[6] = {clip,0,int(subrange_top),vi.width,int(subrange_height),0};
+						AVSValue sargs[6] = {clip,0,int(subrange_top),vi.width,int(subrange_height),true};
 						result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 					}
 				}
@@ -4745,7 +4745,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 				{
 					if (!desample)
 					{
-						AVSValue sargs[6] = {result,int(subrange_left),0,int(subrange_width),vi.height,0};
+						AVSValue sargs[6] = {result,int(subrange_left),0,int(subrange_width),vi.height,true};
 						result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 					}
 				}
@@ -4904,7 +4904,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 					if (desample) result=clip;
 					else
 					{
-						AVSValue sargs[6] = {clip,int(subrange_left),0,int(subrange_width),vi.height,0};
+						AVSValue sargs[6] = {clip,int(subrange_left),0,int(subrange_width),vi.height,true};
 						result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 					}
 				}
@@ -5058,7 +5058,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 				{
 					if (!desample)
 					{
-						AVSValue sargs[6] = {result,0,int(subrange_top),vi.width,int(subrange_height),0};
+						AVSValue sargs[6] = {result,0,int(subrange_top),vi.width,int(subrange_height),true};
 						result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 					}
 				}
@@ -5084,7 +5084,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 					if (desample) result=clip;
 					else
 					{
-						AVSValue sargs[6] = {clip,0,int(subrange_top),vi.width,int(subrange_height),0};
+						AVSValue sargs[6] = {clip,0,int(subrange_top),vi.width,int(subrange_height),true};
 						result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 					}
 				}
@@ -5102,7 +5102,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 				{
 					if (!desample)
 					{
-						AVSValue sargs[6] = {result,int(subrange_left),0,int(subrange_width),vi.height,0};
+						AVSValue sargs[6] = {result,int(subrange_left),0,int(subrange_width),vi.height,true};
 						result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 					}
 				}
@@ -5125,7 +5125,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 					if (desample) result=clip;
 					else
 					{
-						AVSValue sargs[6] = {clip,int(subrange_left),0,int(subrange_width),vi.height,0};
+						AVSValue sargs[6] = {clip,int(subrange_left),0,int(subrange_width),vi.height,true};
 						result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 					}
 				}
@@ -5143,7 +5143,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 				{
 					if (!desample)
 					{
-						AVSValue sargs[6] = {result,0,int(subrange_top),vi.width,int(subrange_height),0};
+						AVSValue sargs[6] = {result,0,int(subrange_top),vi.width,int(subrange_height),true};
 						result=env->Invoke("Crop",AVSValue(sargs,6)).AsClip();
 					}
 				}

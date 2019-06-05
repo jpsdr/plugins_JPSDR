@@ -131,13 +131,13 @@ static uint8_t CreateMTData(MT_Data_Info_AutoYUY2 MT_Data[],int output,uint8_t t
 	}
 
 	int32_t dh_Y,dh_UV,h_y;
-	uint8_t i,max=0;
+	uint8_t i,max=1;
 
 	dh_Y=(size_y+(int32_t)max_threads-1)/(int32_t)max_threads;
 	if (dh_Y<16) dh_Y=16;
 	if ((dh_Y & 3)!=0) dh_Y=((dh_Y+3) >> 2) << 2;
 
-	h_y=0;
+	h_y=dh_Y;
 	while (h_y<(size_y-16))
 	{
 		max++;

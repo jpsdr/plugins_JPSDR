@@ -358,7 +358,9 @@ ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, dou
 	  {
         double new_value = value+f((start_pos+k-ok_pos)*filter_step)/total;
         // FIXME: is it correct to round negative values upwards?
-        program->pixel_coefficient[i*fir_filter_size+k] = short(int(new_value*current_FPScale+0.5)-int(value*current_FPScale+0.5)); // to make it round across pixels
+		// Answer : No with int, yes with floor.
+		//program->pixel_coefficient[i*fir_filter_size+k] = (short)floor((new_value-value)*current_FPScale+0.5); // to make it round across pixels
+		program->pixel_coefficient[i*fir_filter_size+k] = short(int(new_value*current_FPScale+0.5)-int(value*current_FPScale+0.5)); // to make it round across pixels
         value = new_value;
       }
     }
@@ -584,7 +586,7 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
 	else
 	{
 		for (int j=0; j<fir_filter_size; j++)
-			program->pixel_coefficient[i*fir_filter_size+j] = short(int(C.GetF(i,start_pos+j)*current_FPScale+0.5));
+			program->pixel_coefficient[i*fir_filter_size+j] = (short)floor(C.GetF(i,start_pos+j)*current_FPScale+0.5);
 	}
   }
 
@@ -629,7 +631,7 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
 		for (int j=0; j<fir_filter_size; j++)
 		{
 			if ((start_pos+j)==Pos1)
-				program->pixel_coefficient[i*fir_filter_size+j] = short(int(1.0*current_FPScale+0.5));
+				program->pixel_coefficient[i*fir_filter_size+j] = (short)floor(1.0*current_FPScale+0.5);
 			else
 				program->pixel_coefficient[i*fir_filter_size+j] = 0;
 		}
@@ -699,7 +701,7 @@ int ResamplingFunction::GetDesamplingData(int source_size, double crop_start, do
     for (int k=0; k<fir_filter_size; k++)
 	{
       double new_value = value+f((start_pos+k-ok_pos)*filter_step)/total;
-	  program->pixel_coefficient_float[i*fir_filter_size+k] = float(new_value-value); // no scaling for float
+	  program->pixel_coefficient_float[i*fir_filter_size+k] = (float)(new_value-value); // no scaling for float
       value = new_value;
     }
     pos += pos_step;

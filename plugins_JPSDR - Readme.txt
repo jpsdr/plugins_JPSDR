@@ -1,8 +1,8 @@
-Version 3.1.1
+Version 3.1.2
 
 Merge of :
-AutoYUY2 v4.1.1
+AutoYUY2 v4.1.2
 NNEDI3 v0.9.4.53
-ResampleMT v2.2.1
-aWarSharpMT v2.1.1
-HDRTools : v0.5.1
+ResampleMT v2.2.2
+aWarSharpMT v2.1.2
+HDRTools : v0.5.2
