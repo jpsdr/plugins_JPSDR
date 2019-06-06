@@ -4516,14 +4516,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
   if (desample) SizeH=f->GetDesamplingData(target_width, subrange_left, subrange_width, vi.width,bits_per_pixel,shift,env);
   else SizeH=target_width;
 
-  bool fast_resize=((env->GetCPUFlags() & CPUF_SSSE3) == CPUF_SSSE3 ) && vi.IsPlanar() && ((SizeH & 3) == 0);
-
-	if (fast_resize && !grey && !isRGBPfamily)
-	{
-		const int dst_chroma_width = SizeH >> shift;
-
-		if ((dst_chroma_width & 3) != 0) fast_resize = false;
-	}  
+  bool fast_resize=((env->GetCPUFlags() & CPUF_SSSE3) == CPUF_SSSE3 ) && vi.IsPlanar();
 
   PClip result;
   // ensure that the intermediate area is maximal
