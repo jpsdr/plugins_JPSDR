@@ -3035,7 +3035,7 @@ uint8_t FilteredResizeH::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 	int32_t _y_min,_dh;
 	int32_t src_dh_Y,src_dh_UV,dst_dh_Y,dst_dh_UV;
 	int32_t h_y;
-	uint8_t i,max_src=0,max_dst=0,max;
+	uint8_t i,max_src=1,max_dst=1,max;
 
 	dst_dh_Y=(dst_size_y+(uint32_t)max_threads-1)/(uint32_t)max_threads;
 	if (dst_dh_Y<16) dst_dh_Y=16;
@@ -3051,7 +3051,7 @@ uint8_t FilteredResizeH::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 
 	_y_min=src_size_y;
 	_dh=src_dh_Y;
-	h_y=0;
+	h_y=_dh;
 	while (h_y<(_y_min-16))
 	{
 		max_src++;
@@ -3060,7 +3060,7 @@ uint8_t FilteredResizeH::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 
 	_y_min=dst_size_y;
 	_dh=dst_dh_Y;
-	h_y=0;
+	h_y=_dh;
 	while (h_y<(_y_min-16))
 	{
 		max_dst++;
