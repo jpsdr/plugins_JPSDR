@@ -11,7 +11,7 @@ bool aWarpSharp_Enable_SSE2,aWarpSharp_Enable_SSE41,aWarpSharp_Enable_AVX;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.1.2"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.1.3"
 
 /*
   threshold : int, default value : 4
@@ -1604,13 +1604,14 @@ AVSValue __cdecl Create_ConvertYUVtoXYZ(AVSValue args, void* user_data, IScriptE
 	const bool EOTF=args[8].AsBool(true);
 	const bool fullrange=args[9].AsBool(false);
 	const bool mpeg2c=args[10].AsBool(true);
-	const int threads=args[19].AsInt(0);
-	const bool LogicalCores=args[20].AsBool(true);
-	const bool MaxPhysCores=args[21].AsBool(true);
-	const bool SetAffinity=args[22].AsBool(false);
-	const bool sleep = args[23].AsBool(false);
-	int prefetch=args[24].AsInt(0);
-	int thread_level=args[25].AsInt(6);
+	const double Crosstalk=args[19].AsFloat(0.0f);
+	const int threads=args[20].AsInt(0);
+	const bool LogicalCores=args[21].AsBool(true);
+	const bool MaxPhysCores=args[22].AsBool(true);
+	const bool SetAffinity=args[23].AsBool(false);
+	const bool sleep = args[24].AsBool(false);
+	int prefetch=args[25].AsInt(0);
+	int thread_level=args[26].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -1622,6 +1623,8 @@ AVSValue __cdecl Create_ConvertYUVtoXYZ(AVSValue args, void* user_data, IScriptE
 		env->ThrowError("ConvertYUVtoXYZ: [OutputMode] must be 0, 1 or 2");
 	if ((HDRMode<0) || (HDRMode>2))
 		env->ThrowError("ConvertYUVtoXYZ: [HDRMode] must be 0, 1 or 2");
+	if ((Crosstalk<0.0) || (Crosstalk>0.33))
+		env->ThrowError("ConvertYUVtoXYZ: [Crosstalk] must be in [0..0.33]");
 
 	switch(Color)
 	{
@@ -1732,8 +1735,8 @@ AVSValue __cdecl Create_ConvertYUVtoXYZ(AVSValue args, void* user_data, IScriptE
 		}
 	}
 
-	return new ConvertYUVtoXYZ(args[0].AsClip(),Color,OutputMode,HDRMode,HLG_Lb,HLG_Lw,HLGColor,OOTF,EOTF,fullrange,mpeg2c,
-		Rx,Ry,Gx,Gy,Bx,By,Wx,Wy,threads_number,sleep,env);
+	return new ConvertYUVtoXYZ(args[0].AsClip(),Color,OutputMode,HDRMode,HLG_Lb,HLG_Lw,Crosstalk,HLGColor,OOTF,EOTF,
+		fullrange,mpeg2c,Rx,Ry,Gx,Gy,Bx,By,Wx,Wy,threads_number,sleep,env);
 }
 
 
@@ -1897,13 +1900,14 @@ AVSValue __cdecl Create_ConvertRGBtoXYZ(AVSValue args, void* user_data, IScriptE
 	const bool OOTF=args[7].AsBool(true);
 	const bool EOTF=args[8].AsBool(true);
 	const bool fastmode=args[9].AsBool(true);
-	const int threads=args[18].AsInt(0);
-	const bool LogicalCores=args[19].AsBool(true);
-	const bool MaxPhysCores=args[20].AsBool(true);
-	const bool SetAffinity=args[21].AsBool(false);
-	const bool sleep = args[22].AsBool(false);
-	int prefetch=args[23].AsInt(0);
-	int thread_level=args[24].AsInt(6);
+	const double crosstalk=args[18].AsFloat(0.0f);
+	const int threads=args[19].AsInt(0);
+	const bool LogicalCores=args[20].AsBool(true);
+	const bool MaxPhysCores=args[21].AsBool(true);
+	const bool SetAffinity=args[22].AsBool(false);
+	const bool sleep = args[23].AsBool(false);
+	int prefetch=args[24].AsInt(0);
+	int thread_level=args[25].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -1915,6 +1919,8 @@ AVSValue __cdecl Create_ConvertRGBtoXYZ(AVSValue args, void* user_data, IScriptE
 		env->ThrowError("ConvertRGBtoXYZ: [OutputMode] must be 0, 1 or 2");
 	if ((HDRMode<0) || (HDRMode>2))
 		env->ThrowError("ConvertRGBtoXYZ: [HDRMode] must be 0, 1 or 2");
+	if ((crosstalk<0.0) || (crosstalk>0.33))
+		env->ThrowError("ConvertRGBtoXYZ: [Crosstalk] must be in [0..0.33]");
 
 	switch(Color)
 	{
@@ -2025,8 +2031,8 @@ AVSValue __cdecl Create_ConvertRGBtoXYZ(AVSValue args, void* user_data, IScriptE
 		}
 	}
 
-	return new ConvertRGBtoXYZ(args[0].AsClip(),Color,OutputMode,HDRMode,HLG_Lb,HLG_Lw,HLGColor,OOTF,EOTF,fastmode,Rx,Ry,Gx,Gy,Bx,By,Wx,Wy,
-		threads_number,sleep,env);
+	return new ConvertRGBtoXYZ(args[0].AsClip(),Color,OutputMode,HDRMode,HLG_Lb,HLG_Lw,crosstalk,HLGColor,
+		OOTF,EOTF,fastmode,Rx,Ry,Gx,Gy,Bx,By,Wx,Wy,threads_number,sleep,env);
 }
 
 
@@ -2078,13 +2084,14 @@ AVSValue __cdecl Create_ConvertXYZtoYUV(AVSValue args, void* user_data, IScriptE
 	const bool fullrange=args[9].AsBool(false);
 	const bool mpeg2c=args[10].AsBool(true);
 	const bool fastmode=args[11].AsBool(true);
-	const int threads=args[29].AsInt(0);
-	const bool LogicalCores=args[30].AsBool(true);
-	const bool MaxPhysCores=args[31].AsBool(true);
-	const bool SetAffinity=args[32].AsBool(false);
-	const bool sleep = args[33].AsBool(false);
-	int prefetch=args[34].AsInt(0);
-	int thread_level=args[35].AsInt(6);
+	const double crosstalk=args[29].AsFloat(0.0f);
+	const int threads=args[30].AsInt(0);
+	const bool LogicalCores=args[31].AsBool(true);
+	const bool MaxPhysCores=args[32].AsBool(true);
+	const bool SetAffinity=args[33].AsBool(false);
+	const bool sleep = args[34].AsBool(false);
+	int prefetch=args[35].AsInt(0);
+	int thread_level=args[36].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -2101,6 +2108,8 @@ AVSValue __cdecl Create_ConvertXYZtoYUV(AVSValue args, void* user_data, IScriptE
 		env->ThrowError("ConvertXYZtoYUV: [OutputMode] must be 0, 1 or 2");
 	if ((HDRMode<0) || (HDRMode>2))
 		env->ThrowError("ConvertXYZtoYUV: [HDRMode] must be 0, 1 or 2");
+	if ((crosstalk<0.0) || (crosstalk>0.33))
+		env->ThrowError("ConvertXYZtoYUV: [Crosstalk] must be in [0..0.33]");
 
 	switch(Color)
 	{
@@ -2280,8 +2289,8 @@ AVSValue __cdecl Create_ConvertXYZtoYUV(AVSValue args, void* user_data, IScriptE
 		}
 	}
 
-	return new ConvertXYZtoYUV(args[0].AsClip(),Color,OutputMode,HDRMode,HLG_Lb,HLG_Lw,HLGColor,OOTF,EOTF,fullrange,
-		mpeg2c,fastmode,Rx,Ry,Gx,Gy,Bx,By,Wx,Wy,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,
+	return new ConvertXYZtoYUV(args[0].AsClip(),Color,OutputMode,HDRMode,HLG_Lb,HLG_Lw,crosstalk,HLGColor,
+		OOTF,EOTF,fullrange,mpeg2c,fastmode,Rx,Ry,Gx,Gy,Bx,By,Wx,Wy,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,
 		threads_number,sleep,env);
 }
 
@@ -2329,13 +2338,14 @@ AVSValue __cdecl Create_ConvertXYZtoRGB(AVSValue args, void* user_data, IScriptE
 	const bool OOTF=args[7].AsBool(true);
 	const bool EOTF=args[8].AsBool(true);
 	const bool fastmode=args[9].AsBool(true);
-	const int threads=args[27].AsInt(0);
-	const bool LogicalCores=args[28].AsBool(true);
-	const bool MaxPhysCores=args[29].AsBool(true);
-	const bool SetAffinity=args[30].AsBool(false);
-	const bool sleep = args[31].AsBool(false);
-	int prefetch=args[32].AsInt(0);
-	int thread_level=args[33].AsInt(6);
+	const double crosstalk=args[27].AsFloat(0.0f);
+	const int threads=args[28].AsInt(0);
+	const bool LogicalCores=args[29].AsBool(true);
+	const bool MaxPhysCores=args[30].AsBool(true);
+	const bool SetAffinity=args[31].AsBool(false);
+	const bool sleep = args[32].AsBool(false);
+	int prefetch=args[33].AsInt(0);
+	int thread_level=args[34].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
 
@@ -2353,6 +2363,8 @@ AVSValue __cdecl Create_ConvertXYZtoRGB(AVSValue args, void* user_data, IScriptE
 		env->ThrowError("ConvertXYZtoRGB: [OutputMode] must be 0 or 1");
 	if ((HDRMode<0) || (HDRMode>2))
 		env->ThrowError("ConvertXYZtoRGB: [HDRMode] must be 0, 1 or 2");
+	if ((crosstalk<0.0) || (crosstalk>0.33))
+		env->ThrowError("ConvertXYZtoRGB: [Crosstalk] must be in [0..0.33]");
 
 	switch(Color)
 	{
@@ -2532,8 +2544,8 @@ AVSValue __cdecl Create_ConvertXYZtoRGB(AVSValue args, void* user_data, IScriptE
 		}
 	}
 
-	return new ConvertXYZtoRGB(args[0].AsClip(),Color,OutputMode,HDRMode,HLG_Lb,HLG_Lw,HLGColor,OOTF,EOTF,
-		fastmode,Rx,Ry,Gx,Gy,Bx,By,Wx,Wy,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,
+	return new ConvertXYZtoRGB(args[0].AsClip(),Color,OutputMode,HDRMode,HLG_Lb,HLG_Lw,crosstalk,HLGColor,
+		OOTF,EOTF,fastmode,Rx,Ry,Gx,Gy,Bx,By,Wx,Wy,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,
 		threads_number,sleep,env);
 }
 
@@ -3644,22 +3656,24 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 		Create_ConvertLinearRGBtoYUV, 0);
 
     env->AddFunction("ConvertYUVtoXYZ",
-		"c[Color]i[OutputMode]i[HDRMode]i[HLGLb]f[HLGLw]f[HLGColor]i[OOTF]b[EOTF]b[fullrange]b[mpeg2c]b[Rx]f[Ry]f[Gx]f[Gy]f[Bx]f[By]f[Wx]f[Wy]f" \
+		"c[Color]i[OutputMode]i[HDRMode]i[HLGLb]f[HLGLw]f[HLGColor]i[OOTF]b[EOTF]b[fullrange]b[mpeg2c]b" \
+		"[Rx]f[Ry]f[Gx]f[Gy]f[Bx]f[By]f[Wx]f[Wy]f[Crosstalk]f" \
 		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertYUVtoXYZ, 0);
     env->AddFunction("ConvertXYZtoYUV",
 		"c[Color]i[OutputMode]i[HDRMode]i[HLGLb]f[HLGLw]f[HLGColor]i[OOTF]b[EOTF]b[fullrange]b[mpeg2c]b[fastmode]b" \
-		"[Rx]f[Ry]f[Gx]f[Gy]f[Bx]f[By]f[Wx]f[Wy]f[pColor]i[pRx]f[pRy]f[pGx]f[pGy]f[pBx]f[pBy]f[pWx]f[pWy]f" \
+		"[Rx]f[Ry]f[Gx]f[Gy]f[Bx]f[By]f[Wx]f[Wy]f[pColor]i[pRx]f[pRy]f[pGx]f[pGy]f[pBx]f[pBy]f[pWx]f[pWy]f[Crosstalk]f" \
 		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertXYZtoYUV, 0);
 
     env->AddFunction("ConvertRGBtoXYZ",
-		"c[Color]i[OutputMode]i[HDRMode]i[HLGLb]f[HLGLw]f[HLGColor]i[OOTF]b[EOTF]b[fastmode]b[Rx]f[Ry]f[Gx]f[Gy]f[Bx]f[By]f[Wx]f[Wy]f" \
+		"c[Color]i[OutputMode]i[HDRMode]i[HLGLb]f[HLGLw]f[HLGColor]i[OOTF]b[EOTF]b[fastmode]b" \
+		"[Rx]f[Ry]f[Gx]f[Gy]f[Bx]f[By]f[Wx]f[Wy]f[Crosstalk]f" \
 		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertRGBtoXYZ, 0);
     env->AddFunction("ConvertXYZtoRGB",
 		"c[Color]i[OutputMode]i[HDRMode]i[HLGLb]f[HLGLw]f[HLGColor]i[OOTF]b[EOTF]b[fastmode]b" \
-		"[Rx]f[Ry]f[Gx]f[Gy]f[Bx]f[By]f[Wx]f[Wy]f[pColor]i[pRx]f[pRy]f[pGx]f[pGy]f[pBx]f[pBy]f[pWx]f[pWy]f" \
+		"[Rx]f[Ry]f[Gx]f[Gy]f[Bx]f[By]f[Wx]f[Wy]f[pColor]i[pRx]f[pRy]f[pGx]f[pGy]f[pBx]f[pBy]f[pWx]f[pWy]f[Crosstalk]f" \
 		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertXYZtoRGB, 0);
 
