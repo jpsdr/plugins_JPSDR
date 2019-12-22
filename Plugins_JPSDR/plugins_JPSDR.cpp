@@ -11,7 +11,7 @@ bool aWarpSharp_Enable_SSE2,aWarpSharp_Enable_SSE41,aWarpSharp_Enable_AVX;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.1.3"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.2.0"
 
 /*
   threshold : int, default value : 4
@@ -3564,6 +3564,267 @@ AVSValue __cdecl Create_ConvertRGB_Reinhard_HDRtoSDR(AVSValue args, void* user_d
 }
 
 
+AVSValue __cdecl Create_ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+	if (!args[0].IsClip()) env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: arg 0 must be a clip !");
+
+	VideoInfo vi = args[0].AsClip()->GetVideoInfo();
+
+	if ((vi.pixel_type!=VideoInfo::CS_BGR64) && (vi.pixel_type!=VideoInfo::CS_RGBPS))
+		env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: Input format must be RGB64 or RGBPS");
+
+	const double Lhdr=args[1].AsFloat(1000.0f);
+	const double Lsdr=args[2].AsFloat(100.0f);
+	const double CoeffAdj=args[3].AsFloat(1.0f);
+
+	const bool fastmode=args[4].AsBool(true);
+
+	const int threads=args[5].AsInt(0);
+	const bool LogicalCores=args[6].AsBool(true);
+	const bool MaxPhysCores=args[7].AsBool(true);
+	const bool SetAffinity=args[8].AsBool(false);
+	const bool sleep=args[9].AsBool(false);
+	int prefetch=args[10].AsInt(0);
+	int thread_level=args[11].AsInt(6);
+
+	if ((Lhdr<=0.0) || (Lhdr>10000.0) || (Lsdr<=0.0) || (Lsdr>100.0))
+		env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: Wrong parameter value!");
+
+	const bool avsp=env->FunctionExists("ConvertBits");
+
+	if ((threads<0) || (threads>MAX_MT_THREADS))
+		env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
+	if (prefetch==0) prefetch=1;
+	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
+		env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
+
+	uint8_t threads_number=1;
+
+	if (threads!=1)
+	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
+		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: Unable to create ThreadPool!");
+
+		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
+
+		if (threads_number==0) env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: Error with the TheadPool while getting CPU info!");
+
+		if (threads_number>1)
+		{
+			if (prefetch>1)
+			{
+				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+
+					for(uint8_t i=0; i<prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset+=delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
+				}
+			}
+		}
+	}
+
+	return new ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR(args[0].AsClip(),Lhdr,Lsdr,CoeffAdj,
+		fastmode,threads_number,sleep,env);
+}
+
+
+AVSValue __cdecl Create_ConverXYZ_BT2446_C_HDRtoSDR(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+	if (!args[0].IsClip()) env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: arg 0 must be a clip !");
+
+	VideoInfo vi = args[0].AsClip()->GetVideoInfo();
+
+	if ((vi.pixel_type!=VideoInfo::CS_BGR64) && (vi.pixel_type!=VideoInfo::CS_RGBPS))
+		env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: Input format must be RGB64 or RGBPS");
+
+	const bool ChromaC=args[1].AsBool(false);
+	const bool PQMode=args[2].AsBool(false);
+	const float Lhdr=(PQMode)?(float)args[3].AsFloat(10000.0f):(float)args[3].AsFloat(1000.0f);
+	const float Lsdr=(float)args[4].AsFloat(100.0f);
+	const float pct_ref=(PQMode)?(float)args[5].AsFloat(0.58f):(float)args[5].AsFloat(0.75f);
+	const float pct_ip=(float)args[6].AsFloat(0.80f);
+	const float pct_wp=(float)args[7].AsFloat(0.96f);
+	const float pct_sdr_skin=(float)args[8].AsFloat(0.70f);
+	const float pct_hdr_skin=(PQMode)?(float)args[9].AsFloat(0.44f):(float)args[9].AsFloat(0.50f);
+	const float WhiteShift=(float)args[10].AsFloat(0.0f);
+
+	if (((pct_ref<0) || (pct_ref>1.0)) || ((pct_ip<0) || (pct_ip>1.0)) || ((pct_wp<0) || (pct_wp>1.0))
+		|| ((pct_sdr_skin<0) || (pct_sdr_skin>1.0)) || ((pct_hdr_skin<0) || (pct_hdr_skin>1.0)))
+		env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: [pct_xx] must be in [0.0..1.0]");
+
+	const uint8_t pColor=args[11].AsInt(0);
+
+	if ((pColor<0) || (pColor>4))
+		env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: [pColor] must be 0 (BT2100), 1 (BT2020), 2 (BT709), 3 (BT601_525), 4 (BT601_625)");
+
+	float pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy;
+
+	switch(pColor)
+	{
+		case 0 :
+		case 1 :
+			pRx=(float)args[12].AsFloat(0.708f);
+			pRy=(float)args[13].AsFloat(0.292f);
+			pGx=(float)args[14].AsFloat(0.170f);
+			pGy=(float)args[15].AsFloat(0.797f);
+			pBx=(float)args[16].AsFloat(0.131f);
+			pBy=(float)args[17].AsFloat(0.046f);
+			pWx=(float)args[18].AsFloat(0.31271f);
+			pWy=(float)args[19].AsFloat(0.32902f);
+			break;
+		case 2 :
+			pRx=(float)args[12].AsFloat(0.640f);
+			pRy=(float)args[13].AsFloat(0.330f);
+			pGx=(float)args[14].AsFloat(0.300f);
+			pGy=(float)args[15].AsFloat(0.600f);
+			pBx=(float)args[16].AsFloat(0.150f);
+			pBy=(float)args[17].AsFloat(0.060f);
+			pWx=(float)args[18].AsFloat(0.31271f);
+			pWy=(float)args[19].AsFloat(0.32902f);
+			break;
+		case 3 :
+			pRx=(float)args[12].AsFloat(0.630f);
+			pRy=(float)args[13].AsFloat(0.340f);
+			pGx=(float)args[14].AsFloat(0.310f);
+			pGy=(float)args[15].AsFloat(0.595f);
+			pBx=(float)args[16].AsFloat(0.155f);
+			pBy=(float)args[17].AsFloat(0.070f);
+			pWx=(float)args[18].AsFloat(0.31271f);
+			pWy=(float)args[19].AsFloat(0.32902f);
+			break;
+		case 4 :
+			pRx=(float)args[12].AsFloat(0.640f);
+			pRy=(float)args[13].AsFloat(0.330f);
+			pGx=(float)args[14].AsFloat(0.290f);
+			pGy=(float)args[15].AsFloat(0.600f);
+			pBx=(float)args[16].AsFloat(0.150f);
+			pBy=(float)args[17].AsFloat(0.060f);
+			pWx=(float)args[18].AsFloat(0.31271f);
+			pWy=(float)args[19].AsFloat(0.32902f);
+			break;
+		default :
+			pRx=(float)args[12].AsFloat(0.640f);
+			pRy=(float)args[13].AsFloat(0.330f);
+			pGx=(float)args[14].AsFloat(0.300f);
+			pGy=(float)args[15].AsFloat(0.600f);
+			pBx=(float)args[16].AsFloat(0.150f);
+			pBy=(float)args[17].AsFloat(0.060f);
+			pWx=(float)args[18].AsFloat(0.31271f);
+			pWy=(float)args[19].AsFloat(0.32902f);
+			break;
+	}
+
+	if (((pRx<0.0f) || (pRx>1.0f)) || ((pGx<0.0f) || (pGx>1.0f)) || ((pBx<0.0f) || (pBx>1.0f)) || ((pWx<0.0f) || (pWx>1.0f))
+		|| ((pRy<=0.0f) || (pRy>1.0f)) || ((pGy<=0.0f) || (pGy>1.0f)) || ((pBy<=0.0f) || (pBy>1.0f)) || ((pWy<=0.0f) || (pWy>1.0f)))
+		env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: Invalid [pR,pG,pB,pW][x,y] chromaticity datas");
+
+
+	const bool fastmode=args[20].AsBool(true);
+
+	const int threads=args[21].AsInt(0);
+	const bool LogicalCores=args[22].AsBool(true);
+	const bool MaxPhysCores=args[23].AsBool(true);
+	const bool SetAffinity=args[24].AsBool(false);
+	const bool sleep=args[25].AsBool(false);
+	int prefetch=args[26].AsInt(0);
+	int thread_level=args[27].AsInt(6);
+
+	const bool avsp=env->FunctionExists("ConvertBits");
+
+	if ((threads<0) || (threads>MAX_MT_THREADS))
+		env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
+	if (prefetch==0) prefetch=1;
+	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
+		env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
+
+	uint8_t threads_number=1;
+
+	if (threads!=1)
+	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
+		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: Unable to create ThreadPool!");
+
+		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
+
+		if (threads_number==0) env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: Error with the TheadPool while getting CPU info!");
+
+		if (threads_number>1)
+		{
+			if (prefetch>1)
+			{
+				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+
+					for(uint8_t i=0; i<prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset+=delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
+				}
+			}
+		}
+	}
+
+	return new ConverXYZ_BT2446_C_HDRtoSDR(args[0].AsClip(),ChromaC,PQMode,Lhdr,Lsdr,pct_ref,pct_ip,pct_wp,
+		pct_sdr_skin,pct_hdr_skin,WhiteShift,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,fastmode,threads_number,sleep,env);
+}
+
+
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
 {
 	AVS_linkage = vectors;
@@ -3721,6 +3982,17 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 		"[exposure_B]f[contrast_B]f[peak_B]f[fastmode]b" \
 		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertRGB_Reinhard_HDRtoSDR, 0);
+		
+    env->AddFunction("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR",
+		"c[Lhdr]f[Lsdr]f[CoeffAdj]f[fastmode]b" \
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
+		Create_ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR, 0);
+
+    env->AddFunction("ConverXYZ_BT2446_C_HDRtoSDR",
+		"c[ChromaC]b[PQMode]b[Lhdr]f[Lsdr]f[pct_ref]f[pct_ip]f[pct_wp]f[pct_sdr_skin]f[pct_hdr_skin]f[WhiteShift]f" \
+		"[pColor]i[pRx]f[pRy]f[pGx]f[pGy]f[pBx]f[pBy]f[pWx]f[pWy]f[fastmode]b" \
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
+		Create_ConverXYZ_BT2446_C_HDRtoSDR, 0);
 
 	return PLUGINS_JPSDR_VERSION;	
 }

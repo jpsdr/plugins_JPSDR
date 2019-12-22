@@ -175,6 +175,7 @@
     <ClCompile Include="resample_functions.cpp" />
     <ClCompile Include="ThreadPool.cpp" />
     <ClCompile Include="ThreadPoolInterface.cpp" />
+    <ClCompile Include="TransferFunctions.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AutoYUY2.h" />
@@ -190,6 +191,7 @@
     <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="ThreadPoolDef.h" />
     <ClInclude Include="ThreadPoolInterface.h" />
+    <ClInclude Include="TransferFunctions.h" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="AutoYUY2_asm.asm">
