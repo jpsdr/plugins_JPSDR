@@ -1,8 +1,8 @@
-#include "resample.h"
-#include "AutoYUY2.h"
-#include "nnedi3.h"
-#include "aWarpSharp.h"
-#include "HDRTools.h"
+#include "./resample.h"
+#include "./AutoYUY2.h"
+#include "./nnedi3.h"
+#include "./aWarpSharp.h"
+#include "./HDRTools.h"
 
 ThreadPoolInterface *poolInterface;
 
@@ -11,7 +11,7 @@ bool aWarpSharp_Enable_SSE2,aWarpSharp_Enable_SSE41,aWarpSharp_Enable_AVX;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.2.0"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.2.1"
 
 /*
   threshold : int, default value : 4
@@ -151,7 +151,6 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 	const bool LogicalCores=args[14].AsBool(true);
 	const bool MaxPhysCores=args[15].AsBool(true);
 	const bool SetAffinity=args[16].AsBool(false);
-	const bool sleep = args[18].AsBool(false);
 	int prefetch = args[19].AsInt(0);
 	int thread_level=args[20].AsInt(6);
 

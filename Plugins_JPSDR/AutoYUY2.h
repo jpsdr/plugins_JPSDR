@@ -22,10 +22,10 @@
  *
  */
 
-#include "avisynth.h"
-#include "ThreadPoolInterface.h"
+#include "./avisynth.h"
+#include "./ThreadPoolInterface.h"
 
-#define AUTOYUY2_VERSION "AutoYUY2 4.1.2 JPSDR"
+#define AUTOYUY2_VERSION "AutoYUY2 4.1.3 JPSDR"
 // Inspired from Neuron2 filter
 
 #define Interlaced_Tab_Size 3
@@ -64,7 +64,7 @@ private:
 	uint16_t *lookup_Upscale8;
 	uint32_t *lookup_Upscale16;
 	bool *interlaced_tab_U[MAX_MT_THREADS][Interlaced_Tab_Size],*interlaced_tab_V[MAX_MT_THREADS][Interlaced_Tab_Size];
-	bool SSE2_Enable,AVX_Enable,AVX2_Enable;
+	bool SSE2_Enable,AVX_Enable,AVX2_Enable,has_at_least_v8;
 
 	bool grey,avsp,isRGBPfamily,isAlphaChannel;
 	uint8_t pixelsize; // AVS16

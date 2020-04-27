@@ -32,7 +32,7 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "resample.h"
+#include "./resample.h"
 #include "./avs/config.h"
 #include "./avs/alignment.h"
 
@@ -927,8 +927,6 @@ static void internal_resize_v_sse2_planar_float(BYTE* dst0, const BYTE* src0, in
   const int filter_size = _filtersize >= 1 ? _filtersize : program->filter_size;
   const float *current_coeff_float = program->pixel_coefficient_float + filter_size*MinY;
 
-  __m128i zero = _mm_setzero_si128();
-
   const float* src = (float *)src0;
   float* dst = (float *)dst0;
   dst_pitch >>= 2;
@@ -1299,9 +1297,6 @@ void internal_resize_v_avx2_planar_float(BYTE* dst0, const BYTE* src0, int dst_p
 
   int wMod16 = (width >> 4) << 4; // float: 16 at a time
 
-  __m128i zero = _mm_setzero_si128();
-  __m256i zero256 = _mm256_setzero_si256();
-
   const float* src = (float *)src0;
   float* dst = (float *)dst0;
   dst_pitch >>= 2;
@@ -1617,7 +1612,7 @@ __forceinline static void resize_v_create_pitch_table(int* table, int pitch, int
 /***************************************
  ********* Horizontal Resizer** ********
  ***************************************/
-
+/*
 static void resize_h_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
 {
   const int wMod4 = (width >> 2) << 2;
@@ -1639,7 +1634,7 @@ static void resize_h_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int 
     src += src_pitch;
   }
 }
-
+*/
 
 // make the resampling coefficient array mod8 friendly for simd, padding non-used coeffs with zeros
 static void resize_h_prepare_coeff_8or16(ResamplingProgram* p,IScriptEnvironment* env,int alignFilterSize8or16)
@@ -1760,7 +1755,6 @@ static void resize_h_c_planar_s(BYTE* dst, const BYTE* src, int dst_pitch, int s
 {
   const int filter_size = program->filter_size;
   int y_src_pitch=0,y_dst_pitch=0;
-  const __int64 limit=(1 << bits_per_pixel) - 1;
   const uint16_t *src0 = (uint16_t *)src;
   uint16_t *dst0 = (uint16_t *)dst;
 	const __int64 val_min = (range==1) ? 0 : (int)16 << (bits_per_pixel-8);
@@ -2268,13 +2262,10 @@ static void resizer_h_ssse3_generic(BYTE* dst, const BYTE* src, int dst_pitch, i
 
 static void resizer_h_ssse3_8(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
 {
-  const int filter_size = AlignNumber(program->filter_size, 8) >> 3;
-
   const __m128i zero = _mm_setzero_si128();
 
 	const int val_min = (range==1) ? 0 : 16;
 	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
-	const int TabMax[4] = {235,240,235,240};
 	const int Offset = 1 << (FPScale8bits-1);
 
 	const __m128i val_min_m128 = _mm_set1_epi16((short)((val_min << 8)|val_min));
@@ -2699,7 +2690,6 @@ void internal_resizer_h_avx2_generic_uint16_t(BYTE* dst8, const BYTE* src8, int 
   const __m256i zero = _mm256_setzero_si256();
   const __m256i shifttosigned = _mm256_set1_epi16(-32768); // for 16 bits only
   const __m256i shiftfromsigned = _mm256_set1_epi32(+32768 << FPScale16bits); // for 16 bits only
-  const __m128i rounder = _mm_set_epi32(0, 0, 0, 1 << (FPScale16bits - 1)); // only once
   const __m256i rounder256 = _mm256_set_epi32(0, 0, 0, 1 << (FPScale16bits - 1), 0, 0, 0, 1 << (FPScale16bits - 1)); // only once
 
   const uint16_t *src = reinterpret_cast<const uint16_t *>(src8);
@@ -2977,6 +2967,9 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 		}
 	}
 
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
+
   // Change target video info size
   vi.width =SizeH;
 }
@@ -3242,7 +3235,7 @@ void FilteredResizeH::StaticThreadpoolH(void *ptr)
 PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
-  PVideoFrame dst = env->NewVideoFrame(vi);
+  PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
   
   const int src_pitch_1 = src->GetPitch();
   const int dst_pitch_1 = dst->GetPitch();
@@ -3744,6 +3737,9 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 		}
 	}
 
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
+
   // Change target video info size
   vi.height = SizeV;
 }
@@ -3948,6 +3944,7 @@ void FilteredResizeV::ResamplerLumaUnalignedMT(MT_Data_Info_ResampleMT *MT_DataG
 		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma,plane_range[0],mode_YUY2);
 }
 
+
 void FilteredResizeV::ResamplerLumaAlignedMT2(MT_Data_Info_ResampleMT *MT_DataGF)
 {
 	resampler_luma_aligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
@@ -4068,7 +4065,7 @@ void FilteredResizeV::StaticThreadpoolV(void *ptr)
 PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
-  PVideoFrame dst = env->NewVideoFrame(vi);
+  PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
   
   const int src_pitch_1 = src->GetPitch();
   const int dst_pitch_1 = dst->GetPitch();

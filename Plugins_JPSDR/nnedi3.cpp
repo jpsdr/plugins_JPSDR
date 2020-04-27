@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.53 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.54 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -20,7 +20,7 @@
 **   Modified by JPSDR
 */
 
-#include "nnedi3.h"
+#include "./nnedi3.h"
 #include <stdint.h>
 
 #if _MSC_VER >= 1900
@@ -1054,7 +1054,10 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 		else field_n = field == 3 ? 1 : 0;
 	}
 	else field_n = field;
-	copyPad(field>1?(n>>1):n,field_n,env);
+	
+	PVideoFrame src = child->GetFrame(n,env);
+	
+	copyPad(src,field>1?(n>>1):n,field_n,env);
 	
 	const uint8_t PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
 	int plane[4];
@@ -1077,7 +1080,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	for (uint8_t i=0; i<PlaneMax; i++)
 		memset(lcount[i],0,dstPF->GetHeight(i)*sizeof(int));
 
-	PVideoFrame dst = env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 
 	uint8_t f_proc_1=0,f_proc_2=0;
 
@@ -1200,10 +1203,9 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 }
 
 
-void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
+void nnedi3::copyPad(const PVideoFrame &src,int n, int fn, IScriptEnvironment *env)
 {
 	const int off = 1-fn;
-	PVideoFrame src = child->GetFrame(n, env);
 	
 	const uint8_t PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
 	int plane[4];
@@ -1674,7 +1676,6 @@ void evalFunc_1(void *ps)
 	const float *weights0 = pss->weights0;
 	const int opt = pss->opt;
 	const int pscrn = pss->pscrn;
-	const int fapprox = pss->fapprox;
 	const bool int16_prescreener = pss->int16_prescreener;
 	void (*uc2s)(const uint8_t*,const int,float*);
 	void (*computeNetwork0)(const float*,const float*,uint8_t*);
@@ -2132,7 +2133,6 @@ void evalFunc_1_16(void *ps)
 	const float *weights0 = pss->weights0;
 	const int opt = pss->opt;
 	const int pscrn = pss->pscrn;
-	const int fapprox = pss->fapprox;
 	const bool int16_prescreener = pss->int16_prescreener;
 	const uint8_t bits_per_pixel = pss->bits_per_pixel;
 	void(*uc2s)(const uint8_t*, const int, float*);
@@ -2382,7 +2382,6 @@ int processLine0_C_32(const uint8_t *tempu, int width, uint8_t *dstp, const uint
 	const float *src4 = (float *)(src3p + (src_pitch << 2));
 	const float *src6 = (float *)(src3p + (src_pitch * 6));
 	float *dst0 = (float *)dstp;
-	uint32_t *dst = (uint32_t *)dstp;
 
 	for (int x=0; x<width; x++)
 	{
@@ -2452,7 +2451,6 @@ void evalFunc_1_32(void *ps)
 	const float *weights0 = pss->weights0;
 	const int opt = pss->opt;
 	const int pscrn = pss->pscrn;
-	const int fapprox = pss->fapprox;
 	void(*uc2s)(const uint8_t*, const int, float*);
 	void(*computeNetwork0)(const float*, const float*, uint8_t*);
 	int(*processLine0)(const uint8_t*, int, uint8_t*, const uint8_t*, const int);

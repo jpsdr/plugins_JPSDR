@@ -24,7 +24,7 @@
 
 #include <windows.h>
 #include <math.h>
-#include "AutoYUY2.h"
+#include "./AutoYUY2.h"
 
 extern ThreadPoolInterface *poolInterface;
 
@@ -106,6 +106,8 @@ typedef struct _YUYV
 	uint8_t y2;
 	uint8_t v;
 } YUYV;
+
+static ThreadPoolInterface *poolInterface;
 
 
 static uint8_t CreateMTData(MT_Data_Info_AutoYUY2 MT_Data[],int output,uint8_t threads_number,uint8_t max_threads,int32_t size_x,int32_t size_y)
@@ -2954,16 +2956,16 @@ static void Convert_Automatic_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,co
 				
 				for(int32_t j=0; j<w_UV; j++)
 				{
-					if (((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
+					if ((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
 						(abs((int16_t)src_Unn[j]-(int16_t)src_Un[j])>=threshold_) &&
 						(((src_U[j]>src_Un[j]) && (src_Unn[j]>src_Un[j])) ||
-						((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j])))))
+						((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j]))))
 						itabu0[j]=true;
 					else itabu0[j]=false;
-					if (((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
+					if ((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
 						(abs((int16_t)src_Unnn[j]-(int16_t)src_Unn[j])>=threshold_) &&
 						(((src_Un[j]>src_Unn[j]) && (src_Unnn[j]>src_Unn[j])) ||
-						((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j])))))
+						((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j]))))
 						itabu1[j]=true;
 					else itabu1[j]=false;
 					
@@ -2986,16 +2988,16 @@ static void Convert_Automatic_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,co
 				
 		for(int32_t j=0; j<w_UV; j++)
 		{
-			if (((abs((int16_t)src_Upp[j]-(int16_t)src_Up[j])>=threshold_) &&
+			if ((abs((int16_t)src_Upp[j]-(int16_t)src_Up[j])>=threshold_) &&
 				(abs((int16_t)src_U[j]-(int16_t)src_Up[j])>=threshold_) &&
 				(((src_Upp[j]>src_Up[j]) && (src_U[j]>src_Up[j])) ||
-				((src_Upp[j]<src_Up[j]) && (src_U[j]<src_Up[j])))))
+				((src_Upp[j]<src_Up[j]) && (src_U[j]<src_Up[j]))))
 				itabu0[j]=true;
 			else itabu0[j]=false;
-			if (((abs((int16_t)src_Up[j]-(int16_t)src_U[j])>=threshold_) &&
+			if ((abs((int16_t)src_Up[j]-(int16_t)src_U[j])>=threshold_) &&
 				(abs((int16_t)src_Un[j]-(int16_t)src_U[j])>=threshold_) &&
 				(((src_Up[j]>src_U[j]) && (src_Un[j]>src_U[j])) ||
-				((src_Up[j]<src_U[j]) && (src_Un[j]<src_U[j])))))
+				((src_Up[j]<src_U[j]) && (src_Un[j]<src_U[j]))))
 				itabu1[j]=true;
 			else itabu1[j]=false;
 		}
@@ -3032,10 +3034,10 @@ static void Convert_Automatic_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,co
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
+				if ((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
 					(abs((int16_t)src_Unn[j]-(int16_t)src_Un[j])>=threshold_) &&
 					(((src_U[j]>src_Un[j]) && (src_Unn[j]>src_Un[j])) ||
-					((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j])))))
+					((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j]))))
 					itabu2[j]=true;
 				else itabu2[j]=false;			
 
@@ -3076,10 +3078,10 @@ static void Convert_Automatic_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,co
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
+				if ((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
 					(abs((int16_t)src_Unnn[j]-(int16_t)src_Unn[j])>=threshold_) &&
 					(((src_Un[j]>src_Unn[j]) && (src_Unnn[j]>src_Unn[j])) ||
-					((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j])))))
+					((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j]))))
 					itabu0[j]=true;
 				else itabu0[j]=false;
 
@@ -3155,16 +3157,16 @@ static void Convert_Automatic_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,co
 
 				for(int32_t j=0; j<w_UV; j++)
 				{
-					if (((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
+					if ((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
 						(abs((int16_t)src_Vnn[j]-(int16_t)src_Vn[j])>=threshold_) &&
 						(((src_V[j]>src_Vn[j]) && (src_Vnn[j]>src_Vn[j])) ||
-						((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j])))))
+						((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j]))))
 						itabv0[j]=true;
 					else itabv0[j]=false;
-					if (((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
+					if ((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 						(abs((int16_t)src_Vnnn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 						(((src_Vn[j]>src_Vnn[j]) && (src_Vnnn[j]>src_Vnn[j])) ||
-						((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j])))))
+						((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j]))))
 						itabv1[j]=true;
 					else itabv1[j]=false;
 					
@@ -3187,16 +3189,16 @@ static void Convert_Automatic_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,co
 
 		for(int32_t j=0; j<w_UV; j++)
 		{
-			if (((abs((int16_t)src_Vpp[j]-(int16_t)src_Vp[j])>=threshold_) &&
+			if ((abs((int16_t)src_Vpp[j]-(int16_t)src_Vp[j])>=threshold_) &&
 				(abs((int16_t)src_V[j]-(int16_t)src_Vp[j])>=threshold_) &&
 				(((src_Vpp[j]>src_Vp[j]) && (src_V[j]>src_Vp[j])) ||
-				((src_Vpp[j]<src_Vp[j]) && (src_V[j]<src_Vp[j])))))
+				((src_Vpp[j]<src_Vp[j]) && (src_V[j]<src_Vp[j]))))
 				itabv0[j]=true;
 			else itabv0[j]=false;
-			if (((abs((int16_t)src_Vp[j]-(int16_t)src_V[j])>=threshold_) &&
+			if ((abs((int16_t)src_Vp[j]-(int16_t)src_V[j])>=threshold_) &&
 				(abs((int16_t)src_Vn[j]-(int16_t)src_V[j])>=threshold_) &&
 				(((src_Vp[j]>src_V[j]) && (src_Vn[j]>src_V[j])) ||
-				((src_Vp[j]<src_V[j]) && (src_Vn[j]<src_V[j])))))
+				((src_Vp[j]<src_V[j]) && (src_Vn[j]<src_V[j]))))
 				itabv1[j]=true;
 			else itabv1[j]=false;
 		}
@@ -3232,10 +3234,10 @@ static void Convert_Automatic_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,co
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
+				if ((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
 					(abs((int16_t)src_Vnn[j]-(int16_t)src_Vn[j])>=threshold_) &&
 					(((src_V[j]>src_Vn[j]) && (src_Vnn[j]>src_Vn[j])) ||
-					((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j])))))
+					((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j]))))
 					itabv2[j]=true;
 				else itabv2[j]=false;			
 
@@ -3276,10 +3278,10 @@ static void Convert_Automatic_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,co
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
+				if ((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 					(abs((int16_t)src_Vnnn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 					(((src_Vn[j]>src_Vnn[j]) && (src_Vnnn[j]>src_Vnn[j])) ||
-					((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j])))))
+					((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j]))))
 					itabv0[j]=true;
 				else itabv0[j]=false;
 
@@ -3404,16 +3406,16 @@ static void Convert_Test_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const u
 				
 				for(int32_t j=0; j<w_UV; j++)
 				{
-					if (((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
+					if ((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
 						(abs((int16_t)src_Unn[j]-(int16_t)src_Un[j])>=threshold_) &&
 						(((src_U[j]>src_Un[j]) && (src_Unn[j]>src_Un[j])) ||
-						((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j])))))
+						((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j]))))
 						itabu0[j]=true;
 					else itabu0[j]=false;
-					if (((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
+					if ((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
 						(abs((int16_t)src_Unnn[j]-(int16_t)src_Unn[j])>=threshold_) &&
 						(((src_Un[j]>src_Unn[j]) && (src_Unnn[j]>src_Unn[j])) ||
-						((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j])))))
+						((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j]))))
 						itabu1[j]=true;
 					else itabu1[j]=false;
 					
@@ -3436,16 +3438,16 @@ static void Convert_Test_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const u
 				
 		for(int32_t j=0; j<w_UV; j++)
 		{
-			if (((abs((int16_t)src_Upp[j]-(int16_t)src_Up[j])>=threshold_) &&
+			if ((abs((int16_t)src_Upp[j]-(int16_t)src_Up[j])>=threshold_) &&
 				(abs((int16_t)src_U[j]-(int16_t)src_Up[j])>=threshold_) &&
 				(((src_Upp[j]>src_Up[j]) && (src_U[j]>src_Up[j])) ||
-				((src_Upp[j]<src_Up[j]) && (src_U[j]<src_Up[j])))))
+				((src_Upp[j]<src_Up[j]) && (src_U[j]<src_Up[j]))))
 				itabu0[j]=true;
 			else itabu0[j]=false;
-			if (((abs((int16_t)src_Up[j]-(int16_t)src_U[j])>=threshold_) &&
+			if ((abs((int16_t)src_Up[j]-(int16_t)src_U[j])>=threshold_) &&
 				(abs((int16_t)src_Un[j]-(int16_t)src_U[j])>=threshold_) &&
 				(((src_Up[j]>src_U[j]) && (src_Un[j]>src_U[j])) ||
-				((src_Up[j]<src_U[j]) && (src_Un[j]<src_U[j])))))
+				((src_Up[j]<src_U[j]) && (src_Un[j]<src_U[j]))))
 				itabu1[j]=true;
 			else itabu1[j]=false;
 		}
@@ -3482,10 +3484,10 @@ static void Convert_Test_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const u
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
+				if ((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
 					(abs((int16_t)src_Unn[j]-(int16_t)src_Un[j])>=threshold_) &&
 					(((src_U[j]>src_Un[j]) && (src_Unn[j]>src_Un[j])) ||
-					((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j])))))
+					((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j]))))
 					itabu2[j]=true;
 				else itabu2[j]=false;			
 
@@ -3526,10 +3528,10 @@ static void Convert_Test_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const u
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
+				if ((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
 					(abs((int16_t)src_Unnn[j]-(int16_t)src_Unn[j])>=threshold_) &&
 					(((src_Un[j]>src_Unn[j]) && (src_Unnn[j]>src_Unn[j])) ||
-					((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j])))))
+					((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j]))))
 					itabu0[j]=true;
 				else itabu0[j]=false;
 
@@ -3605,16 +3607,16 @@ static void Convert_Test_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const u
 
 				for(int32_t j=0; j<w_UV; j++)
 				{
-					if (((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
+					if ((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
 						(abs((int16_t)src_Vnn[j]-(int16_t)src_Vn[j])>=threshold_) &&
 						(((src_V[j]>src_Vn[j]) && (src_Vnn[j]>src_Vn[j])) ||
-						((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j])))))
+						((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j]))))
 						itabv0[j]=true;
 					else itabv0[j]=false;
-					if (((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
+					if ((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 						(abs((int16_t)src_Vnnn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 						(((src_Vn[j]>src_Vnn[j]) && (src_Vnnn[j]>src_Vnn[j])) ||
-						((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j])))))
+						((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j]))))
 						itabv1[j]=true;
 					else itabv1[j]=false;
 					
@@ -3637,10 +3639,10 @@ static void Convert_Test_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const u
 
 		for(int32_t j=0; j<w_UV; j++)
 		{
-			if (((abs((int16_t)src_Vpp[j]-(int16_t)src_Vp[j])>=threshold_) &&
+			if ((abs((int16_t)src_Vpp[j]-(int16_t)src_Vp[j])>=threshold_) &&
 				(abs((int16_t)src_V[j]-(int16_t)src_Vp[j])>=threshold_) &&
 				(((src_Vpp[j]>src_Vp[j]) && (src_V[j]>src_Vp[j])) ||
-				((src_Vpp[j]<src_Vp[j]) && (src_V[j]<src_Vp[j])))))
+				((src_Vpp[j]<src_Vp[j]) && (src_V[j]<src_Vp[j]))))
 				itabv0[j]=true;
 			else itabv0[j]=false;
 			if (((abs((int16_t)src_Vp[j]-(int16_t)src_V[j])>=threshold_) &&
@@ -3682,10 +3684,10 @@ static void Convert_Test_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const u
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
+				if ((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
 					(abs((int16_t)src_Vnn[j]-(int16_t)src_Vn[j])>=threshold_) &&
 					(((src_V[j]>src_Vn[j]) && (src_Vnn[j]>src_Vn[j])) ||
-					((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j])))))
+					((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j]))))
 					itabv2[j]=true;
 				else itabv2[j]=false;			
 
@@ -3726,10 +3728,10 @@ static void Convert_Test_8_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const u
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
+				if ((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 					(abs((int16_t)src_Vnnn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 					(((src_Vn[j]>src_Vnn[j]) && (src_Vnnn[j]>src_Vnn[j])) ||
-					((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j])))))
+					((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j]))))
 					itabv0[j]=true;
 				else itabv0[j]=false;
 
@@ -3865,16 +3867,16 @@ static void Convert_Automatic_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,c
 
 				for(int32_t j=0; j<w_UV; j++)
 				{
-					if (((abs((int32_t)src2[j]-(int32_t)src3[j])>=threshold_) &&
+					if ((abs((int32_t)src2[j]-(int32_t)src3[j])>=threshold_) &&
 						(abs((int32_t)src_Unn[j]-(int32_t)src3[j])>=threshold_) &&
 						(((src2[j]>src3[j]) && (src1[j]>src3[j])) ||
-						((src2[j]<src3[j]) && (src1[j]<src3[j])))))
+						((src2[j]<src3[j]) && (src1[j]<src3[j]))))
 						itabu0[j]=true;
 					else itabu0[j]=false;
-					if (((abs((int32_t)src3[j]-(int32_t)src1[j])>=threshold_) &&
+					if ((abs((int32_t)src3[j]-(int32_t)src1[j])>=threshold_) &&
 						(abs((int32_t)src_Unnn[j]-(int32_t)src1[j])>=threshold_) &&
 						(((src3[j]>src1[j]) && (src4[j]>src1[j])) ||
-						((src3[j]<src1[j]) && (src4[j]<src1[j])))))
+						((src3[j]<src1[j]) && (src4[j]<src1[j]))))
 						itabu1[j]=true;
 					else itabu1[j]=false;
 					
@@ -3902,16 +3904,16 @@ static void Convert_Automatic_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,c
 				
 		for(int32_t j=0; j<w_UV; j++)
 		{
-			if (((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
+			if ((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
 				(abs((int32_t)src_U[j]-(int32_t)src2[j])>=threshold_) &&
 				(((src1[j]>src2[j]) && (src3[j]>src2[j])) ||
-				((src1[j]<src2[j]) && (src3[j]<src2[j])))))
+				((src1[j]<src2[j]) && (src3[j]<src2[j]))))
 				itabu0[j]=true;
 			else itabu0[j]=false;
-			if (((abs((int32_t)src2[j]-(int32_t)src3[j])>=threshold_) &&
+			if ((abs((int32_t)src2[j]-(int32_t)src3[j])>=threshold_) &&
 				(abs((int32_t)src4[j]-(int32_t)src3[j])>=threshold_) &&
 				(((src2[j]>src3[j]) && (src4[j]>src3[j])) ||
-				((src2[j]<src3[j]) && (src4[j]<src3[j])))))
+				((src2[j]<src3[j]) && (src4[j]<src3[j]))))
 				itabu1[j]=true;
 			else itabu1[j]=false;
 		}
@@ -3957,10 +3959,10 @@ static void Convert_Automatic_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,c
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
+				if ((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
 					(abs((int32_t)src3[j]-(int32_t)src2[j])>=threshold_) &&
 					(((src1[j]>src2[j]) && (src3[j]>src2[j])) ||
-					((src1[j]<src2[j]) && (src3[j]<src2[j])))))
+					((src1[j]<src2[j]) && (src3[j]<src2[j]))))
 					itabu2[j]=true;
 				else itabu2[j]=false;			
 
@@ -4009,10 +4011,10 @@ static void Convert_Automatic_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,c
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
+				if ((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
 					(abs((int32_t)src3[j]-(int32_t)src2[j])>=threshold_) &&
 					(((src1[j]>src2[j]) && (src3[j]>src2[j])) ||
-					((src1[j]<src2[j]) && (src3[j]<src2[j])))))
+					((src1[j]<src2[j]) && (src3[j]<src2[j]))))
 					itabu0[j]=true;
 				else itabu0[j]=false;
 
@@ -4103,16 +4105,16 @@ static void Convert_Automatic_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,c
 
 				for(int32_t j=0; j<w_UV; j++)
 				{
-					if (((abs((int32_t)src2[j]-(int32_t)src3[j])>=threshold_) &&
+					if ((abs((int32_t)src2[j]-(int32_t)src3[j])>=threshold_) &&
 						(abs((int32_t)src1[j]-(int32_t)src3[j])>=threshold_) &&
 						(((src2[j]>src3[j]) && (src1[j]>src3[j])) ||
-						((src2[j]<src3[j]) && (src1[j]<src3[j])))))
+						((src2[j]<src3[j]) && (src1[j]<src3[j]))))
 						itabv0[j]=true;
 					else itabv0[j]=false;
-					if (((abs((int32_t)src3[j]-(int32_t)src1[j])>=threshold_) &&
+					if ((abs((int32_t)src3[j]-(int32_t)src1[j])>=threshold_) &&
 						(abs((int32_t)src4[j]-(int32_t)src1[j])>=threshold_) &&
 						(((src3[j]>src1[j]) && (src4[j]>src1[j])) ||
-						((src3[j]<src1[j]) && (src4[j]<src1[j])))))
+						((src3[j]<src1[j]) && (src4[j]<src1[j]))))
 						itabv1[j]=true;
 					else itabv1[j]=false;
 					
@@ -4139,10 +4141,10 @@ static void Convert_Automatic_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,c
 
 		for(int32_t j=0; j<w_UV; j++)
 		{
-			if (((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
+			if ((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
 				(abs((int32_t)src3[j]-(int32_t)src2[j])>=threshold_) &&
 				(((src1[j]>src2[j]) && (src3[j]>src2[j])) ||
-				((src1[j]<src2[j]) && (src3[j]<src2[j])))))
+				((src1[j]<src2[j]) && (src3[j]<src2[j]))))
 				itabv0[j]=true;
 			else itabv0[j]=false;
 			if (((abs((int32_t)src2[j]-(int32_t)src3[j])>=threshold_) &&
@@ -4193,10 +4195,10 @@ static void Convert_Automatic_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,c
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
+				if ((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
 					(abs((int32_t)src3[j]-(int32_t)src2[j])>=threshold_) &&
 					(((src1[j]>src2[j]) && (src3[j]>src2[j])) ||
-					((src1[j]<src2[j]) && (src3[j]<src2[j])))))
+					((src1[j]<src2[j]) && (src3[j]<src2[j]))))
 					itabv2[j]=true;
 				else itabv2[j]=false;			
 
@@ -4245,10 +4247,10 @@ static void Convert_Automatic_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,c
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
+				if ((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
 					(abs((int32_t)src3[j]-(int32_t)src2[j])>=threshold_) &&
 					(((src1[j]>src2[j]) && (src3[j]>src2[j])) ||
-					((src1[j]<src2[j]) && (src3[j]<src2[j])))))
+					((src1[j]<src2[j]) && (src3[j]<src2[j]))))
 					itabv0[j]=true;
 				else itabv0[j]=false;
 
@@ -4393,16 +4395,16 @@ static void Convert_Test_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const 
 
 				for(int32_t j=0; j<w_UV; j++)
 				{
-					if (((abs((int32_t)src2[j]-(int32_t)src3[j])>=threshold_) &&
+					if ((abs((int32_t)src2[j]-(int32_t)src3[j])>=threshold_) &&
 						(abs((int32_t)src_Unn[j]-(int32_t)src3[j])>=threshold_) &&
 						(((src2[j]>src3[j]) && (src1[j]>src3[j])) ||
-						((src2[j]<src3[j]) && (src1[j]<src3[j])))))
+						((src2[j]<src3[j]) && (src1[j]<src3[j]))))
 						itabu0[j]=true;
 					else itabu0[j]=false;
-					if (((abs((int32_t)src3[j]-(int32_t)src1[j])>=threshold_) &&
+					if ((abs((int32_t)src3[j]-(int32_t)src1[j])>=threshold_) &&
 						(abs((int32_t)src_Unnn[j]-(int32_t)src1[j])>=threshold_) &&
 						(((src3[j]>src1[j]) && (src4[j]>src1[j])) ||
-						((src3[j]<src1[j]) && (src4[j]<src1[j])))))
+						((src3[j]<src1[j]) && (src4[j]<src1[j]))))
 						itabu1[j]=true;
 					else itabu1[j]=false;
 					
@@ -4430,16 +4432,16 @@ static void Convert_Test_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const 
 				
 		for(int32_t j=0; j<w_UV; j++)
 		{
-			if (((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
+			if ((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
 				(abs((int32_t)src_U[j]-(int32_t)src2[j])>=threshold_) &&
 				(((src1[j]>src2[j]) && (src3[j]>src2[j])) ||
-				((src1[j]<src2[j]) && (src3[j]<src2[j])))))
+				((src1[j]<src2[j]) && (src3[j]<src2[j]))))
 				itabu0[j]=true;
 			else itabu0[j]=false;
-			if (((abs((int32_t)src2[j]-(int32_t)src3[j])>=threshold_) &&
+			if ((abs((int32_t)src2[j]-(int32_t)src3[j])>=threshold_) &&
 				(abs((int32_t)src4[j]-(int32_t)src3[j])>=threshold_) &&
 				(((src2[j]>src3[j]) && (src4[j]>src3[j])) ||
-				((src2[j]<src3[j]) && (src4[j]<src3[j])))))
+				((src2[j]<src3[j]) && (src4[j]<src3[j]))))
 				itabu1[j]=true;
 			else itabu1[j]=false;
 		}
@@ -4455,7 +4457,6 @@ static void Convert_Test_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const 
 		{
 			const bool *itabu0=interlaced_tab_U[index_tab_0],*itabu1=interlaced_tab_U[index_tab_1];
 			const uint16_t *src1=(uint16_t *)src_U;
-			const uint16_t *src2=(uint16_t *)src_Upp;
 			const uint16_t *src3=(uint16_t *)src_Up;
 			uint16_t *dst=(uint16_t *)dst_U;
 
@@ -4480,15 +4481,14 @@ static void Convert_Test_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const 
 			const uint16_t *src1=(uint16_t *)src_U;
 			const uint16_t *src2=(uint16_t *)src_Un;
 			const uint16_t *src3=(uint16_t *)src_Unn;
-			const uint16_t *src4=(uint16_t *)src_Up;
 			uint16_t *dst=(uint16_t *)dst_U;
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
+				if ((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
 					(abs((int32_t)src3[j]-(int32_t)src2[j])>=threshold_) &&
 					(((src1[j]>src2[j]) && (src3[j]>src2[j])) ||
-					((src1[j]<src2[j]) && (src3[j]<src2[j])))))
+					((src1[j]<src2[j]) && (src3[j]<src2[j]))))
 					itabu2[j]=true;
 				else itabu2[j]=false;			
 
@@ -4507,7 +4507,6 @@ static void Convert_Test_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const 
 
 		{
 			const bool *itabu1=interlaced_tab_U[index_tab_1],*itabu2=interlaced_tab_U[index_tab_2];
-			const uint16_t *src1=(uint16_t *)src_Unn;
 			const uint16_t *src2=(uint16_t *)src_U;
 			const uint16_t *src3=(uint16_t *)src_Un;
 			uint16_t *dst=(uint16_t *)dst_U;
@@ -4537,10 +4536,10 @@ static void Convert_Test_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const 
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
+				if ((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
 					(abs((int32_t)src3[j]-(int32_t)src2[j])>=threshold_) &&
 					(((src1[j]>src2[j]) && (src3[j]>src2[j])) ||
-					((src1[j]<src2[j]) && (src3[j]<src2[j])))))
+					((src1[j]<src2[j]) && (src3[j]<src2[j]))))
 					itabu0[j]=true;
 				else itabu0[j]=false;
 
@@ -4631,16 +4630,16 @@ static void Convert_Test_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const 
 
 				for(int32_t j=0; j<w_UV; j++)
 				{
-					if (((abs((int32_t)src2[j]-(int32_t)src3[j])>=threshold_) &&
+					if ((abs((int32_t)src2[j]-(int32_t)src3[j])>=threshold_) &&
 						(abs((int32_t)src1[j]-(int32_t)src3[j])>=threshold_) &&
 						(((src2[j]>src3[j]) && (src1[j]>src3[j])) ||
-						((src2[j]<src3[j]) && (src1[j]<src3[j])))))
+						((src2[j]<src3[j]) && (src1[j]<src3[j]))))
 						itabv0[j]=true;
 					else itabv0[j]=false;
-					if (((abs((int32_t)src3[j]-(int32_t)src1[j])>=threshold_) &&
+					if ((abs((int32_t)src3[j]-(int32_t)src1[j])>=threshold_) &&
 						(abs((int32_t)src4[j]-(int32_t)src1[j])>=threshold_) &&
 						(((src3[j]>src1[j]) && (src4[j]>src1[j])) ||
-						((src3[j]<src1[j]) && (src4[j]<src1[j])))))
+						((src3[j]<src1[j]) && (src4[j]<src1[j]))))
 						itabv1[j]=true;
 					else itabv1[j]=false;
 					
@@ -4667,16 +4666,16 @@ static void Convert_Test_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const 
 
 		for(int32_t j=0; j<w_UV; j++)
 		{
-			if (((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
+			if ((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
 				(abs((int32_t)src3[j]-(int32_t)src2[j])>=threshold_) &&
 				(((src1[j]>src2[j]) && (src3[j]>src2[j])) ||
-				((src1[j]<src2[j]) && (src3[j]<src2[j])))))
+				((src1[j]<src2[j]) && (src3[j]<src2[j]))))
 				itabv0[j]=true;
 			else itabv0[j]=false;
-			if (((abs((int32_t)src2[j]-(int32_t)src3[j])>=threshold_) &&
+			if ((abs((int32_t)src2[j]-(int32_t)src3[j])>=threshold_) &&
 				(abs((int32_t)src4[j]-(int32_t)src3[j])>=threshold_) &&
 				(((src2[j]>src3[j]) && (src4[j]>src3[j])) ||
-				((src2[j]<src3[j]) && (src4[j]<src3[j])))))
+				((src2[j]<src3[j]) && (src4[j]<src3[j]))))
 				itabv1[j]=true;
 			else itabv1[j]=false;
 		}
@@ -4691,7 +4690,6 @@ static void Convert_Test_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const 
 		{
 			const bool *itabv0=interlaced_tab_V[index_tab_0],*itabv1=interlaced_tab_V[index_tab_1];
 			const uint16_t *src1=(uint16_t *)src_V;
-			const uint16_t *src2=(uint16_t *)src_Vpp;
 			const uint16_t *src3=(uint16_t *)src_Vp;
 			uint16_t *dst=(uint16_t *)dst_V;
 
@@ -4716,15 +4714,14 @@ static void Convert_Test_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const 
 			const uint16_t *src1=(uint16_t *)src_V;
 			const uint16_t *src2=(uint16_t *)src_Vn;
 			const uint16_t *src3=(uint16_t *)src_Vnn;
-			const uint16_t *src4=(uint16_t *)src_Vp;
 			uint16_t *dst=(uint16_t *)dst_V;
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
+				if ((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
 					(abs((int32_t)src3[j]-(int32_t)src2[j])>=threshold_) &&
 					(((src1[j]>src2[j]) && (src3[j]>src2[j])) ||
-					((src1[j]<src2[j]) && (src3[j]<src2[j])))))
+					((src1[j]<src2[j]) && (src3[j]<src2[j]))))
 					itabv2[j]=true;
 				else itabv2[j]=false;			
 
@@ -4743,7 +4740,6 @@ static void Convert_Test_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const 
 
 		{
 			const bool *itabv1=interlaced_tab_V[index_tab_1],*itabv2=interlaced_tab_V[index_tab_2];
-			const uint16_t *src1=(uint16_t *)src_Vnn;
 			const uint16_t *src2=(uint16_t *)src_V;
 			const uint16_t *src3=(uint16_t *)src_Vn;
 			uint16_t *dst=(uint16_t *)dst_V;
@@ -4773,10 +4769,10 @@ static void Convert_Test_16_YV16(const MT_Data_Info_AutoYUY2 &mt_data_inf,const 
 
 			for(int32_t j=0; j<w_UV; j++)
 			{
-				if (((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
+				if ((abs((int32_t)src1[j]-(int32_t)src2[j])>=threshold_) &&
 					(abs((int32_t)src3[j]-(int32_t)src2[j])>=threshold_) &&
 					(((src1[j]>src2[j]) && (src3[j]>src2[j])) ||
-					((src1[j]<src2[j]) && (src3[j]<src2[j])))))
+					((src1[j]<src2[j]) && (src3[j]<src2[j]))))
 					itabv0[j]=true;
 				else itabv0[j]=false;
 
@@ -5939,31 +5935,31 @@ static void Convert_Automatic_YUY2(const MT_Data_Info_AutoYUY2 &mt_data_inf,cons
 					dst[j].y2=src_Y[i+1];
 					i+=2;
 
-					if (((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
+					if ((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
 						(abs((int16_t)src_Unn[j]-(int16_t)src_Un[j])>=threshold_) &&
 						(((src_U[j]>src_Un[j]) && (src_Unn[j]>src_Un[j])) ||
-						((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j])))))
+						((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j]))))
 						itabu0[j]=true;
 					else itabu0[j]=false;
-					if (((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
+					if ((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
 						(abs((int16_t)src_Unnn[j]-(int16_t)src_Unn[j])>=threshold_) &&
 						(((src_Un[j]>src_Unn[j]) && (src_Unnn[j]>src_Unn[j])) ||
-						((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j])))))
+						((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j]))))
 						itabu1[j]=true;
 					else itabu1[j]=false;
 
 					dst[j].u=(uint8_t)((lookup[(uint16_t)src_Un[j]+512]+(uint16_t)src_Unnn[j]+4)>>3);
 
-					if (((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
+					if ((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
 						(abs((int16_t)src_Vnn[j]-(int16_t)src_Vn[j])>=threshold_) &&
 						(((src_V[j]>src_Vn[j]) && (src_Vnn[j]>src_Vn[j])) ||
-						((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j])))))
+						((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j]))))
 						itabv0[j]=true;
 					else itabv0[j]=false;
-					if (((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
+					if ((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 						(abs((int16_t)src_Vnnn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 						(((src_Vn[j]>src_Vnn[j]) && (src_Vnnn[j]>src_Vnn[j])) ||
-						((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j])))))
+						((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j]))))
 						itabv1[j]=true;
 					else itabv1[j]=false;
 				
@@ -5995,29 +5991,29 @@ static void Convert_Automatic_YUY2(const MT_Data_Info_AutoYUY2 &mt_data_inf,cons
 
 		for (int32_t j=0; j<w_UV; j++)
 		{	
-			if (((abs((int16_t)src_Upp[j]-(int16_t)src_Up[j])>=threshold_) &&
+			if ((abs((int16_t)src_Upp[j]-(int16_t)src_Up[j])>=threshold_) &&
 				(abs((int16_t)src_U[j]-(int16_t)src_Up[j])>=threshold_) &&
 				(((src_Upp[j]>src_Up[j]) && (src_U[j]>src_Up[j])) ||
-				((src_Upp[j]<src_Up[j]) && (src_U[j]<src_Up[j])))))
+				((src_Upp[j]<src_Up[j]) && (src_U[j]<src_Up[j]))))
 				itabu0[j]=true;
 			else itabu0[j]=false;
-			if (((abs((int16_t)src_Up[j]-(int16_t)src_U[j])>=threshold_) &&
+			if ((abs((int16_t)src_Up[j]-(int16_t)src_U[j])>=threshold_) &&
 				(abs((int16_t)src_Un[j]-(int16_t)src_U[j])>=threshold_) &&
 				(((src_Up[j]>src_U[j]) && (src_Un[j]>src_U[j])) ||
-				((src_Up[j]<src_U[j]) && (src_Un[j]<src_U[j])))))
+				((src_Up[j]<src_U[j]) && (src_Un[j]<src_U[j]))))
 				itabu1[j]=true;
 			else itabu1[j]=false;
 
-			if (((abs((int16_t)src_Vpp[j]-(int16_t)src_Vp[j])>=threshold_) &&
+			if ((abs((int16_t)src_Vpp[j]-(int16_t)src_Vp[j])>=threshold_) &&
 				(abs((int16_t)src_V[j]-(int16_t)src_Vp[j])>=threshold_) &&
 				(((src_Vpp[j]>src_Vp[j]) && (src_V[j]>src_Vp[j])) ||
-				((src_Vpp[j]<src_Vp[j]) && (src_V[j]<src_Vp[j])))))
+				((src_Vpp[j]<src_Vp[j]) && (src_V[j]<src_Vp[j]))))
 				itabv0[j]=true;
 			else itabv0[j]=false;
-			if (((abs((int16_t)src_Vp[j]-(int16_t)src_V[j])>=threshold_) &&
+			if ((abs((int16_t)src_Vp[j]-(int16_t)src_V[j])>=threshold_) &&
 				(abs((int16_t)src_Vn[j]-(int16_t)src_V[j])>=threshold_) &&
 				(((src_Vp[j]>src_V[j]) && (src_Vn[j]>src_V[j])) ||
-				((src_Vp[j]<src_V[j]) && (src_Vn[j]<src_V[j])))))
+				((src_Vp[j]<src_V[j]) && (src_Vn[j]<src_V[j]))))
 				itabv1[j]=true;
 			else itabv1[j]=false;
 		}
@@ -6079,10 +6075,10 @@ static void Convert_Automatic_YUY2(const MT_Data_Info_AutoYUY2 &mt_data_inf,cons
 				dst[j].y2=src_Y[i+1];
 				i+=2;
 
-				if (((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
+				if ((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
 					(abs((int16_t)src_Unn[j]-(int16_t)src_Un[j])>=threshold_) &&
 					(((src_U[j]>src_Un[j]) && (src_Unn[j]>src_Un[j])) ||
-					((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j])))))
+					((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j]))))
 					itabu2[j]=true;
 				else itabu2[j]=false;			
 
@@ -6096,10 +6092,10 @@ static void Convert_Automatic_YUY2(const MT_Data_Info_AutoYUY2 &mt_data_inf,cons
 					dst[j].u=(uint8_t)((lookup[src_U[j]]+(uint16_t)src_Un[j]+2) >> 2);
 				}
 
-				if (((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
+				if ((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
 					(abs((int16_t)src_Vnn[j]-(int16_t)src_Vn[j])>=threshold_) &&
 					(((src_V[j]>src_Vn[j]) && (src_Vnn[j]>src_Vn[j])) ||
-					((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j])))))
+					((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j]))))
 					itabv2[j]=true;
 				else itabv2[j]=false;			
 
@@ -6167,10 +6163,10 @@ static void Convert_Automatic_YUY2(const MT_Data_Info_AutoYUY2 &mt_data_inf,cons
 				dst[j].y2=src_Y[i+1];
 				i+=2;
 
-				if (((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
+				if ((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
 					(abs((int16_t)src_Unnn[j]-(int16_t)src_Unn[j])>=threshold_) &&
 					(((src_Un[j]>src_Unn[j]) && (src_Unnn[j]>src_Unn[j])) ||
-					((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j])))))
+					((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j]))))
 					itabu0[j]=true;
 				else itabu0[j]=false;
 
@@ -6184,10 +6180,10 @@ static void Convert_Automatic_YUY2(const MT_Data_Info_AutoYUY2 &mt_data_inf,cons
 					dst[j].u=(uint8_t)((lookup[src_Un[j]]+(uint16_t)src_Unn[j]+2) >> 2);
 				}
 
-				if (((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
+				if ((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 					(abs((int16_t)src_Vnnn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 					(((src_Vn[j]>src_Vnn[j]) && (src_Vnnn[j]>src_Vnn[j])) ||
-					((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j])))))
+					((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j]))))
 					itabv0[j]=true;
 				else itabv0[j]=false;
 
@@ -6412,31 +6408,31 @@ static void Convert_Test_YUY2(const MT_Data_Info_AutoYUY2 &mt_data_inf,const uin
 					dst[j].y2=src_Y[i+1];
 					i+=2;
 
-					if (((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
+					if ((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
 						(abs((int16_t)src_Unn[j]-(int16_t)src_Un[j])>=threshold_) &&
 						(((src_U[j]>src_Un[j]) && (src_Unn[j]>src_Un[j])) ||
-						((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j])))))
+						((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j]))))
 						itabu0[j]=true;
 					else itabu0[j]=false;
-					if (((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
+					if ((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
 						(abs((int16_t)src_Unnn[j]-(int16_t)src_Unn[j])>=threshold_) &&
 						(((src_Un[j]>src_Unn[j]) && (src_Unnn[j]>src_Unn[j])) ||
-						((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j])))))
+						((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j]))))
 						itabu1[j]=true;
 					else itabu1[j]=false;
 
 					dst[j].u=(uint8_t)((lookup[(uint16_t)src_Un[j]+512]+(uint16_t)src_Unnn[j]+4)>>3);
 
-					if (((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
+					if ((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
 						(abs((int16_t)src_Vnn[j]-(int16_t)src_Vn[j])>=threshold_) &&
 						(((src_V[j]>src_Vn[j]) && (src_Vnn[j]>src_Vn[j])) ||
-						((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j])))))
+						((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j]))))
 						itabv0[j]=true;
 					else itabv0[j]=false;
-					if (((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
+					if ((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 						(abs((int16_t)src_Vnnn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 						(((src_Vn[j]>src_Vnn[j]) && (src_Vnnn[j]>src_Vnn[j])) ||
-						((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j])))))
+						((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j]))))
 						itabv1[j]=true;
 					else itabv1[j]=false;
 				
@@ -6468,29 +6464,29 @@ static void Convert_Test_YUY2(const MT_Data_Info_AutoYUY2 &mt_data_inf,const uin
 
 		for (int32_t j=0; j<w_UV; j++)
 		{	
-			if (((abs((int16_t)src_Upp[j]-(int16_t)src_Up[j])>=threshold_) &&
+			if ((abs((int16_t)src_Upp[j]-(int16_t)src_Up[j])>=threshold_) &&
 				(abs((int16_t)src_U[j]-(int16_t)src_Up[j])>=threshold_) &&
 				(((src_Upp[j]>src_Up[j]) && (src_U[j]>src_Up[j])) ||
-				((src_Upp[j]<src_Up[j]) && (src_U[j]<src_Up[j])))))
+				((src_Upp[j]<src_Up[j]) && (src_U[j]<src_Up[j]))))
 				itabu0[j]=true;
 			else itabu0[j]=false;
-			if (((abs((int16_t)src_Up[j]-(int16_t)src_U[j])>=threshold_) &&
+			if ((abs((int16_t)src_Up[j]-(int16_t)src_U[j])>=threshold_) &&
 				(abs((int16_t)src_Un[j]-(int16_t)src_U[j])>=threshold_) &&
 				(((src_Up[j]>src_U[j]) && (src_Un[j]>src_U[j])) ||
-				((src_Up[j]<src_U[j]) && (src_Un[j]<src_U[j])))))
+				((src_Up[j]<src_U[j]) && (src_Un[j]<src_U[j]))))
 				itabu1[j]=true;
 			else itabu1[j]=false;
 
-			if (((abs((int16_t)src_Vpp[j]-(int16_t)src_Vp[j])>=threshold_) &&
+			if ((abs((int16_t)src_Vpp[j]-(int16_t)src_Vp[j])>=threshold_) &&
 				(abs((int16_t)src_V[j]-(int16_t)src_Vp[j])>=threshold_) &&
 				(((src_Vpp[j]>src_Vp[j]) && (src_V[j]>src_Vp[j])) ||
-				((src_Vpp[j]<src_Vp[j]) && (src_V[j]<src_Vp[j])))))
+				((src_Vpp[j]<src_Vp[j]) && (src_V[j]<src_Vp[j]))))
 				itabv0[j]=true;
 			else itabv0[j]=false;
-			if (((abs((int16_t)src_Vp[j]-(int16_t)src_V[j])>=threshold_) &&
+			if ((abs((int16_t)src_Vp[j]-(int16_t)src_V[j])>=threshold_) &&
 				(abs((int16_t)src_Vn[j]-(int16_t)src_V[j])>=threshold_) &&
 				(((src_Vp[j]>src_V[j]) && (src_Vn[j]>src_V[j])) ||
-				((src_Vp[j]<src_V[j]) && (src_Vn[j]<src_V[j])))))
+				((src_Vp[j]<src_V[j]) && (src_Vn[j]<src_V[j]))))
 				itabv1[j]=true;
 			else itabv1[j]=false;
 		}
@@ -6552,10 +6548,10 @@ static void Convert_Test_YUY2(const MT_Data_Info_AutoYUY2 &mt_data_inf,const uin
 				dst[j].y2=src_Y[i+1];
 				i+=2;
 
-				if (((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
+				if ((abs((int16_t)src_U[j]-(int16_t)src_Un[j])>=threshold_) &&
 					(abs((int16_t)src_Unn[j]-(int16_t)src_Un[j])>=threshold_) &&
 					(((src_U[j]>src_Un[j]) && (src_Unn[j]>src_Un[j])) ||
-					((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j])))))
+					((src_U[j]<src_Un[j]) && (src_Unn[j]<src_Un[j]))))
 					itabu2[j]=true;
 				else itabu2[j]=false;			
 
@@ -6569,10 +6565,10 @@ static void Convert_Test_YUY2(const MT_Data_Info_AutoYUY2 &mt_data_inf,const uin
 					dst[j].u=(uint8_t)((lookup[src_U[j]]+(uint16_t)src_Un[j]+2) >> 2);
 				}
 
-				if (((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
+				if ((abs((int16_t)src_V[j]-(int16_t)src_Vn[j])>=threshold_) &&
 					(abs((int16_t)src_Vnn[j]-(int16_t)src_Vn[j])>=threshold_) &&
 					(((src_V[j]>src_Vn[j]) && (src_Vnn[j]>src_Vn[j])) ||
-					((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j])))))
+					((src_V[j]<src_Vn[j]) && (src_Vnn[j]<src_Vn[j]))))
 					itabv2[j]=true;
 				else itabv2[j]=false;			
 
@@ -6640,10 +6636,10 @@ static void Convert_Test_YUY2(const MT_Data_Info_AutoYUY2 &mt_data_inf,const uin
 				dst[j].y2=src_Y[i+1];
 				i+=2;
 
-				if (((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
+				if ((abs((int16_t)src_Un[j]-(int16_t)src_Unn[j])>=threshold_) &&
 					(abs((int16_t)src_Unnn[j]-(int16_t)src_Unn[j])>=threshold_) &&
 					(((src_Un[j]>src_Unn[j]) && (src_Unnn[j]>src_Unn[j])) ||
-					((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j])))))
+					((src_Un[j]<src_Unn[j]) && (src_Unnn[j]<src_Unn[j]))))
 					itabu0[j]=true;
 				else itabu0[j]=false;
 
@@ -6657,10 +6653,10 @@ static void Convert_Test_YUY2(const MT_Data_Info_AutoYUY2 &mt_data_inf,const uin
 					dst[j].u=(uint8_t)((lookup[src_Un[j]]+(uint16_t)src_Unn[j]+2) >> 2);
 				}
 
-				if (((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
+				if ((abs((int16_t)src_Vn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 					(abs((int16_t)src_Vnnn[j]-(int16_t)src_Vnn[j])>=threshold_) &&
 					(((src_Vn[j]>src_Vnn[j]) && (src_Vnnn[j]>src_Vnn[j])) ||
-					((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j])))))
+					((src_Vn[j]<src_Vnn[j]) && (src_Vnnn[j]<src_Vnn[j]))))
 					itabv0[j]=true;
 				else itabv0[j]=false;
 
@@ -6907,6 +6903,8 @@ AutoYUY2::AutoYUY2(PClip _child, int _threshold, int _mode,  int _output, uint8_
 			env->ThrowError("AutoYUY2: Error with the TheadPool while getting UserId!");
 		}
 	}
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -7017,9 +7015,9 @@ void AutoYUY2::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall AutoYUY2::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst = env->NewVideoFrame(vi,64);
-	uint8_t *dstw;
-	uint8_t *dstYw,*dstUw,*dstVw;
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
+	uint8_t *dstw=NULL;
+	uint8_t *dstYw=NULL,*dstUw=NULL,*dstVw=NULL;
 	const uint8_t *srcYr = src->GetReadPtr(PLANAR_Y);
 	const uint8_t *srcUr = src->GetReadPtr(PLANAR_U);
 	const uint8_t *srcVr = src->GetReadPtr(PLANAR_V);
@@ -7041,8 +7039,8 @@ PVideoFrame __stdcall AutoYUY2::GetFrame(int n, IScriptEnvironment* env)
 			break;
 		case 1 :
 			dstYw = dst->GetWritePtr(PLANAR_Y);
-			dstUw=dst->GetWritePtr(PLANAR_U);
-			dstVw=dst->GetWritePtr(PLANAR_V);
+			dstUw = dst->GetWritePtr(PLANAR_U);
+			dstVw = dst->GetWritePtr(PLANAR_V);
 			dst_pitch_Y = dst->GetPitch(PLANAR_Y);
 			dst_pitch_U = dst->GetPitch(PLANAR_U);
 			dst_pitch_V = dst->GetPitch(PLANAR_V);
@@ -7059,9 +7057,6 @@ PVideoFrame __stdcall AutoYUY2::GetFrame(int n, IScriptEnvironment* env)
 		&& ((abs(dst_pitch_Y) & 0x1F)==0) && ((abs(dst_pitch_U) & 0x1F)==0) && ((abs(dst_pitch_V) & 0x1F)==0);
 	const bool al_16_dst=(((size_t)dstYw & 0x0F)==0) && (((size_t)dstUw & 0x0F)==0) && (((size_t)dstVw & 0x0F)==0)
 		&& ((abs(dst_pitch_Y) & 0x0F)==0) && ((abs(dst_pitch_U) & 0x0F)==0) && ((abs(dst_pitch_V) & 0x0F)==0);
-
-	const bool al_32_dstYUYV=(((size_t)dstw & 0x1F)==0) && ((abs(dst_pitch) & 0x1F)==0);
-	const bool al_16_dstYUYV=(((size_t)dstw & 0x0F)==0) && ((abs(dst_pitch) & 0x0F)==0);
 
 	if (threads_number>1)
 	{

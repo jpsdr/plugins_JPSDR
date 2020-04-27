@@ -37,8 +37,8 @@
 
 #include <malloc.h>
 #include <math.h>
-#include "avisynth.h"
-#include "MatrixClass.h"
+#include "./avisynth.h"
+#include "./MatrixClass.h"
 #include "./avs/alignment.h"
 
 #define myalignedfree(ptr) if (ptr!=NULL) { _aligned_free(ptr); ptr=NULL;}
@@ -166,7 +166,7 @@ class MitchellNetravaliFilter : public ResamplingFunction
  **/
 {
 public:
-  MitchellNetravaliFilter(double b, double c);
+  MitchellNetravaliFilter(double b=1.0/3.0, double c=1.0/3.0);
   double f(double x);
   double support() { return 2.0; }
 
@@ -180,7 +180,7 @@ class LanczosFilter : public ResamplingFunction
  **/
 {
 public:
-  LanczosFilter(int taps);
+  LanczosFilter(int _taps=3);
 	double f(double x);
 	double support() { return taps; };
 
@@ -195,7 +195,7 @@ class BlackmanFilter : public ResamplingFunction
  **/
 {
 public:
-  BlackmanFilter(int taps);
+  BlackmanFilter(int _taps=4);
 	double f(double x);
 	double support() { return taps; };
 
@@ -249,7 +249,7 @@ class GaussianFilter : public ResamplingFunction
  **/
 {
 public:
-  GaussianFilter(double p);
+  GaussianFilter(double p=30.0);
 	double f(double x);
 	double support() { return 4.0; };
 
@@ -263,7 +263,7 @@ class SincFilter : public ResamplingFunction
  **/
 {
 public:
-  SincFilter(int taps);
+  SincFilter(int _taps=4);
 	double f(double x);
 	double support() { return taps; };
 

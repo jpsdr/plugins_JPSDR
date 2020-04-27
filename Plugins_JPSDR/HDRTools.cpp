@@ -23,9 +23,9 @@
 #define NOMINMAX
 #include <algorithm>
 #include <math.h>
-#include "HDRTools.h"
-#include "MatrixClass.h"
-#include "TransferFunctions.h"
+#include "./HDRTools.h"
+#include "./MatrixClass.h"
+#include "./TransferFunctions.h"
 
 #if _MSC_VER >= 1900
 #define AVX2_BUILD_POSSIBLE
@@ -516,33 +516,6 @@ uint8_t CreateMTData(MT_Data_Info_HDRTools MT_Data[],uint8_t max_threads,uint8_t
 		MT_Data[i].dst_UV_w=div_dst_w_UV ? size_x >> 1:size_x;
 	}
 	return(max);
-}
-
-
-static inline void Move_Full(const void *src_, void *dst_, const int32_t w,const int32_t h,
-		ptrdiff_t src_pitch,ptrdiff_t dst_pitch)
-{
-	const uint8_t *src=(uint8_t *)src_;
-	uint8_t *dst=(uint8_t *)dst_;
-
-	if ((src_pitch==dst_pitch) && (abs(src_pitch)==w))
-	{
-		if (src_pitch<0)
-		{
-			src+=(h-1)*src_pitch;
-			dst+=(h-1)*dst_pitch;
-		}
-		memcpy(dst,src,(size_t)h*(size_t)w);
-	}
-	else
-	{
-		for(int i=0; i<h; i++)
-		{
-			memcpy(dst,src,w);
-			src+=src_pitch;
-			dst+=dst_pitch;
-		}
-	}
 }
 
 
@@ -4747,7 +4720,6 @@ static void Convert_RGBPStoLinearRGBPS_SDR(const MT_Data_Info_HDRTools &mt_data_
 
 	for(int32_t i=h_min; i<h_max; i++)
 	{
-		uint32_t x=0;
 		const float *srcR=(const float *)srcR_;
 		const float *srcG=(const float *)srcG_;
 		const float *srcB=(const float *)srcB_;
@@ -4845,7 +4817,6 @@ static void Convert_RGBPStoLinearRGBPS_PQ(const MT_Data_Info_HDRTools &mt_data_i
 
 	for(int32_t i=h_min; i<h_max; i++)
 	{
-		uint32_t x=0;
 		const float *srcR=(const float *)srcR_;
 		const float *srcG=(const float *)srcG_;
 		const float *srcB=(const float *)srcB_;
@@ -5503,7 +5474,6 @@ static void Convert_LinearRGBPStoRGBPS_SDR(const MT_Data_Info_HDRTools &mt_data_
 
 	for(int32_t i=h_min; i<h_max; i++)
 	{
-		uint32_t x=0;
 		const float *srcR=(const float *)srcR_;
 		const float *srcG=(const float *)srcG_;
 		const float *srcB=(const float *)srcB_;
@@ -5598,7 +5568,6 @@ static void Convert_LinearRGBPStoRGBPS_PQ(const MT_Data_Info_HDRTools &mt_data_i
 
 	for(int32_t i=h_min; i<h_max; i++)
 	{
-		uint32_t x=0;
 		const float *srcR=(const float *)srcR_;
 		const float *srcG=(const float *)srcG_;
 		const float *srcB=(const float *)srcB_;
@@ -5713,54 +5682,6 @@ static void Convert_RGB64toRGB32(void *src1, void *dst1,const int32_t w,const in
 			dst[j].g=(uint8_t)(std::min(((int32_t)src[j].g+128),(int32_t)65535)>>8);
 			dst[j].r=(uint8_t)(std::min(((int32_t)src[j].r+128),(int32_t)65535)>>8);
 			dst[j].alpha=0;
-		}
-
-		src_+=src_pitch;
-		dst_+=dst_pitch;
-	}
-}
-
-
-static void Convert_RGB32toPlaneY16(void *src1, void *dst1,const int32_t w,const int32_t h,const ptrdiff_t src_pitch,
-	const ptrdiff_t dst_pitch,int16_t *lookup)
-{
-	const uint8_t *src_=(uint8_t *)src1;
-	uint8_t *dst_=(uint8_t *)dst1;
-
-	for(int32_t i=0; i<h; i++)
-	{
-		const RGB32BMP *src=(RGB32BMP *)src_;
-		uint16_t *dst=(uint16_t *)dst_;
-		
-		for(int32_t j=0; j<w; j++)
-		{
-			const int16_t y=(lookup[src[j].r]+lookup[(uint16_t)(src[j].g)+256]+lookup[(uint16_t)(src[j].b)+512])>>6;
-
-			dst[j]=((uint16_t)std::max((int16_t)0,std::min((int16_t)255,y)))<<8;
-		}
-
-		src_+=src_pitch;
-		dst_+=dst_pitch;
-	}
-}
-
-
-static void Convert_RGB64toPlaneY16(void *src1, void *dst1,const int32_t w,const int32_t h,const ptrdiff_t src_pitch,
-	const ptrdiff_t dst_pitch,int32_t *lookup)
-{
-	const uint8_t *src_=(uint8_t *)src1;
-	uint8_t *dst_=(uint8_t *)dst1;
-
-	for(int32_t i=0; i<h; i++)
-	{
-		const RGB64BMP *src=(RGB64BMP *)src_;
-		uint16_t *dst=(uint16_t *)dst_;
-		
-		for(int32_t j=0; j<w; j++)
-		{
-			const int32_t y=((lookup[src[j].r]+lookup[(uint32_t)(src[j].g)+65536]+lookup[(uint32_t)(src[j].b)+131072])>>8)+128;
-
-			dst[j]=((uint16_t)std::max((int32_t)0,std::min((int32_t)65535,y)))&0xFF00;
 		}
 
 		src_+=src_pitch;
@@ -5994,133 +5915,6 @@ static void Convert_RGBPStoPlaneY32_AVX(void *src1,void *src2,void *src3,void *d
 
 			dst_+=dst_pitch;
 		}
-	}
-}
-
-
-static void Convert_RGB32_HLG_OOTF(void *src1,void *src2,void *dst1,const int32_t w,const int32_t h,const ptrdiff_t src_pitch,
-	const ptrdiff_t src_pitchY,const ptrdiff_t dst_pitch,const uint8_t *lookup)
-{
-	const uint8_t *src_=(uint8_t *)src1;
-	const uint8_t *srcY_=(uint8_t *)src2;
-	uint8_t *dst_=(uint8_t *)dst1;
-
-	for(int32_t i=0; i<h; i++)
-	{
-		const RGB32BMP *src=(RGB32BMP *)src_;
-		const uint16_t *srcY=(uint16_t *)srcY_;
-		RGB32BMP *dst=(RGB32BMP *)dst_;
-		
-		for(int32_t j=0; j<w; j++)
-		{
-			const uint16_t y=srcY[j];
-
-			dst[j].b=lookup[y | src[j].b];
-			dst[j].g=lookup[y | src[j].g];
-			dst[j].r=lookup[y | src[j].r];
-			dst[j].alpha=0;
-		}
-
-		src_+=src_pitch;
-		srcY_+=src_pitchY;
-		dst_+=dst_pitch;
-	}
-}
-
-
-static void Convert_8_RGB64_HLG_OOTF(void *src1,void *src2,void *dst1,const int32_t w,const int32_t h,const ptrdiff_t src_pitch,
-	const ptrdiff_t src_pitchY,const ptrdiff_t dst_pitch,const uint16_t *lookup)
-{
-	const uint8_t *src_=(uint8_t *)src1;
-	const uint8_t *srcY_=(uint8_t *)src2;
-	uint8_t *dst_=(uint8_t *)dst1;
-
-	for(int32_t i=0; i<h; i++)
-	{
-		const RGB64BMP *src=(RGB64BMP *)src_;
-		const uint16_t *srcY=(uint16_t *)srcY_;
-		RGB64BMP *dst=(RGB64BMP *)dst_;
-		
-		for(int32_t j=0; j<w; j++)
-		{
-			const uint16_t y=srcY[j];
-			const uint16_t b=(uint16_t)(std::min((uint32_t)src[j].b+128,(uint32_t)65535)>>8);
-			const uint16_t g=(uint16_t)(std::min((uint32_t)src[j].g+128,(uint32_t)65535)>>8);
-			const uint16_t r=(uint16_t)(std::min((uint32_t)src[j].r+128,(uint32_t)65535)>>8);
-			
-			dst[j].b=lookup[y | b];
-			dst[j].g=lookup[y | g];
-			dst[j].r=lookup[y | r];
-			dst[j].alpha=0;
-		}
-
-		src_+=src_pitch;
-		srcY_+=src_pitchY;
-		dst_+=dst_pitch;
-	}
-}
-
-
-static void Convert_8_RGB64_HLG_OOTF_SSE2(void *src1,void *src2,void *dst1,const int32_t w,const int32_t h,const ptrdiff_t src_pitch,
-	const ptrdiff_t src_pitchY,const ptrdiff_t dst_pitch,const uint16_t *lookup)
-{
-	const uint8_t *src_=(uint8_t *)src1;
-	const uint8_t *srcY_=(uint8_t *)src2;
-	uint8_t *dst_=(uint8_t *)dst1;
-
-	JPSDR_HDRTools_Convert_RGB64_16toRGB64_8_SSE2(src1,src1,w,h,src_pitch,src_pitch);
-
-	for(int32_t i=0; i<h; i++)
-	{
-		const RGB64BMP *src=(RGB64BMP *)src_;
-		const uint16_t *srcY=(uint16_t *)srcY_;
-		RGB64BMP *dst=(RGB64BMP *)dst_;
-		
-		for(int32_t j=0; j<w; j++)
-		{
-			const uint16_t y=srcY[j];
-			
-			dst[j].b=lookup[y | src[j].b];
-			dst[j].g=lookup[y | src[j].g];
-			dst[j].r=lookup[y | src[j].r];
-			dst[j].alpha=0;
-		}
-
-		src_+=src_pitch;
-		srcY_+=src_pitchY;
-		dst_+=dst_pitch;
-	}
-}
-
-
-static void Convert_8_RGB64_HLG_OOTF_AVX(void *src1,void *src2,void *dst1,const int32_t w,const int32_t h,const ptrdiff_t src_pitch,
-	const ptrdiff_t src_pitchY,const ptrdiff_t dst_pitch,const uint16_t *lookup)
-{
-	const uint8_t *src_=(uint8_t *)src1;
-	const uint8_t *srcY_=(uint8_t *)src2;
-	uint8_t *dst_=(uint8_t *)dst1;
-
-	JPSDR_HDRTools_Convert_RGB64_16toRGB64_8_AVX(src1,src1,w,h,src_pitch,src_pitch);
-
-	for(int32_t i=0; i<h; i++)
-	{
-		const RGB64BMP *src=(RGB64BMP *)src_;
-		const uint16_t *srcY=(uint16_t *)srcY_;
-		RGB64BMP *dst=(RGB64BMP *)dst_;
-		
-		for(int32_t j=0; j<w; j++)
-		{
-			const uint16_t y=srcY[j];
-			
-			dst[j].b=lookup[y | src[j].b];
-			dst[j].g=lookup[y | src[j].g];
-			dst[j].r=lookup[y | src[j].r];
-			dst[j].alpha=0;
-		}
-
-		src_+=src_pitch;
-		srcY_+=src_pitchY;
-		dst_+=dst_pitch;
 	}
 }
 
@@ -6411,38 +6205,6 @@ static void Convert_RGBPS_HLG_OOTF_Scale(void *dst1,void *dst2,void *dst3,void *
 
 
 #ifdef AVX2_BUILD_POSSIBLE
-static void Convert_8_RGB64_HLG_OOTF_AVX2(void *src1,void *src2,void *dst1,const int32_t w,const int32_t h,const ptrdiff_t src_pitch,
-	const ptrdiff_t src_pitchY,const ptrdiff_t dst_pitch,const uint16_t *lookup)
-{
-	const uint8_t *src_=(uint8_t *)src1;
-	const uint8_t *srcY_=(uint8_t *)src2;
-	uint8_t *dst_=(uint8_t *)dst1;
-
-	JPSDR_HDRTools_Convert_RGB64_16toRGB64_8_AVX2(src1,src1,w,h,src_pitch,src_pitch);
-
-	for(int32_t i=0; i<h; i++)
-	{
-		const RGB64BMP *src=(RGB64BMP *)src_;
-		const uint16_t *srcY=(uint16_t *)srcY_;
-		RGB64BMP *dst=(RGB64BMP *)dst_;
-		
-		for(int32_t j=0; j<w; j++)
-		{
-			const uint16_t y=srcY[j];
-			
-			dst[j].b=lookup[y | src[j].b];
-			dst[j].g=lookup[y | src[j].g];
-			dst[j].r=lookup[y | src[j].r];
-			dst[j].alpha=0;
-		}
-
-		src_+=src_pitch;
-		srcY_+=src_pitchY;
-		dst_+=dst_pitch;
-	}
-}
-
-
 static void Convert_10_RGB64_HLG_OOTF_AVX2(void *src1,void *src2,void *dst1,const int32_t w,const int32_t h,const ptrdiff_t src_pitch,
 	const ptrdiff_t src_pitchY,const ptrdiff_t dst_pitch,const uint16_t *lookup)
 {
@@ -6521,19 +6283,6 @@ static void Convert_RGB32HLGtoLinearRGB32(const MT_Data_Info_HDRTools &mt_data_i
 }
 
 
-static void Convert_RGB32HLGtoLinearRGB64(const MT_Data_Info_HDRTools &mt_data_inf,void *lookupOOTF)
-{
-	void *srcRGB32=mt_data_inf.src1;
-	void *dstRGB64=mt_data_inf.dst1;
-	const int32_t w=mt_data_inf.dst_Y_w;
-	const int32_t h=mt_data_inf.src_Y_h_max-mt_data_inf.src_Y_h_min;
-	const ptrdiff_t src_modulo=mt_data_inf.src_modulo1;
-	const ptrdiff_t dst_modulo=mt_data_inf.dst_modulo1;
-
-	JPSDR_HDRTools_LookupRGB32_RGB64HLG(srcRGB32,dstRGB64,w,h,src_modulo,dst_modulo,lookupOOTF);
-}
-
-
 static void Convert_RGB32HLGtoLinearRGB64b(const MT_Data_Info_HDRTools &mt_data_inf,void *lookupOOTF)
 {
 	void *srcRGB32=mt_data_inf.src1;
@@ -6597,7 +6346,7 @@ static void Convert_RGB64HLGtoLinearRGB64(const MT_Data_Info_HDRTools &mt_data_i
 	const int32_t h=mt_data_inf.src_Y_h_max-mt_data_inf.src_Y_h_min;
 	const ptrdiff_t src_pitch=mt_data_inf.src_pitch1,src_pitchY=mt_data_inf.src_pitch4;
 	const ptrdiff_t dst_pitch=mt_data_inf.dst_pitch1,dst_pitchY=mt_data_inf.dst_pitch4;
-	const ptrdiff_t src_modulo=mt_data_inf.src_modulo1,src_moduloY=mt_data_inf.src_modulo4;
+	const ptrdiff_t src_modulo=mt_data_inf.src_modulo1;
 	const ptrdiff_t dst_modulo=mt_data_inf.dst_modulo1,dst_moduloY=mt_data_inf.dst_modulo4;
 
 	const bool RGB64_al32=((((size_t)srcRGB64) & 0x1F)==0) && ((((size_t)dstRGB64) & 0x1F)==0)
@@ -6839,7 +6588,6 @@ static void Convert_RGB64HLGtoLinearRGB64(const MT_Data_Info_HDRTools &mt_data_i
 static void Convert_RGB64HLGtoLinearRGBPS(const MT_Data_Info_HDRTools &mt_data_inf,bool OOTF,bool EOTF,bool normalize,
 	bool SSE2_Enable,bool AVX_Enable,const float *lookupOETF,uint8_t HLGColor,void *lookupOOTF,void *lookupinvOOTF,float HLG_Lw)
 {
-	void *srcRGB64=mt_data_inf.src1;
 	void *dstR32=mt_data_inf.dst1;
 	void *dstG32=mt_data_inf.dst2;
 	void *dstB32=mt_data_inf.dst3;
@@ -6848,11 +6596,11 @@ static void Convert_RGB64HLGtoLinearRGBPS(const MT_Data_Info_HDRTools &mt_data_i
 	const int32_t w=mt_data_inf.dst_Y_w;
 	const int32_t w8=(w+7)>>3,w4=(w+3)>>2;
 	const int32_t h=mt_data_inf.src_Y_h_max-mt_data_inf.src_Y_h_min;
-	const ptrdiff_t src_pitch=mt_data_inf.src_pitch1,src_modulo=mt_data_inf.src_modulo1;
-	const ptrdiff_t src_pitchY=mt_data_inf.src_pitch4,src_moduloY=mt_data_inf.src_modulo4;
-	const ptrdiff_t dst_pitch_R=mt_data_inf.dst_pitch1,dst_moduloR=mt_data_inf.dst_modulo1;
-	const ptrdiff_t dst_pitch_G=mt_data_inf.dst_pitch2,dst_moduloG=mt_data_inf.dst_modulo2;
-	const ptrdiff_t dst_pitch_B=mt_data_inf.dst_pitch3,dst_moduloB=mt_data_inf.dst_modulo3;
+	const ptrdiff_t src_pitch=mt_data_inf.src_pitch1;
+	const ptrdiff_t src_pitchY=mt_data_inf.src_pitch4;
+	const ptrdiff_t dst_pitch_R=mt_data_inf.dst_pitch1;
+	const ptrdiff_t dst_pitch_G=mt_data_inf.dst_pitch2;
+	const ptrdiff_t dst_pitch_B=mt_data_inf.dst_pitch3;
 	const ptrdiff_t dst_pitchY=mt_data_inf.dst_pitch4,dst_moduloY=mt_data_inf.dst_modulo4;
 
 	const uint8_t *src_=(uint8_t *)mt_data_inf.src1;
@@ -6991,7 +6739,7 @@ static void Convert_LinearRGB64toRGB64HLG(const MT_Data_Info_HDRTools &mt_data_i
 	const int32_t h=mt_data_inf.src_Y_h_max-mt_data_inf.src_Y_h_min;
 	const ptrdiff_t src_pitch=mt_data_inf.src_pitch1,src_pitchY=mt_data_inf.src_pitch4;
 	const ptrdiff_t dst_pitch=mt_data_inf.dst_pitch1,dst_pitchY=mt_data_inf.dst_pitch4;
-	const ptrdiff_t src_modulo=mt_data_inf.src_modulo1,src_moduloY=mt_data_inf.src_modulo4;
+	const ptrdiff_t src_modulo=mt_data_inf.src_modulo1;
 	const ptrdiff_t dst_modulo=mt_data_inf.dst_modulo1,dst_moduloY=mt_data_inf.dst_modulo4;
 
 	const bool RGB64_al32=((((size_t)srcRGB64) & 0x1F)==0) && ((((size_t)dstRGB64) & 0x1F)==0)
@@ -7103,7 +6851,7 @@ static void Convert_LinearRGBPStoRGB64HLG(const MT_Data_Info_HDRTools &mt_data_i
 	const ptrdiff_t src_pitch_R=mt_data_inf.src_pitch1,src_moduloR=mt_data_inf.src_modulo1;
 	const ptrdiff_t src_pitch_G=mt_data_inf.src_pitch2,src_moduloG=mt_data_inf.src_modulo2;
 	const ptrdiff_t src_pitch_B=mt_data_inf.src_pitch3,src_moduloB=mt_data_inf.src_modulo3;
-	const ptrdiff_t src_pitchY=mt_data_inf.src_pitch4,src_moduloY=mt_data_inf.src_modulo4;
+	const ptrdiff_t src_pitchY=mt_data_inf.src_pitch4;
 	const ptrdiff_t dst_pitch=mt_data_inf.dst_pitch1,dst_modulo=mt_data_inf.dst_modulo1;
 	const ptrdiff_t dst_pitchY=mt_data_inf.dst_pitch4,dst_moduloY=mt_data_inf.dst_modulo4;
 
@@ -7127,8 +6875,6 @@ static void Convert_LinearRGBPStoRGB64HLG(const MT_Data_Info_HDRTools &mt_data_i
 	const bool R32_al16=((((size_t)srcR32) & 0x0F)==0) && ((abs(src_pitch_R) & 0x0F)==0);
 	const bool G32_al16=((((size_t)srcG32) & 0x0F)==0) && ((abs(src_pitch_G) & 0x0F)==0);
 	const bool B32_al16=((((size_t)srcB32) & 0x0F)==0) && ((abs(src_pitch_B) & 0x0F)==0);
-	const bool dstRGB64_al32=((((size_t)dstRGB64) & 0x1F)==0) && ((abs(dst_pitch) & 0x1F)==0);
-	const bool dstRGB64_al16=((((size_t)dstRGB64) & 0x0F)==0) && ((abs(dst_pitch) & 0x0F)==0);
 
 	if (wR>0)
 	{
@@ -7423,10 +7169,10 @@ static void Convert_RGBPSHLGtoLinearRGBPS(const MT_Data_Info_HDRTools &mt_data_i
 	const int32_t w=mt_data_inf.dst_Y_w;
 	const int32_t w8=(w+7)>>3,w4=(w+3)>>2;
 	const int32_t h=mt_data_inf.src_Y_h_max-mt_data_inf.src_Y_h_min;
-	const ptrdiff_t src_pitch_R=mt_data_inf.src_pitch1,src_modulo_R=mt_data_inf.src_modulo1;
-	const ptrdiff_t src_pitch_G=mt_data_inf.src_pitch2,src_modulo_G=mt_data_inf.src_modulo2;
-	const ptrdiff_t src_pitch_B=mt_data_inf.src_pitch3,src_modulo_B=mt_data_inf.src_modulo3;
-	const ptrdiff_t src_pitchY=mt_data_inf.src_pitch4,src_moduloY=mt_data_inf.src_modulo4;
+	const ptrdiff_t src_pitch_R=mt_data_inf.src_pitch1;
+	const ptrdiff_t src_pitch_G=mt_data_inf.src_pitch2;
+	const ptrdiff_t src_pitch_B=mt_data_inf.src_pitch3;
+	const ptrdiff_t src_pitchY=mt_data_inf.src_pitch4;
 	const ptrdiff_t dst_pitch_R=mt_data_inf.dst_pitch1,dst_modulo_R=mt_data_inf.dst_modulo1;
 	const ptrdiff_t dst_pitch_G=mt_data_inf.dst_pitch2,dst_modulo_G=mt_data_inf.dst_modulo2;
 	const ptrdiff_t dst_pitch_B=mt_data_inf.dst_pitch3,dst_modulo_B=mt_data_inf.dst_modulo3;
@@ -7746,10 +7492,10 @@ static void Convert_LinearRGBPStoRGBPSHLG(const MT_Data_Info_HDRTools &mt_data_i
 	const int32_t w=mt_data_inf.dst_Y_w;
 	const int32_t w8=(w+7)>>3,w4=(w+3)>>2;
 	const int32_t h=mt_data_inf.src_Y_h_max-mt_data_inf.src_Y_h_min;
-	const ptrdiff_t src_pitch_R=mt_data_inf.src_pitch1,src_modulo_R=mt_data_inf.src_modulo1;
-	const ptrdiff_t src_pitch_G=mt_data_inf.src_pitch2,src_modulo_G=mt_data_inf.src_modulo2;
-	const ptrdiff_t src_pitch_B=mt_data_inf.src_pitch3,src_modulo_B=mt_data_inf.src_modulo3;
-	const ptrdiff_t src_pitchY=mt_data_inf.src_pitch4,src_moduloY=mt_data_inf.src_modulo4;
+	const ptrdiff_t src_pitch_R=mt_data_inf.src_pitch1;
+	const ptrdiff_t src_pitch_G=mt_data_inf.src_pitch2;
+	const ptrdiff_t src_pitch_B=mt_data_inf.src_pitch3;
+	const ptrdiff_t src_pitchY=mt_data_inf.src_pitch4;
 	const ptrdiff_t dst_pitch_R=mt_data_inf.dst_pitch1,dst_modulo_R=mt_data_inf.dst_modulo1;
 	const ptrdiff_t dst_pitch_G=mt_data_inf.dst_pitch2,dst_modulo_G=mt_data_inf.dst_modulo2;
 	const ptrdiff_t dst_pitch_B=mt_data_inf.dst_pitch3,dst_modulo_B=mt_data_inf.dst_modulo3;
@@ -11449,7 +11195,6 @@ static void Convert_RGBPS_HDRtoSDR_BT2446_C_1_32(const MT_Data_Info_HDRTools &mt
 	const int32_t w=mt_data_inf.src_Y_w;
 	const int32_t h_min=mt_data_inf.src_Y_h_min;
 	const int32_t h_max=mt_data_inf.src_Y_h_max;
-	const ptrdiff_t src_pitch_X=mt_data_inf.src_pitch1;
 	const ptrdiff_t src_pitch_Y=mt_data_inf.src_pitch2;
 	const ptrdiff_t src_pitch_Z=mt_data_inf.src_pitch3;
 	const ptrdiff_t dst_pitch_X=mt_data_inf.dst_pitch1;
@@ -13583,6 +13328,9 @@ ConvertYUVtoLinearRGB::ConvertYUVtoLinearRGB(PClip _child,uint8_t _Color,uint8_t
 			env->ThrowError("ConvertYUVtoLinearRGB: Error with the TheadPool while getting UserId!");
 		}
 	}
+
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -13687,7 +13435,7 @@ void ConvertYUVtoLinearRGB::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConvertYUVtoLinearRGB::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst = env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 	PVideoFrame tmp1,tmp2,tmp3,tmp4;
 
 	const uint8_t *srcY=NULL,*srcU=NULL,*srcV=NULL;
@@ -13841,15 +13589,12 @@ PVideoFrame __stdcall ConvertYUVtoLinearRGB::GetFrame(int n, IScriptEnvironment*
 			env->ThrowError("ConvertYUVtoLinearRGB: Error with the TheadPool while requesting threadpool !");
 	}
 
-	const bool src_Y_al32=((((size_t)srcY) & 0x1F)==0) && ((abs(src_pitch_Y) & 0x1F)==0);
 	const bool src_Y_al16=((((size_t)srcY) & 0x0F)==0) && ((abs(src_pitch_Y) & 0x0F)==0);
 	const bool src_UV_al32=((((size_t)srcU) & 0x1F)==0) && ((((size_t)srcV) & 0x1F)==0)
 		&& ((abs(src_pitch_U) & 0x1F)==0) && ((abs(src_pitch_V) & 0x1F)==0);
 	const bool src_UV_al16=((((size_t)srcU) & 0x0F)==0) && ((((size_t)srcV) & 0x0F)==0)
 		&& ((abs(src_pitch_U) & 0x0F)==0) && ((abs(src_pitch_V) & 0x0F)==0);
 
-	const bool tmp1_Y_al32=((((size_t)tmp1Yw) & 0x1F)==0) && ((((size_t)tmp1Yr) & 0x1F)==0)
-		&& ((abs(tmp1_pitch_Y) & 0x1F)==0);
 	const bool tmp1_Y_al16=((((size_t)tmp1Yw) & 0x0F)==0) && ((((size_t)tmp1Yr) & 0x0F)==0)
 		&& ((abs(tmp1_pitch_Y) & 0x0F)==0);
 	const bool tmp1_UV_al32=((((size_t)tmp1Uw) & 0x1F)==0) && ((((size_t)tmp1Vw) & 0x1F)==0)
@@ -13859,37 +13604,17 @@ PVideoFrame __stdcall ConvertYUVtoLinearRGB::GetFrame(int n, IScriptEnvironment*
 		&& ((((size_t)tmp1Ur) & 0x0F)==0) && ((((size_t)tmp1Vr) & 0x0F)==0)
 		&& ((abs(tmp1_pitch_U) & 0x0F)==0) && ((abs(tmp1_pitch_V) & 0x0F)==0);
 
-	const bool tmp2_Y_al32=((((size_t)tmp2Yw) & 0x1F)==0) && ((((size_t)tmp2Yr) & 0x1F)==0)
-		&& ((abs(tmp2_pitch_Y) & 0x1F)==0);
 	const bool tmp2_Y_al16=((((size_t)tmp2Yw) & 0x0F)==0) && ((((size_t)tmp2Yr) & 0x0F)==0)
 		&& ((abs(tmp2_pitch_Y) & 0x0F)==0);
-	const bool tmp2_UV_al32=((((size_t)tmp2Uw) & 0x1F)==0) && ((((size_t)tmp2Vw) & 0x1F)==0)
-		&& ((((size_t)tmp2Ur) & 0x1F)==0) && ((((size_t)tmp2Vr) & 0x1F)==0)
-		&& ((abs(tmp2_pitch_U) & 0x1F)==0) && ((abs(tmp2_pitch_V) & 0x1F)==0);
 	const bool tmp2_UV_al16=((((size_t)tmp2Uw) & 0x0F)==0) && ((((size_t)tmp2Vw) & 0x0F)==0)
 		&& ((((size_t)tmp2Ur) & 0x0F)==0) && ((((size_t)tmp2Vr) & 0x0F)==0)
 		&& ((abs(tmp2_pitch_U) & 0x0F)==0) && ((abs(tmp2_pitch_V) & 0x0F)==0);
 	
-	const bool tmp3_al32=((((size_t)tmp3w) & 0x1F)==0) && ((((size_t)tmp3r) & 0x1F)==0)
-		&& ((abs(tmp3_pitch) & 0x1F)==0);
 	const bool tmp3_al16=((((size_t)tmp3w) & 0x0F)==0) && ((((size_t)tmp3r) & 0x0F)==0)
 		&& ((abs(tmp3_pitch) & 0x0F)==0);
 
-	const bool dst_al32=((((size_t)dstw) & 0x1F)==0) && ((((size_t)dstr) & 0x1F)==0)
-		&& ((abs(dst_pitch) & 0x1F)==0);
 	const bool dst_al16=((((size_t)dstw) & 0x0F)==0) && ((((size_t)dstr) & 0x0F)==0)
 		&& ((abs(dst_pitch) & 0x0F)==0);
-	
-	const bool dst_RGBP_al32=((((size_t)dstRw) & 0x1F)==0) && ((((size_t)dstRr) & 0x1F)==0)
-		&& ((((size_t)dstGw) & 0x1F)==0) && ((((size_t)dstGr) & 0x1F)==0)
-		&& ((((size_t)dstBw) & 0x1F)==0) && ((((size_t)dstBr) & 0x1F)==0)
-		&& ((abs(dst_pitch_R) & 0x1F)==0) && ((abs(dst_pitch_G) & 0x1F)==0)
-		&& ((abs(dst_pitch_B) & 0x1F)==0);
-	const bool dst_RGBP_al16=((((size_t)dstRw) & 0x0F)==0) && ((((size_t)dstRr) & 0x0F)==0)
-		&& ((((size_t)dstGw) & 0x0F)==0) && ((((size_t)dstGr) & 0x0F)==0)
-		&& ((((size_t)dstBw) & 0x0F)==0) && ((((size_t)dstBr) & 0x0F)==0)
-		&& ((abs(dst_pitch_R) & 0x0F)==0) && ((abs(dst_pitch_G) & 0x0F)==0)
-		&& ((abs(dst_pitch_B) & 0x0F)==0);
 
 	uint8_t f_proc=0;
 
@@ -14444,7 +14169,6 @@ ConvertLinearRGBtoYUV::ConvertLinearRGBtoYUV(PClip _child,uint8_t _Color,uint8_t
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
-	const uint32_t vmax=1 << bits_per_pixel;
 	HLG_Mode = (Color==0) && ((HDRMode==1) || (HDRMode==2));
 
 	vi_original=NULL; vi_420=NULL; vi_422=NULL; vi_444=NULL;
@@ -14994,6 +14718,9 @@ ConvertLinearRGBtoYUV::ConvertLinearRGBtoYUV(PClip _child,uint8_t _Color,uint8_t
 			env->ThrowError("ConvertLinearRGBtoYUV: Error with the TheadPool while getting UserId!");
 		}
 	}
+
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -15094,7 +14821,7 @@ void ConvertLinearRGBtoYUV::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConvertLinearRGBtoYUV::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst=env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 	PVideoFrame tmp1,tmp2,tmp3,tmp4;
 
 	int32_t h;
@@ -15259,9 +14986,6 @@ PVideoFrame __stdcall ConvertLinearRGBtoYUV::GetFrame(int n, IScriptEnvironment*
 			env->ThrowError("ConvertYUVtoLinearRGB: Error with the TheadPool while requesting threadpool !");
 	}
 	
-	const bool src_al32=((((size_t)srcw) & 0x1F)==0) && ((abs(src_pitch) & 0x1F)==0);
-	const bool src_al16=((((size_t)srcw) & 0x0F)==0) && ((abs(src_pitch) & 0x0F)==0);
-
 	const bool src_RGBP_al32=((((size_t)srcRw) & 0x1F)==0) && ((((size_t)srcGw) & 0x1F)==0)
 		&& ((((size_t)srcBw) & 0x1F)==0) && ((abs(src_pitch_R) & 0x1F)==0)
 		&& ((abs(src_pitch_G) & 0x1F)==0) && ((abs(src_pitch_B) & 0x1F)==0);
@@ -15269,16 +14993,9 @@ PVideoFrame __stdcall ConvertLinearRGBtoYUV::GetFrame(int n, IScriptEnvironment*
 		&& ((((size_t)srcBw) & 0x0F)==0) && ((abs(src_pitch_R) & 0x0F)==0)
 		&& ((abs(src_pitch_G) & 0x0F)==0) && ((abs(src_pitch_B) & 0x0F)==0);
 
-	const bool tmp1_al32=((((size_t)tmp1r) & 0x1F)==0) && ((((size_t)tmp1w) & 0x1F)==0)
-		&& ((abs(tmp1_pitch) & 0x1F)==0);
 	const bool tmp1_al16=((((size_t)tmp1r) & 0x0F)==0) && ((((size_t)tmp1w) & 0x0F)==0)
 		&& ((abs(tmp1_pitch) & 0x0F)==0);
 	
-	const bool tmp2_al32=((((size_t)tmp2Yr) & 0x1F)==0) && ((((size_t)tmp2Ur) & 0x1F)==0)
-		&& ((((size_t)tmp2Vr) & 0x1F)==0) && ((((size_t)tmp2Yw) & 0x1F)==0)
-		&& ((((size_t)tmp2Uw) & 0x1F)==0) && ((((size_t)tmp2Vw) & 0x1F)==0)
-		&& ((abs(tmp2_pitch_Y) & 0x1F)==0) && ((abs(tmp2_pitch_U) & 0x1F)==0)
-		&& ((abs(tmp2_pitch_V) & 0x1F)==0);
 	const bool tmp2_al16=((((size_t)tmp2Yr) & 0x0F)==0) && ((((size_t)tmp2Ur) & 0x0F)==0)
 		&& ((((size_t)tmp2Vr) & 0x0F)==0) && ((((size_t)tmp2Yw) & 0x0F)==0)
 		&& ((((size_t)tmp2Uw) & 0x0F)==0) && ((((size_t)tmp2Vw) & 0x0F)==0)
@@ -16791,6 +16508,9 @@ ConvertYUVtoXYZ::ConvertYUVtoXYZ(PClip _child,uint8_t _Color,uint8_t _OutputMode
 			env->ThrowError("ConvertYUVtoXYZ: Error with the TheadPool while getting UserId!");
 		}
 	}
+
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -16919,7 +16639,7 @@ void ConvertYUVtoXYZ::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConvertYUVtoXYZ::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst = env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 	PVideoFrame tmp1,tmp2,tmp3,tmp4;
 
 	const uint8_t *srcY=NULL,*srcU=NULL,*srcV=NULL;
@@ -17073,15 +16793,12 @@ PVideoFrame __stdcall ConvertYUVtoXYZ::GetFrame(int n, IScriptEnvironment* env)
 			env->ThrowError("ConvertYUVtoXYZ: Error with the TheadPool while requesting threadpool !");
 	}
 
-	const bool src_Y_al32=((((size_t)srcY) & 0x1F)==0) && ((abs(src_pitch_Y) & 0x1F)==0);
 	const bool src_Y_al16=((((size_t)srcY) & 0x0F)==0) && ((abs(src_pitch_Y) & 0x0F)==0);
 	const bool src_UV_al32=((((size_t)srcU) & 0x1F)==0) && ((((size_t)srcV) & 0x1F)==0)
 		&& ((abs(src_pitch_U) & 0x1F)==0) && ((abs(src_pitch_V) & 0x1F)==0);
 	const bool src_UV_al16=((((size_t)srcU) & 0x0F)==0) && ((((size_t)srcV) & 0x0F)==0)
 		&& ((abs(src_pitch_U) & 0x0F)==0) && ((abs(src_pitch_V) & 0x0F)==0);
 
-	const bool tmp1_Y_al32=((((size_t)tmp1Yw) & 0x1F)==0) && ((((size_t)tmp1Yr) & 0x1F)==0)
-		&& ((abs(tmp1_pitch_Y) & 0x1F)==0);
 	const bool tmp1_Y_al16=((((size_t)tmp1Yw) & 0x0F)==0) && ((((size_t)tmp1Yr) & 0x0F)==0)
 		&& ((abs(tmp1_pitch_Y) & 0x0F)==0);
 	const bool tmp1_UV_al32=((((size_t)tmp1Uw) & 0x1F)==0) && ((((size_t)tmp1Vw) & 0x1F)==0)
@@ -17091,38 +16808,18 @@ PVideoFrame __stdcall ConvertYUVtoXYZ::GetFrame(int n, IScriptEnvironment* env)
 		&& ((((size_t)tmp1Ur) & 0x0F)==0) && ((((size_t)tmp1Vr) & 0x0F)==0)
 		&& ((abs(tmp1_pitch_U) & 0x0F)==0) && ((abs(tmp1_pitch_V) & 0x0F)==0);
 
-	const bool tmp2_Y_al32=((((size_t)tmp2Yw) & 0x1F)==0) && ((((size_t)tmp2Yr) & 0x1F)==0)
-		&& ((abs(tmp2_pitch_Y) & 0x1F)==0);
 	const bool tmp2_Y_al16=((((size_t)tmp2Yw) & 0x0F)==0) && ((((size_t)tmp2Yr) & 0x0F)==0)
 		&& ((abs(tmp2_pitch_Y) & 0x0F)==0);
-	const bool tmp2_UV_al32=((((size_t)tmp2Uw) & 0x1F)==0) && ((((size_t)tmp2Vw) & 0x1F)==0)
-		&& ((((size_t)tmp2Ur) & 0x1F)==0) && ((((size_t)tmp2Vr) & 0x1F)==0)
-		&& ((abs(tmp2_pitch_U) & 0x1F)==0) && ((abs(tmp2_pitch_V) & 0x1F)==0);
 	const bool tmp2_UV_al16=((((size_t)tmp2Uw) & 0x0F)==0) && ((((size_t)tmp2Vw) & 0x0F)==0)
 		&& ((((size_t)tmp2Ur) & 0x0F)==0) && ((((size_t)tmp2Vr) & 0x0F)==0)
 		&& ((abs(tmp2_pitch_U) & 0x0F)==0) && ((abs(tmp2_pitch_V) & 0x0F)==0);
 	
-	const bool tmp3_al32=((((size_t)tmp3w) & 0x1F)==0) && ((((size_t)tmp3r) & 0x1F)==0)
-		&& ((abs(tmp3_pitch) & 0x1F)==0);
 	const bool tmp3_al16=((((size_t)tmp3w) & 0x0F)==0) && ((((size_t)tmp3r) & 0x0F)==0)
 		&& ((abs(tmp3_pitch) & 0x0F)==0);
 	
-	const bool dst_al32=((((size_t)dstw) & 0x1F)==0) && ((((size_t)dstr) & 0x1F)==0)
-		&& ((abs(dst_pitch) & 0x1F)==0);
 	const bool dst_al16=((((size_t)dstw) & 0x0F)==0) && ((((size_t)dstr) & 0x0F)==0)
 		&& ((abs(dst_pitch) & 0x0F)==0);
 	
-	const bool dst_RGBP_al32=((((size_t)dstRw) & 0x1F)==0) && ((((size_t)dstRr) & 0x1F)==0)
-		&& ((((size_t)dstGw) & 0x1F)==0) && ((((size_t)dstGr) & 0x1F)==0)
-		&& ((((size_t)dstBw) & 0x1F)==0) && ((((size_t)dstBr) & 0x1F)==0)
-		&& ((abs(dst_pitch_R) & 0x1F)==0) && ((abs(dst_pitch_G) & 0x1F)==0)
-		&& ((abs(dst_pitch_B) & 0x1F)==0);
-	const bool dst_RGBP_al16=((((size_t)dstRw) & 0x0F)==0) && ((((size_t)dstRr) & 0x0F)==0)
-		&& ((((size_t)dstGw) & 0x0F)==0) && ((((size_t)dstGr) & 0x0F)==0)
-		&& ((((size_t)dstBw) & 0x0F)==0) && ((((size_t)dstBr) & 0x0F)==0)
-		&& ((abs(dst_pitch_R) & 0x0F)==0) && ((abs(dst_pitch_G) & 0x0F)==0)
-		&& ((abs(dst_pitch_B) & 0x0F)==0);
-
 	uint8_t f_proc=0;
 
 	// Process YUV420 to YUV422 upscale
@@ -17804,7 +17501,6 @@ ConvertXYZtoYUV::ConvertXYZtoYUV(PClip _child,uint8_t _Color,uint8_t _OutputMode
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
-	const uint32_t vmax=1 << bits_per_pixel;
 	HLG_Mode = (Color==0) && ((HDRMode==1) || (HDRMode==2));
 
 	vi_original=NULL; vi_420=NULL; vi_422=NULL; vi_444=NULL;
@@ -18421,6 +18117,9 @@ ConvertXYZtoYUV::ConvertXYZtoYUV(PClip _child,uint8_t _Color,uint8_t _OutputMode
 			env->ThrowError("ConvertXYZtoYUV: Error with the TheadPool while getting UserId!");
 		}
 	}
+
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -18545,7 +18244,7 @@ void ConvertXYZtoYUV::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConvertXYZtoYUV::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst=env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 	PVideoFrame tmp1,tmp2,tmp3,tmp4;
 
 	env->MakeWritable(&src);
@@ -18710,7 +18409,6 @@ PVideoFrame __stdcall ConvertXYZtoYUV::GetFrame(int n, IScriptEnvironment* env)
 			env->ThrowError("ConvertXYZtoYUV: Error with the TheadPool while requesting threadpool !");
 	}
 	
-	const bool src_al32=((((size_t)srcw) & 0x1F)==0) && ((abs(src_pitch) & 0x1F)==0);
 	const bool src_al16=((((size_t)srcw) & 0x0F)==0) && ((abs(src_pitch) & 0x0F)==0);
 
 	const bool src_RGBP_al32=((((size_t)srcRw) & 0x1F)==0) && ((((size_t)srcGw) & 0x1F)==0)
@@ -18720,16 +18418,9 @@ PVideoFrame __stdcall ConvertXYZtoYUV::GetFrame(int n, IScriptEnvironment* env)
 		&& ((((size_t)srcBw) & 0x0F)==0) && ((abs(src_pitch_R) & 0x0F)==0)
 		&& ((abs(src_pitch_G) & 0x0F)==0) && ((abs(src_pitch_B) & 0x0F)==0);
 
-	const bool tmp1_al32=((((size_t)tmp1r) & 0x1F)==0) && ((((size_t)tmp1w) & 0x1F)==0)
-		&& ((abs(tmp1_pitch) & 0x1F)==0);
 	const bool tmp1_al16=((((size_t)tmp1r) & 0x0F)==0) && ((((size_t)tmp1w) & 0x0F)==0)
 		&& ((abs(tmp1_pitch) & 0x0F)==0);
 	
-	const bool tmp2_al32=((((size_t)tmp2Yr) & 0x1F)==0) && ((((size_t)tmp2Ur) & 0x1F)==0)
-		&& ((((size_t)tmp2Vr) & 0x1F)==0) && ((((size_t)tmp2Yw) & 0x1F)==0)
-		&& ((((size_t)tmp2Uw) & 0x1F)==0) && ((((size_t)tmp2Vw) & 0x1F)==0)
-		&& ((abs(tmp2_pitch_Y) & 0x1F)==0) && ((abs(tmp2_pitch_U) & 0x1F)==0)
-		&& ((abs(tmp2_pitch_V) & 0x1F)==0);
 	const bool tmp2_al16=((((size_t)tmp2Yr) & 0x0F)==0) && ((((size_t)tmp2Ur) & 0x0F)==0)
 		&& ((((size_t)tmp2Vr) & 0x0F)==0) && ((((size_t)tmp2Yw) & 0x0F)==0)
 		&& ((((size_t)tmp2Uw) & 0x0F)==0) && ((((size_t)tmp2Vw) & 0x0F)==0)
@@ -19328,7 +19019,6 @@ ConvertRGBtoXYZ::ConvertRGBtoXYZ(PClip _child,uint8_t _Color,uint8_t _OutputMode
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
-	const uint32_t vmax=1 << bits_per_pixel;
 	HLG_Mode = (Color==0) && ((HDRMode==1) || (HDRMode==2));
 
 	vi_PlaneY_HLG=NULL;
@@ -20500,6 +20190,9 @@ ConvertRGBtoXYZ::ConvertRGBtoXYZ(PClip _child,uint8_t _Color,uint8_t _OutputMode
 			env->ThrowError("ConvertRGBtoXYZ: Error with the TheadPool while getting UserId!");
 		}
 	}
+
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -20607,7 +20300,7 @@ void ConvertRGBtoXYZ::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConvertRGBtoXYZ::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst = env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 	PVideoFrame tmp4;
 
 	const uint8_t *srcr=NULL,*srcr0=NULL;
@@ -20704,9 +20397,6 @@ PVideoFrame __stdcall ConvertRGBtoXYZ::GetFrame(int n, IScriptEnvironment* env)
 			env->ThrowError("ConvertRGBtoXYZ: Error with the TheadPool while requesting threadpool !");
 	}
 
-	const bool src_al32=((((size_t)srcr) & 0x1F)==0) && ((abs(src_pitch) & 0x1F)==0);
-	const bool src_al16=((((size_t)srcr) & 0x0F)==0) && ((abs(src_pitch) & 0x0F)==0);
-
 	const bool src_RGBP_al32=((((size_t)srcRr) & 0x1F)==0)
 		&& ((((size_t)srcGr) & 0x1F)==0) && ((((size_t)srcBr) & 0x1F)==0)
 		&& ((abs(src_pitch_R) & 0x1F)==0) && ((abs(src_pitch_G) & 0x1F)==0)
@@ -20716,8 +20406,6 @@ PVideoFrame __stdcall ConvertRGBtoXYZ::GetFrame(int n, IScriptEnvironment* env)
 		&& ((abs(src_pitch_R) & 0x0F)==0) && ((abs(src_pitch_G) & 0x0F)==0)
 		&& ((abs(src_pitch_B) & 0x0F)==0);
 
-	const bool dst_al32=((((size_t)dstw) & 0x1F)==0) && ((((size_t)dstr) & 0x1F)==0)
-		&& ((abs(dst_pitch) & 0x1F)==0);
 	const bool dst_al16=((((size_t)dstw) & 0x0F)==0) && ((((size_t)dstr) & 0x0F)==0)
 		&& ((abs(dst_pitch) & 0x0F)==0);
 	
@@ -21087,7 +20775,6 @@ ConvertXYZtoRGB::ConvertXYZtoRGB(PClip _child,uint8_t _Color,uint8_t _OutputMode
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
-	const uint32_t vmax=1 << bits_per_pixel;
 	HLG_Mode = (Color==0) && ((HDRMode==1) || (HDRMode==2));
 
 	vi_PlaneY_HLG=NULL;
@@ -21656,6 +21343,9 @@ ConvertXYZtoRGB::ConvertXYZtoRGB(PClip _child,uint8_t _Color,uint8_t _OutputMode
 			env->ThrowError("ConvertXYZtoRGB: Error with the TheadPool while getting UserId!");
 		}
 	}
+
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -21765,7 +21455,7 @@ void ConvertXYZtoRGB::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConvertXYZtoRGB::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst=env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 	PVideoFrame tmp4;
 
 	if (vi.pixel_type!=VideoInfo::CS_RGBPS) env->MakeWritable(&src);
@@ -21884,7 +21574,6 @@ PVideoFrame __stdcall ConvertXYZtoRGB::GetFrame(int n, IScriptEnvironment* env)
 			env->ThrowError("ConvertXYZtoRGB: Error with the TheadPool while requesting threadpool !");
 	}
 	
-	const bool src_al32=((((size_t)srcw) & 0x1F)==0) && ((abs(src_pitch) & 0x1F)==0);
 	const bool src_al16=((((size_t)srcw) & 0x0F)==0) && ((abs(src_pitch) & 0x0F)==0);
 
 	const bool src_RGBP_al32=((((size_t)srcRw) & 0x1F)==0) && ((((size_t)srcGw) & 0x1F)==0)
@@ -21894,8 +21583,6 @@ PVideoFrame __stdcall ConvertXYZtoRGB::GetFrame(int n, IScriptEnvironment* env)
 		&& ((((size_t)srcBw) & 0x0F)==0) && ((abs(src_pitch_R) & 0x0F)==0)
 		&& ((abs(src_pitch_G) & 0x0F)==0) && ((abs(src_pitch_B) & 0x0F)==0);
 
-	const bool dst_al32=((((size_t)dstr) & 0x1F)==0) && ((((size_t)dstw) & 0x1F)==0)
-		&& ((abs(dst_pitch) & 0x1F)==0);
 	const bool dst_al16=((((size_t)dstr) & 0x0F)==0) && ((((size_t)dstw) & 0x0F)==0)
 		&& ((abs(dst_pitch) & 0x0F)==0);
 
@@ -22322,7 +22009,6 @@ ConvertXYZ_Scale_HDRtoSDR::ConvertXYZ_Scale_HDRtoSDR(PClip _child,float _Coeff_X
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
-	const uint32_t vmax=1 << bits_per_pixel;
 
 	lookupX_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
 	lookupY_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
@@ -22365,6 +22051,9 @@ ConvertXYZ_Scale_HDRtoSDR::ConvertXYZ_Scale_HDRtoSDR(PClip _child,float _Coeff_X
 			env->ThrowError("ConvertXYZ_Scale_HDRtoSDR: Error with the TheadPool while getting UserId!");
 		}
 	}
+
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -22421,7 +22110,7 @@ void ConvertXYZ_Scale_HDRtoSDR::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConvertXYZ_Scale_HDRtoSDR::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst=env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 
 	const uint8_t *srcr=NULL,*srcRr=NULL,*srcGr=NULL,*srcBr=NULL;
 	ptrdiff_t src_pitch=0,src_pitch_R=0,src_pitch_G=0,src_pitch_B=0;
@@ -22479,18 +22168,12 @@ PVideoFrame __stdcall ConvertXYZ_Scale_HDRtoSDR::GetFrame(int n, IScriptEnvironm
 			env->ThrowError("ConvertXYZ_Scale_HDRtoSDR: Error with the TheadPool while requesting threadpool !");
 	}
 	
-	const bool src_al32=((((size_t)srcr) & 0x1F)==0) && ((abs(src_pitch) & 0x1F)==0);
-	const bool src_al16=((((size_t)srcr) & 0x0F)==0) && ((abs(src_pitch) & 0x0F)==0);
-
 	const bool src_RGBP_al32=((((size_t)srcRr) & 0x1F)==0) && ((((size_t)srcGr) & 0x1F)==0)
 		&& ((((size_t)srcBr) & 0x1F)==0) && ((abs(src_pitch_R) & 0x1F)==0)
 		&& ((abs(src_pitch_G) & 0x1F)==0) && ((abs(src_pitch_B) & 0x1F)==0);
 	const bool src_RGBP_al16=((((size_t)srcRr) & 0x0F)==0) && ((((size_t)srcGr) & 0x0F)==0)
 		&& ((((size_t)srcBr) & 0x0F)==0) && ((abs(src_pitch_R) & 0x0F)==0)
 		&& ((abs(src_pitch_G) & 0x0F)==0) && ((abs(src_pitch_B) & 0x0F)==0);
-
-	const bool dst_al32=((((size_t)dstw) & 0x1F)==0) && ((abs(dst_pitch) & 0x1F)==0);
-	const bool dst_al16=((((size_t)dstw) & 0x0F)==0) && ((abs(dst_pitch) & 0x0F)==0);
 
 	const bool dst_RGBP_al32=((((size_t)dstRw) & 0x1F)==0) && ((((size_t)dstGw) & 0x1F)==0)
 		&& ((((size_t)dstBw) & 0x1F)==0) && ((abs(dst_pitch_R) & 0x1F)==0)
@@ -22607,7 +22290,6 @@ ConvertXYZ_Scale_SDRtoHDR::ConvertXYZ_Scale_SDRtoHDR(PClip _child,float _Coeff_X
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
-	const uint32_t vmax=1 << bits_per_pixel;
 
 	Coeff_X=1.0f/Coeff_X;
 	Coeff_Y=1.0f/Coeff_Y;
@@ -22654,6 +22336,9 @@ ConvertXYZ_Scale_SDRtoHDR::ConvertXYZ_Scale_SDRtoHDR(PClip _child,float _Coeff_X
 			env->ThrowError("ConvertXYZ_Scale_SDRtoHDR: Error with the TheadPool while getting UserId!");
 		}
 	}
+
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -22710,7 +22395,7 @@ void ConvertXYZ_Scale_SDRtoHDR::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConvertXYZ_Scale_SDRtoHDR::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst=env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 
 	const uint8_t *srcr=NULL,*srcRr=NULL,*srcGr=NULL,*srcBr=NULL;
 	ptrdiff_t src_pitch=0,src_pitch_R=0,src_pitch_G=0,src_pitch_B=0;
@@ -22768,18 +22453,12 @@ PVideoFrame __stdcall ConvertXYZ_Scale_SDRtoHDR::GetFrame(int n, IScriptEnvironm
 			env->ThrowError("ConvertXYZ_SDRtoHDR: Error with the TheadPool while requesting threadpool !");
 	}
 	
-	const bool src_al32=((((size_t)srcr) & 0x1F)==0) && ((abs(src_pitch) & 0x1F)==0);
-	const bool src_al16=((((size_t)srcr) & 0x0F)==0) && ((abs(src_pitch) & 0x0F)==0);
-
 	const bool src_RGBP_al32=((((size_t)srcRr) & 0x1F)==0) && ((((size_t)srcGr) & 0x1F)==0)
 		&& ((((size_t)srcBr) & 0x1F)==0) && ((abs(src_pitch_R) & 0x1F)==0)
 		&& ((abs(src_pitch_G) & 0x1F)==0) && ((abs(src_pitch_B) & 0x1F)==0);
 	const bool src_RGBP_al16=((((size_t)srcRr) & 0x0F)==0) && ((((size_t)srcGr) & 0x0F)==0)
 		&& ((((size_t)srcBr) & 0x0F)==0) && ((abs(src_pitch_R) & 0x0F)==0)
 		&& ((abs(src_pitch_G) & 0x0F)==0) && ((abs(src_pitch_B) & 0x0F)==0);
-
-	const bool dst_al32=((((size_t)dstw) & 0x1F)==0) && ((abs(dst_pitch) & 0x1F)==0);
-	const bool dst_al16=((((size_t)dstw) & 0x0F)==0) && ((abs(dst_pitch) & 0x0F)==0);
 
 	const bool dst_RGBP_al32=((((size_t)dstRw) & 0x1F)==0) && ((((size_t)dstGw) & 0x1F)==0)
 		&& ((((size_t)dstBw) & 0x1F)==0) && ((abs(dst_pitch_R) & 0x1F)==0)
@@ -22903,7 +22582,6 @@ ConvertXYZ_Hable_HDRtoSDR::ConvertXYZ_Hable_HDRtoSDR(PClip _child,double _exp_X,
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
-	const uint32_t vmax=1 << bits_per_pixel;
 
 	lookupX_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
 	lookupY_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
@@ -22978,6 +22656,9 @@ ConvertXYZ_Hable_HDRtoSDR::ConvertXYZ_Hable_HDRtoSDR(PClip _child,double _exp_X,
 			env->ThrowError("ConvertXYZ_Hable_HDRtoSDR: Error with the TheadPool while getting UserId!");
 		}
 	}
+
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -23055,7 +22736,7 @@ void ConvertXYZ_Hable_HDRtoSDR::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConvertXYZ_Hable_HDRtoSDR::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst=env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 
 	const uint8_t *srcr=NULL,*srcXr=NULL,*srcYr=NULL,*srcZr=NULL;
 	ptrdiff_t src_pitch=0,src_pitch_X=0,src_pitch_Y=0,src_pitch_Z=0;
@@ -23113,18 +22794,12 @@ PVideoFrame __stdcall ConvertXYZ_Hable_HDRtoSDR::GetFrame(int n, IScriptEnvironm
 			env->ThrowError("ConvertXYZ_Hable_HDRtoSDR: Error with the TheadPool while requesting threadpool !");
 	}
 	
-	const bool src_al32=((((size_t)srcr) & 0x1F)==0) && ((abs(src_pitch) & 0x1F)==0);
-	const bool src_al16=((((size_t)srcr) & 0x0F)==0) && ((abs(src_pitch) & 0x0F)==0);
-
 	const bool src_XYZP_al32=((((size_t)srcXr) & 0x1F)==0) && ((((size_t)srcYr) & 0x1F)==0)
 		&& ((((size_t)srcZr) & 0x1F)==0) && ((abs(src_pitch_X) & 0x1F)==0)
 		&& ((abs(src_pitch_Y) & 0x1F)==0) && ((abs(src_pitch_Z) & 0x1F)==0);
 	const bool src_XYZP_al16=((((size_t)srcXr) & 0x0F)==0) && ((((size_t)srcYr) & 0x0F)==0)
 		&& ((((size_t)srcZr) & 0x0F)==0) && ((abs(src_pitch_X) & 0x0F)==0)
 		&& ((abs(src_pitch_Y) & 0x0F)==0) && ((abs(src_pitch_Z) & 0x0F)==0);
-
-	const bool dst_al32=((((size_t)dstw) & 0x1F)==0) && ((abs(dst_pitch) & 0x1F)==0);
-	const bool dst_al16=((((size_t)dstw) & 0x0F)==0) && ((abs(dst_pitch) & 0x0F)==0);
 
 	const bool dst_XYZP_al32=((((size_t)dstXw) & 0x1F)==0) && ((((size_t)dstYw) & 0x1F)==0)
 		&& ((((size_t)dstZw) & 0x1F)==0) && ((abs(dst_pitch_X) & 0x1F)==0)
@@ -23282,7 +22957,6 @@ ConvertRGB_Hable_HDRtoSDR::ConvertRGB_Hable_HDRtoSDR(PClip _child,double _exp_R,
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
-	const uint32_t vmax=1 << bits_per_pixel;
 
 	lookupR_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
 	lookupG_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
@@ -23348,6 +23022,9 @@ ConvertRGB_Hable_HDRtoSDR::ConvertRGB_Hable_HDRtoSDR(PClip _child,double _exp_R,
 			env->ThrowError("ConvertRGB_Hable_HDRtoSDR: Error with the TheadPool while getting UserId!");
 		}
 	}
+
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -23420,7 +23097,7 @@ void ConvertRGB_Hable_HDRtoSDR::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConvertRGB_Hable_HDRtoSDR::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst=env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 
 	const uint8_t *srcr=NULL,*srcRr=NULL,*srcGr=NULL,*srcBr=NULL;
 	ptrdiff_t src_pitch=0,src_pitch_R=0,src_pitch_G=0,src_pitch_B=0;
@@ -23478,18 +23155,12 @@ PVideoFrame __stdcall ConvertRGB_Hable_HDRtoSDR::GetFrame(int n, IScriptEnvironm
 			env->ThrowError("ConvertRGB_Hable_HDRtoSDR: Error with the TheadPool while requesting threadpool !");
 	}
 	
-	const bool src_al32=((((size_t)srcr) & 0x1F)==0) && ((abs(src_pitch) & 0x1F)==0);
-	const bool src_al16=((((size_t)srcr) & 0x0F)==0) && ((abs(src_pitch) & 0x0F)==0);
-
 	const bool src_RGBP_al32=((((size_t)srcRr) & 0x1F)==0) && ((((size_t)srcGr) & 0x1F)==0)
 		&& ((((size_t)srcBr) & 0x1F)==0) && ((abs(src_pitch_R) & 0x1F)==0)
 		&& ((abs(src_pitch_G) & 0x1F)==0) && ((abs(src_pitch_B) & 0x1F)==0);
 	const bool src_RGBP_al16=((((size_t)srcRr) & 0x0F)==0) && ((((size_t)srcGr) & 0x0F)==0)
 		&& ((((size_t)srcBr) & 0x0F)==0) && ((abs(src_pitch_R) & 0x0F)==0)
 		&& ((abs(src_pitch_G) & 0x0F)==0) && ((abs(src_pitch_B) & 0x0F)==0);
-
-	const bool dst_al32=((((size_t)dstw) & 0x1F)==0) && ((abs(dst_pitch) & 0x1F)==0);
-	const bool dst_al16=((((size_t)dstw) & 0x0F)==0) && ((abs(dst_pitch) & 0x0F)==0);
 
 	const bool dst_RGBP_al32=((((size_t)dstRw) & 0x1F)==0) && ((((size_t)dstGw) & 0x1F)==0)
 		&& ((((size_t)dstBw) & 0x1F)==0) && ((abs(dst_pitch_R) & 0x1F)==0)
@@ -23642,7 +23313,6 @@ ConvertXYZ_Mobius_HDRtoSDR::ConvertXYZ_Mobius_HDRtoSDR(PClip _child,double _exp_
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
-	const uint32_t vmax=1 << bits_per_pixel;
 
 	lookupX_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
 	lookupY_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
@@ -23729,6 +23399,9 @@ ConvertXYZ_Mobius_HDRtoSDR::ConvertXYZ_Mobius_HDRtoSDR(PClip _child,double _exp_
 			env->ThrowError("ConvertXYZ_Mobius_HDRtoSDR: Error with the TheadPool while getting UserId!");
 		}
 	}
+
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -23800,7 +23473,7 @@ void ConvertXYZ_Mobius_HDRtoSDR::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConvertXYZ_Mobius_HDRtoSDR::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst=env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 
 	const uint8_t *srcr=NULL,*srcXr=NULL,*srcYr=NULL,*srcZr=NULL;
 	ptrdiff_t src_pitch=0,src_pitch_X=0,src_pitch_Y=0,src_pitch_Z=0;
@@ -23857,9 +23530,6 @@ PVideoFrame __stdcall ConvertXYZ_Mobius_HDRtoSDR::GetFrame(int n, IScriptEnviron
 		if ((!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,nPool,false,true)) || (nPool==-1))
 			env->ThrowError("ConvertXYZ_Mobius_HDRtoSDR: Error with the TheadPool while requesting threadpool !");
 	}
-	
-	const bool src_al32=((((size_t)srcr) & 0x1F)==0) && ((abs(src_pitch) & 0x1F)==0);
-	const bool src_al16=((((size_t)srcr) & 0x0F)==0) && ((abs(src_pitch) & 0x0F)==0);
 
 	const bool src_XYZP_al32=((((size_t)srcXr) & 0x1F)==0) && ((((size_t)srcYr) & 0x1F)==0)
 		&& ((((size_t)srcZr) & 0x1F)==0) && ((abs(src_pitch_X) & 0x1F)==0)
@@ -23867,9 +23537,6 @@ PVideoFrame __stdcall ConvertXYZ_Mobius_HDRtoSDR::GetFrame(int n, IScriptEnviron
 	const bool src_XYZP_al16=((((size_t)srcXr) & 0x0F)==0) && ((((size_t)srcYr) & 0x0F)==0)
 		&& ((((size_t)srcZr) & 0x0F)==0) && ((abs(src_pitch_X) & 0x0F)==0)
 		&& ((abs(src_pitch_Y) & 0x0F)==0) && ((abs(src_pitch_Z) & 0x0F)==0);
-
-	const bool dst_al32=((((size_t)dstw) & 0x1F)==0) && ((abs(dst_pitch) & 0x1F)==0);
-	const bool dst_al16=((((size_t)dstw) & 0x0F)==0) && ((abs(dst_pitch) & 0x0F)==0);
 
 	const bool dst_XYZP_al32=((((size_t)dstXw) & 0x1F)==0) && ((((size_t)dstYw) & 0x1F)==0)
 		&& ((((size_t)dstZw) & 0x1F)==0) && ((abs(dst_pitch_X) & 0x1F)==0)
@@ -24025,7 +23692,6 @@ ConvertRGB_Mobius_HDRtoSDR::ConvertRGB_Mobius_HDRtoSDR(PClip _child,double _exp_
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
-	const uint32_t vmax=1 << bits_per_pixel;
 
 	lookupR_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
 	lookupG_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
@@ -24103,6 +23769,9 @@ ConvertRGB_Mobius_HDRtoSDR::ConvertRGB_Mobius_HDRtoSDR(PClip _child,double _exp_
 			env->ThrowError("ConvertRGB_Mobius_HDRtoSDR: Error with the TheadPool while getting UserId!");
 		}
 	}
+
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -24169,7 +23838,7 @@ void ConvertRGB_Mobius_HDRtoSDR::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConvertRGB_Mobius_HDRtoSDR::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst=env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 
 	const uint8_t *srcr=NULL,*srcRr=NULL,*srcGr=NULL,*srcBr=NULL;
 	ptrdiff_t src_pitch=0,src_pitch_R=0,src_pitch_G=0,src_pitch_B=0;
@@ -24227,18 +23896,12 @@ PVideoFrame __stdcall ConvertRGB_Mobius_HDRtoSDR::GetFrame(int n, IScriptEnviron
 			env->ThrowError("ConvertRGB_Mobius_HDRtoSDR: Error with the TheadPool while requesting threadpool !");
 	}
 	
-	const bool src_al32=((((size_t)srcr) & 0x1F)==0) && ((abs(src_pitch) & 0x1F)==0);
-	const bool src_al16=((((size_t)srcr) & 0x0F)==0) && ((abs(src_pitch) & 0x0F)==0);
-
 	const bool src_RGBP_al32=((((size_t)srcRr) & 0x1F)==0) && ((((size_t)srcGr) & 0x1F)==0)
 		&& ((((size_t)srcBr) & 0x1F)==0) && ((abs(src_pitch_R) & 0x1F)==0)
 		&& ((abs(src_pitch_G) & 0x1F)==0) && ((abs(src_pitch_B) & 0x1F)==0);
 	const bool src_RGBP_al16=((((size_t)srcRr) & 0x0F)==0) && ((((size_t)srcGr) & 0x0F)==0)
 		&& ((((size_t)srcBr) & 0x0F)==0) && ((abs(src_pitch_R) & 0x0F)==0)
 		&& ((abs(src_pitch_G) & 0x0F)==0) && ((abs(src_pitch_B) & 0x0F)==0);
-
-	const bool dst_al32=((((size_t)dstw) & 0x1F)==0) && ((abs(dst_pitch) & 0x1F)==0);
-	const bool dst_al16=((((size_t)dstw) & 0x0F)==0) && ((abs(dst_pitch) & 0x0F)==0);
 
 	const bool dst_RGBP_al32=((((size_t)dstRw) & 0x1F)==0) && ((((size_t)dstGw) & 0x1F)==0)
 		&& ((((size_t)dstBw) & 0x1F)==0) && ((abs(dst_pitch_R) & 0x1F)==0)
@@ -24391,7 +24054,6 @@ ConvertXYZ_Reinhard_HDRtoSDR::ConvertXYZ_Reinhard_HDRtoSDR(PClip _child,double _
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
-	const uint32_t vmax=1 << bits_per_pixel;
 
 	lookupX_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
 	lookupY_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
@@ -24474,6 +24136,9 @@ ConvertXYZ_Reinhard_HDRtoSDR::ConvertXYZ_Reinhard_HDRtoSDR(PClip _child,double _
 			env->ThrowError("ConvertXYZ_Reinhard_HDRtoSDR: Error with the TheadPool while getting UserId!");
 		}
 	}
+
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -24545,7 +24210,7 @@ void ConvertXYZ_Reinhard_HDRtoSDR::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConvertXYZ_Reinhard_HDRtoSDR::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst=env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 
 	const uint8_t *srcr=NULL,*srcXr=NULL,*srcYr=NULL,*srcZr=NULL;
 	ptrdiff_t src_pitch=0,src_pitch_X=0,src_pitch_Y=0,src_pitch_Z=0;
@@ -24603,18 +24268,12 @@ PVideoFrame __stdcall ConvertXYZ_Reinhard_HDRtoSDR::GetFrame(int n, IScriptEnvir
 			env->ThrowError("ConvertXYZ_Reinhard_HDRtoSDR: Error with the TheadPool while requesting threadpool !");
 	}
 	
-	const bool src_al32=((((size_t)srcr) & 0x1F)==0) && ((abs(src_pitch) & 0x1F)==0);
-	const bool src_al16=((((size_t)srcr) & 0x0F)==0) && ((abs(src_pitch) & 0x0F)==0);
-
 	const bool src_XYZP_al32=((((size_t)srcXr) & 0x1F)==0) && ((((size_t)srcYr) & 0x1F)==0)
 		&& ((((size_t)srcZr) & 0x1F)==0) && ((abs(src_pitch_X) & 0x1F)==0)
 		&& ((abs(src_pitch_Y) & 0x1F)==0) && ((abs(src_pitch_Z) & 0x1F)==0);
 	const bool src_XYZP_al16=((((size_t)srcXr) & 0x0F)==0) && ((((size_t)srcYr) & 0x0F)==0)
 		&& ((((size_t)srcZr) & 0x0F)==0) && ((abs(src_pitch_X) & 0x0F)==0)
 		&& ((abs(src_pitch_Y) & 0x0F)==0) && ((abs(src_pitch_Z) & 0x0F)==0);
-
-	const bool dst_al32=((((size_t)dstw) & 0x1F)==0) && ((abs(dst_pitch) & 0x1F)==0);
-	const bool dst_al16=((((size_t)dstw) & 0x0F)==0) && ((abs(dst_pitch) & 0x0F)==0);
 
 	const bool dst_XYZP_al32=((((size_t)dstXw) & 0x1F)==0) && ((((size_t)dstYw) & 0x1F)==0)
 		&& ((((size_t)dstZw) & 0x1F)==0) && ((abs(dst_pitch_X) & 0x1F)==0)
@@ -24770,7 +24429,6 @@ ConvertRGB_Reinhard_HDRtoSDR::ConvertRGB_Reinhard_HDRtoSDR(PClip _child,double _
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
-	const uint32_t vmax=1 << bits_per_pixel;
 
 	lookupR_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
 	lookupG_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
@@ -24844,6 +24502,9 @@ ConvertRGB_Reinhard_HDRtoSDR::ConvertRGB_Reinhard_HDRtoSDR(PClip _child,double _
 			env->ThrowError("ConvertRGB_Reinhard_HDRtoSDR: Error with the TheadPool while getting UserId!");
 		}
 	}
+
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -24910,7 +24571,7 @@ void ConvertRGB_Reinhard_HDRtoSDR::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConvertRGB_Reinhard_HDRtoSDR::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst=env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 
 	const uint8_t *srcr=NULL,*srcRr=NULL,*srcGr=NULL,*srcBr=NULL;
 	ptrdiff_t src_pitch=0,src_pitch_R=0,src_pitch_G=0,src_pitch_B=0;
@@ -24968,18 +24629,12 @@ PVideoFrame __stdcall ConvertRGB_Reinhard_HDRtoSDR::GetFrame(int n, IScriptEnvir
 			env->ThrowError("ConvertRGB_Reinhard_HDRtoSDR: Error with the TheadPool while requesting threadpool !");
 	}
 	
-	const bool src_al32=((((size_t)srcr) & 0x1F)==0) && ((abs(src_pitch) & 0x1F)==0);
-	const bool src_al16=((((size_t)srcr) & 0x0F)==0) && ((abs(src_pitch) & 0x0F)==0);
-
 	const bool src_RGBP_al32=((((size_t)srcRr) & 0x1F)==0) && ((((size_t)srcGr) & 0x1F)==0)
 		&& ((((size_t)srcBr) & 0x1F)==0) && ((abs(src_pitch_R) & 0x1F)==0)
 		&& ((abs(src_pitch_G) & 0x1F)==0) && ((abs(src_pitch_B) & 0x1F)==0);
 	const bool src_RGBP_al16=((((size_t)srcRr) & 0x0F)==0) && ((((size_t)srcGr) & 0x0F)==0)
 		&& ((((size_t)srcBr) & 0x0F)==0) && ((abs(src_pitch_R) & 0x0F)==0)
 		&& ((abs(src_pitch_G) & 0x0F)==0) && ((abs(src_pitch_B) & 0x0F)==0);
-
-	const bool dst_al32=((((size_t)dstw) & 0x1F)==0) && ((abs(dst_pitch) & 0x1F)==0);
-	const bool dst_al16=((((size_t)dstw) & 0x0F)==0) && ((abs(dst_pitch) & 0x0F)==0);
 
 	const bool dst_RGBP_al32=((((size_t)dstRw) & 0x1F)==0) && ((((size_t)dstGw) & 0x1F)==0)
 		&& ((((size_t)dstBw) & 0x1F)==0) && ((abs(dst_pitch_R) & 0x1F)==0)
@@ -25128,7 +24783,6 @@ ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR::ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
-	const uint32_t vmax=1 << bits_per_pixel;
 
 	lookupEOTF_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
 	lookupR_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
@@ -25231,6 +24885,9 @@ ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR::ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR
 		}
 	}
 
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
+
 	vi.pixel_type=VideoInfo::CS_YUV444P16;
 }
 
@@ -25301,7 +24958,7 @@ void ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst=env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 
 	const uint8_t *srcr=NULL,*srcr0=NULL,*srcRr=NULL,*srcGr=NULL,*srcBr=NULL;
 	ptrdiff_t src_pitch=0,src_pitch0=0,src_pitch_R=0,src_pitch_G=0,src_pitch_B=0;
@@ -25357,23 +25014,6 @@ PVideoFrame __stdcall ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR::GetFrame(int n, I
 		if ((!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,nPool,false,true)) || (nPool==-1))
 			env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: Error with the TheadPool while requesting threadpool !");
 	}
-	
-	const bool src_al32=((((size_t)srcr) & 0x1F)==0) && ((abs(src_pitch) & 0x1F)==0);
-	const bool src_al16=((((size_t)srcr) & 0x0F)==0) && ((abs(src_pitch) & 0x0F)==0);
-
-	const bool src_RGBP_al32=((((size_t)srcRr) & 0x1F)==0) && ((((size_t)srcGr) & 0x1F)==0)
-		&& ((((size_t)srcBr) & 0x1F)==0) && ((abs(src_pitch_R) & 0x1F)==0)
-		&& ((abs(src_pitch_G) & 0x1F)==0) && ((abs(src_pitch_B) & 0x1F)==0);
-	const bool src_RGBP_al16=((((size_t)srcRr) & 0x0F)==0) && ((((size_t)srcGr) & 0x0F)==0)
-		&& ((((size_t)srcBr) & 0x0F)==0) && ((abs(src_pitch_R) & 0x0F)==0)
-		&& ((abs(src_pitch_G) & 0x0F)==0) && ((abs(src_pitch_B) & 0x0F)==0);
-
-	const bool dst_YUV_al32=((((size_t)dstYw) & 0x1F)==0) && ((((size_t)dstUw) & 0x1F)==0)
-		&& ((((size_t)dstVw) & 0x1F)==0) && ((abs(dst_pitch_Y) & 0x1F)==0)
-		&& ((abs(dst_pitch_U) & 0x1F)==0) && ((abs(dst_pitch_V) & 0x1F)==0);
-	const bool dst_YUV_al16=((((size_t)dstYw) & 0x0F)==0) && ((((size_t)dstUw) & 0x0F)==0)
-		&& ((((size_t)dstVw) & 0x0F)==0) && ((abs(dst_pitch_Y) & 0x0F)==0)
-		&& ((abs(dst_pitch_U) & 0x0F)==0) && ((abs(dst_pitch_V) & 0x0F)==0);
 
 	uint8_t f_proc=0;
 
@@ -25527,7 +25167,6 @@ ConverXYZ_BT2446_C_HDRtoSDR::ConverXYZ_BT2446_C_HDRtoSDR(PClip _child,bool _Chro
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
-	const uint32_t vmax=1 << bits_per_pixel;
 	vi_RGBPS=NULL;
 
 	lookupY_16=(uint16_t *)malloc(65536*sizeof(uint16_t));
@@ -25670,6 +25309,9 @@ ConverXYZ_BT2446_C_HDRtoSDR::ConverXYZ_BT2446_C_HDRtoSDR(PClip _child,bool _Chro
 			env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: Error with the TheadPool while getting UserId!");
 		}
 	}
+
+	has_at_least_v8=true;
+	try { env->CheckVersion(8); } catch (const AvisynthError&) { has_at_least_v8=false; }
 }
 
 
@@ -25782,7 +25424,7 @@ void ConverXYZ_BT2446_C_HDRtoSDR::StaticThreadpool(void *ptr)
 PVideoFrame __stdcall ConverXYZ_BT2446_C_HDRtoSDR::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame src = child->GetFrame(n,env);
-	PVideoFrame dst = env->NewVideoFrame(vi,64);
+	PVideoFrame dst = (has_at_least_v8)?env->NewVideoFrameP(vi,&src):env->NewVideoFrame(vi,64);
 	PVideoFrame tmp;
 
 	const uint8_t *srcr=NULL,*srcXr=NULL,*srcYr=NULL,*srcZr=NULL;
@@ -25867,12 +25509,6 @@ PVideoFrame __stdcall ConverXYZ_BT2446_C_HDRtoSDR::GetFrame(int n, IScriptEnviro
 	
 	const bool src_al32=((((size_t)srcr) & 0x1F)==0) && ((abs(src_pitch) & 0x1F)==0);
 	const bool src_al16=((((size_t)srcr) & 0x0F)==0) && ((abs(src_pitch) & 0x0F)==0);
-
-	const bool src2_al32=((((size_t)srcw) & 0x1F)==0) && ((abs(src_pitch) & 0x1F)==0);
-	const bool src2_al16=((((size_t)srcw) & 0x0F)==0) && ((abs(src_pitch) & 0x0F)==0);
-
-	const bool dst_al32=((((size_t)dstw) & 0x1F)==0) && ((abs(dst_pitch) & 0x1F)==0);
-	const bool dst_al16=((((size_t)dstw) & 0x0F)==0) && ((abs(dst_pitch) & 0x0F)==0);
 
 	const bool src_RGBP_al32=((((size_t)srcXr) & 0x1F)==0) && ((((size_t)srcYr) & 0x1F)==0)
 		&& ((((size_t)srcZr) & 0x1F)==0) && ((abs(src_pitch_X) & 0x1F)==0)

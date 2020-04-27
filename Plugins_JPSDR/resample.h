@@ -35,13 +35,13 @@
 #ifndef __Resample_H__
 #define __Resample_H__
 
-#include <stdint.h>
+//#include <stdint.h>
 #include <windows.h>
-#include "avisynth.h"
-#include "resample_functions.h"
-#include "ThreadPoolInterface.h"
+#include "./avisynth.h"
+#include "./resample_functions.h"
+#include "./ThreadPoolInterface.h"
 
-#define RESAMPLE_MT_VERSION "ResampleMT 2.2.2 JPSDR"
+#define RESAMPLE_MT_VERSION "ResampleMT 2.2.3 JPSDR"
 
 // Resizer function pointer
 typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2);
@@ -117,7 +117,7 @@ private:
   void* filter_storage_chroma;
 
   int src_width, src_height, dst_width, dst_height;
-  bool grey,avsp,isRGBPfamily,isAlphaChannel;
+  bool grey,avsp,isRGBPfamily,isAlphaChannel,has_at_least_v8;
   uint8_t pixelsize; // AVS16
   uint8_t bits_per_pixel;
   uint8_t plane_range[4];
@@ -174,7 +174,7 @@ private:
 	void ResamplerVChromaAlignedMT(MT_Data_Info_ResampleMT *MT_DataGF);
 	void ResamplerVChromaUnalignedMT(MT_Data_Info_ResampleMT *MT_DataGF);
 
-  bool grey,avsp,isRGBPfamily,isAlphaChannel;
+  bool grey,avsp,isRGBPfamily,isAlphaChannel,has_at_least_v8;
   uint8_t pixelsize; // AVS16
   uint8_t bits_per_pixel;
   uint8_t plane_range[4];
