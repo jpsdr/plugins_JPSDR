@@ -107,8 +107,6 @@ typedef struct _YUYV
 	uint8_t v;
 } YUYV;
 
-static ThreadPoolInterface *poolInterface;
-
 
 static uint8_t CreateMTData(MT_Data_Info_AutoYUY2 MT_Data[],int output,uint8_t threads_number,uint8_t max_threads,int32_t size_x,int32_t size_y)
 {

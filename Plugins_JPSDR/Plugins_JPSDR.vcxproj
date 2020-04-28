@@ -172,6 +172,10 @@
     <ClCompile Include="PlanarFrame.cpp" />
     <ClCompile Include="plugins_JPSDR.cpp" />
     <ClCompile Include="resample.cpp" />
+    <ClCompile Include="resample_avx2.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="resample_functions.cpp" />
     <ClCompile Include="ThreadPool.cpp" />
     <ClCompile Include="ThreadPoolInterface.cpp" />
@@ -186,6 +190,7 @@
     <ClInclude Include="nnedi3.h" />
     <ClInclude Include="PlanarFrame.h" />
     <ClInclude Include="resample.h" />
+    <ClInclude Include="resample_avx2.h" />
     <ClInclude Include="resample_functions.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="ThreadPool.h" />
