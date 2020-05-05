@@ -11,7 +11,7 @@ bool aWarpSharp_Enable_SSE2,aWarpSharp_Enable_SSE41,aWarpSharp_Enable_AVX;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.2.1"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.2.2"
 
 /*
   threshold : int, default value : 4

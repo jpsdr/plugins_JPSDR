@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.54 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.55 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -1055,9 +1055,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	}
 	else field_n = field;
 	
-	PVideoFrame src = child->GetFrame(n,env);
-	
-	copyPad(src,field>1?(n>>1):n,field_n,env);
+	PVideoFrame src = copyPad(field>1?(n>>1):n,field_n,env);
 	
 	const uint8_t PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
 	int plane[4];
@@ -1150,7 +1148,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 		}
 	}
 	
-	calcStartEnd2(vi.IsPlanar() ? dst:NULL);
+	calcStartEnd2();
 	
 	if (threads_number>1)
 	{
@@ -1197,15 +1195,16 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	}
 
 	
-	if (!vi.IsPlanar()) dstPF->copyTo(dst, vi);
+	if (!vi.IsPlanar()) dstPF->copyTo(dst,vi);
 
 	return dst;
 }
 
 
-void nnedi3::copyPad(const PVideoFrame &src,int n, int fn, IScriptEnvironment *env)
+PVideoFrame nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 {
 	const int off = 1-fn;
+	PVideoFrame src = child->GetFrame(n,env);
 	
 	const uint8_t PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
 	int plane[4];
@@ -1380,10 +1379,11 @@ void nnedi3::copyPad(const PVideoFrame &src,int n, int fn, IScriptEnvironment *e
 			off2-=dst_pitch2;
 		}
 	}
+	return(src);
 }
 
 
-void nnedi3::calcStartEnd2(PVideoFrame dst)
+void nnedi3::calcStartEnd2(void)
 {
 	const uint8_t PlaneMax = (grey) ? 1 : (isAlphaChannel) ? 4 : 3;
 
