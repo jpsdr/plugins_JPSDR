@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.55 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.56 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -1196,9 +1196,19 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 			default :;
 		}
 	}
-
 	
 	if (!vi.IsPlanar()) dstPF->copyTo(dst,vi);
+	
+	if (vi.Is420() && ((vi.height & 3)!=0))
+	{
+		ptrdiff_t dst_offsetU=(dst->GetHeight(PLANAR_U)-2)*dst->GetPitch(PLANAR_U);
+		ptrdiff_t dst_offsetV=(dst->GetHeight(PLANAR_V)-2)*dst->GetPitch(PLANAR_V);
+
+		memcpy(dst->GetWritePtr(PLANAR_U)+(dst_offsetU+dst->GetPitch(PLANAR_U)),
+			dst->GetWritePtr(PLANAR_U)+dst_offsetU,dst->GetRowSize(PLANAR_U));
+		memcpy(dst->GetWritePtr(PLANAR_V)+(dst_offsetV+dst->GetPitch(PLANAR_V)),
+			dst->GetWritePtr(PLANAR_V)+dst_offsetV,dst->GetRowSize(PLANAR_V));
+	}
 
 	return dst;
 }
