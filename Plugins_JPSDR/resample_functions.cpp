@@ -247,6 +247,25 @@ double GaussianFilter::f(double value)
 	return pow(2.0, - p*value*value);
 }
 
+/**********************
+*** SinPower filter ***
+***********************/
+
+SinPowerFilter::SinPowerFilter(double p) {
+param = clamp(p, 1.0, 10.0);
+}
+double SinPowerFilter::f(double value) {
+value = fabs(value);
+value *= M_PI/param;
+
+if (value<(M_PI/2)) return pow(cos(value),1.8);
+else
+{
+	if (value<M_PI) return -(cos(value)*cos(value))/(0.9*value);
+	else return 0;
+}
+}
+
 /***********************
  *** Sinc filter ***
  ***********************/

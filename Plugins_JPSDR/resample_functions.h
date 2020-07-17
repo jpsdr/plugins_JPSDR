@@ -272,4 +272,17 @@ private:
 };
 
 
+class SinPowerFilter : public ResamplingFunction
+// SinPow kernel, used in SinPowResize
+{
+public:
+SinPowerFilter(double p = 2.5);
+double f(double x);
+double support() { return 2.0; }; // 2 very important, 4 cause bugs
+
+private:
+double param;
+};
+
+
 #endif  // __Reample_Functions_H__
