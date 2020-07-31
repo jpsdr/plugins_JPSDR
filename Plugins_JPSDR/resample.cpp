@@ -4939,6 +4939,14 @@ AVSValue __cdecl FilteredResizeMT::Create_SinPowerResize(AVSValue args, void*, I
 	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,args[15].AsInt(6),&args[3],&f,env);
 }
 
+AVSValue __cdecl FilteredResizeMT::Create_SincLin2Resize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  SincLin2Filter f(args[7].AsInt(15));
+  return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
+	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
+	  args[13].AsInt(0),args[14].AsInt(1),false,0,0,args[15].AsInt(6),&args[3],&f,env);
+}
+
 // Desample functions
 
 AVSValue __cdecl FilteredResizeMT::Create_DeBilinearResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -5034,6 +5042,15 @@ AVSValue __cdecl FilteredResizeMT::Create_DeSincResize(AVSValue args, void*, ISc
 AVSValue __cdecl FilteredResizeMT::Create_DeSinPowerResize(AVSValue args, void*, IScriptEnvironment* env)
 {
   SinPowerFilter f(args[7].AsFloat(2.5f));
+  return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
+	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
+	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),args[17].AsInt(6),
+	  &args[3],&f,env);
+}
+
+AVSValue __cdecl FilteredResizeMT::Create_DeSincLin2Resize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  SincLin2Filter f(args[7].AsInt(15));
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),args[8].AsInt(0),
 	  args[9].AsBool(true),args[10].AsBool(true),args[11].AsBool(false),args[12].AsBool(false),
 	  args[13].AsInt(0),args[14].AsInt(1),true,args[15].AsInt(0),args[16].AsInt(0),args[17].AsInt(6),

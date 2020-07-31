@@ -41,7 +41,7 @@
 #include "./resample_functions.h"
 #include "./ThreadPoolInterface.h"
 
-#define RESAMPLE_MT_VERSION "ResampleMT 2.3.0 JPSDR"
+#define RESAMPLE_MT_VERSION "ResampleMT 2.3.1 JPSDR"
 
 // Resizer function pointer
 typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2);
@@ -245,6 +245,8 @@ static AVSValue __cdecl Create_SincResize(AVSValue args, void*, IScriptEnvironme
 
 static AVSValue __cdecl Create_SinPowerResize(AVSValue args, void*, IScriptEnvironment* env);
 
+static AVSValue __cdecl Create_SincLin2Resize(AVSValue args, void*, IScriptEnvironment* env);
+
 // Desample functions
 
 static AVSValue __cdecl Create_DeBilinearResize(AVSValue args, void*, IScriptEnvironment* env);
@@ -269,6 +271,8 @@ static AVSValue __cdecl Create_DeGaussianResize(AVSValue args, void*, IScriptEnv
 static AVSValue __cdecl Create_DeSincResize(AVSValue args, void*, IScriptEnvironment* env);
 
 static AVSValue __cdecl Create_DeSinPowerResize(AVSValue args, void*, IScriptEnvironment* env);
+
+static AVSValue __cdecl Create_DeSincLin2Resize(AVSValue args, void*, IScriptEnvironment* env);
 };
 
 

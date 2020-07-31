@@ -63,9 +63,6 @@ double TriangleFilter::f(double x)
 }
 
 
-
-
-
 /*********************************
  *** Mitchell-Netravali filter ***
  *********************************/
@@ -91,6 +88,7 @@ double MitchellNetravaliFilter::f (double x)
 /***********************
  *** Lanczos3 filter ***
  ***********************/
+ 
 LanczosFilter::LanczosFilter(int _taps)
 {
    taps = (double)clamp(_taps, 1, 100);
@@ -127,6 +125,7 @@ double LanczosFilter::f(double value)
 /***********************
  *** Blackman filter ***
  ***********************/
+ 
 BlackmanFilter::BlackmanFilter(int _taps)
 {
    taps = (double)clamp(_taps, 1, 100);
@@ -175,6 +174,7 @@ double Spline16Filter::f(double value)
   return 0.0;
 }
 
+
 /***********************
  *** Spline36 filter ***
  ***********************/
@@ -197,6 +197,7 @@ double Spline36Filter::f(double value)
   }
   return 0.0;
 }
+
 
 /***********************
  *** Spline64 filter ***
@@ -225,6 +226,7 @@ double Spline64Filter::f(double value)
   return 0.0;
 }
 
+
 /***********************
  *** Gaussian filter ***
  ***********************/
@@ -247,6 +249,7 @@ double GaussianFilter::f(double value)
 	return pow(2.0, - p*value*value);
 }
 
+
 /**********************
 *** SinPower filter ***
 ***********************/
@@ -266,12 +269,14 @@ else
 }
 }
 
+
 /***********************
  *** Sinc filter ***
  ***********************/
+ 
 SincFilter::SincFilter(int _taps)
 {
-   taps = (double)clamp(_taps, 1, 20);
+   taps = (double)clamp(_taps, 1, 150);
 }
 
 double SincFilter::f(double value)
@@ -287,6 +292,40 @@ double SincFilter::f(double value)
   {
     return 1.0;
   }
+}
+
+
+/***********************
+*** SincLin2 filter ***
+***********************/
+
+SincLin2Filter::SincLin2Filter(int _taps)
+{
+	taps = (double)clamp(_taps, 1, 30);
+}
+
+double SincLin2Filter::sinc(double value)
+{
+	if (value > 0.000001)
+	{
+		value *= M_PI;
+		return sin(value) / value;
+	}
+	else
+	{
+		return 1.0;
+	}
+}
+
+double SincLin2Filter::f(double value)
+{
+	value = fabs(value);
+
+	if (value < taps / 2.0)
+		return sinc(value);
+	else
+		return sinc(value)*((2.0 - (2.0 * value / taps)));
+
 }
 
 

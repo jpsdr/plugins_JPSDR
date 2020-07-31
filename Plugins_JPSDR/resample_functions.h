@@ -271,7 +271,6 @@ private:
   double taps;
 };
 
-
 class SinPowerFilter : public ResamplingFunction
 // SinPow kernel, used in SinPowResize
 {
@@ -284,5 +283,19 @@ private:
 double param;
 };
 
+class SincLin2Filter : public ResamplingFunction
+	/**
+	* SincLin2 filter, used in SincLin2Resize
+	**/
+{
+public:
+	SincLin2Filter(int _taps = 15);
+	double f(double x);
+	double support() { return taps; };
+
+private:
+	double sinc(double value);
+	double taps;
+};
 
 #endif  // __Reample_Functions_H__
