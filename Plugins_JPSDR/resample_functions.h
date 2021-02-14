@@ -298,4 +298,19 @@ private:
 	double taps;
 };
 
+class UserDefined2Filter : public ResamplingFunction
+	/**
+	  * User-defined by 2 samples filter, used in UDef2Resize
+	 **/
+{
+public:
+	UserDefined2Filter(double _b = 121.0, double _c = 19.0);
+	double f(double x);
+	double support() { return 2.0; }
+
+private:
+	double sinc(double value);
+	double a, b, c;
+};
+
 #endif  // __Reample_Functions_H__
