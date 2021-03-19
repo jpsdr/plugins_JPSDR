@@ -6295,7 +6295,7 @@ aWarp4::aWarp4(PClip _child, PClip _edges, int _depth, int _chroma, int _depthC,
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		env->ThrowError("aWarp4: first source must be excatly 4 times width and height of second source");
 	}
-    if (vi.pixel_type!=vi2.pixel_type)
+	if (!vi.IsSameColorspace(vi2))
 	{
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		env->ThrowError("aWarp4: both sources must have the colorspace");
