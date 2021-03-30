@@ -2520,6 +2520,8 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   filter_storage_luma(NULL), filter_storage_chroma(NULL),threads(_threads),sleep(_sleep),
   avsp(_avsp)
 {
+  int filter_sz;
+  
   src_width  = vi.width;
   src_height = vi.height;
   dst_width  = target_width;
@@ -2602,13 +2604,21 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 	  resampling_program_luma = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, bits_per_pixel, env);
 	  SizeH=dst_width;
   }
-  resampler_h_luma = GetResampler(true,resampling_program_luma,env);
 
-  if (vi.width<resampling_program_luma->filter_size)
+  if (resampling_program_luma==NULL)
   {
 	  FreeData();
 	  if (threads>1) poolInterface->DeAllocateAllThreads(true);
-	  env->ThrowError("ResizeHMT: Source width (%d) is too small for this resizing method, must be minimum of %d",vi.width,resampling_program_luma->filter_size);
+	  if (desample) env->ThrowError("ResizeHMT: Error while GetDesamplingProgram for luma!");
+	  else env->ThrowError("ResizeHMT: Error while GetResamplingProgram for luma!");
+  }
+
+  filter_sz=resampling_program_luma->filter_size;
+  if (vi.width<filter_sz)
+  {
+	  FreeData();
+	  if (threads>1) poolInterface->DeAllocateAllThreads(true);
+	  env->ThrowError("ResizeHMT: Source luma width (%d) is too small for this resizing method, must be minimum of %d!",vi.width,filter_sz);
   }
 
   if (desample && ((SizeH>vi.width) || (SizeH==-1)))
@@ -2652,18 +2662,30 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 		  bits_per_pixel,
 		  env);
 	}
-	resampler_h_chroma = GetResampler(true,resampling_program_chroma,env);
 
-	const int w_UV=vi.width >> shift_w;
-
-	if (w_UV<resampling_program_chroma->filter_size)
+	if (resampling_program_chroma==NULL)
 	{
 		FreeData();
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
-		env->ThrowError("ResizeHMT: Source chroma width (%d) is too small for this resizing method, must be minimum of %d",w_UV,resampling_program_chroma->filter_size);
+		if (desample) env->ThrowError("ResizeHMT: Error while GetDesamplingProgram for chroma!");
+		else env->ThrowError("ResizeHMT: Error while GetResamplingProgram for chroma!");
 	}
+
+	const int w_UV=vi.width >> shift_w;
+
+	filter_sz=resampling_program_chroma->filter_size;
+	if (w_UV<filter_sz)
+	{
+		FreeData();
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
+		env->ThrowError("ResizeHMT: Source chroma width (%d) is too small for this resizing method, must be minimum of %d!",w_UV,filter_sz);
+	}
+	
+	resampler_h_chroma = GetResampler(true,resampling_program_chroma,env);
   }
   
+  resampler_h_luma = GetResampler(true,resampling_program_luma,env);
+
   threads_number=CreateMTData(threads_number,src_width,vi.height,SizeH,vi.height,shift_w,shift_h);
 
 	if (threads_number>1)
@@ -2979,7 +3001,10 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   if (threads_number>1)
   {
 	if ((!poolInterface->RequestThreadPool(UserId,threads_number,MT_ThreadGF,nPool,false,true)) || (nPool==-1))
+	{
+		poolInterface->DeAllocateAllThreads(true);
 		env->ThrowError("ResizeHMT: Error with the TheadPool while requesting threadpool!");
+	}
   }
   
 	for(uint8_t i=0; i<threads_number; i++)
@@ -3283,7 +3308,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
     filter_storage_chroma_aligned(NULL), filter_storage_chroma_unaligned(NULL),
 	sleep(_sleep),threads(_threads),avsp(_avsp)
 {
-	int16_t i;
+	int16_t i,filter_sz;
 
     pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	grey = vi.IsY();
@@ -3369,14 +3394,20 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 	  SizeV=target_height;
   }
 
-  resampler_luma_aligned   = GetResampler(true,filter_storage_luma_aligned,resampling_program_luma);
-  resampler_luma_unaligned = GetResampler(false,filter_storage_luma_unaligned,resampling_program_luma);
-
-  if (vi.height<resampling_program_luma->filter_size)
+  if (resampling_program_luma==NULL)
   {
 	  FreeData();
 	  if (threads>1) poolInterface->DeAllocateAllThreads(true);
-	  env->ThrowError("ResizeVMT: Source height (%d) is too small for this resizing method, must be minimum of %d",vi.height,resampling_program_luma->filter_size);
+	  if (desample) env->ThrowError("ResizeVMT: Error while GetDesamplingProgram for luma!");
+	  else env->ThrowError("ResizeVMT: Error while GetResamplingProgram for luma!");
+  }
+
+  filter_sz=resampling_program_luma->filter_size;
+  if (vi.height<filter_sz)
+  {
+	  FreeData();
+	  if (threads>1) poolInterface->DeAllocateAllThreads(true);
+	  env->ThrowError("ResizeVMT: Source luma height (%d) is too small for this resizing method, must be minimum of %d!",vi.height,filter_sz);
   }
 
   if (desample && ((SizeV>vi.height) || (SizeV==-1)))
@@ -3428,6 +3459,14 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 									  bits_per_pixel,
 						              env);
 	}
+	if (resampling_program_chroma==NULL)
+	{
+		FreeData();
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
+		if (desample) env->ThrowError("ResizeVMT: Error while GetDesamplingProgram for chroma!");
+		else env->ThrowError("ResizeVMT: Error while GetResamplingProgram for chroma!");
+	}	
+
 	src_pitch_table_chromaU = (int *)_aligned_malloc(sizeof(int) * (vi.height >> shift_h), 64);
 	src_pitch_table_chromaV = (int *)_aligned_malloc(sizeof(int) * (vi.height >> shift_h), 64);
 	if ((src_pitch_table_chromaU==NULL) || (src_pitch_table_chromaV==NULL))
@@ -3436,18 +3475,23 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		env->ThrowError("ResizeVMT: Could not reserve memory in a resampler.");
 	}	
-    resampler_chroma_aligned = GetResampler(true,filter_storage_chroma_aligned,resampling_program_chroma);
-    resampler_chroma_unaligned = GetResampler(false,filter_storage_chroma_unaligned,resampling_program_chroma);
 
 	const int h_UV=vi.height >> shift_h;
 
-	if (h_UV<resampling_program_chroma->filter_size)
+    filter_sz=resampling_program_chroma->filter_size;
+	if (h_UV<filter_sz)
 	{
 		FreeData();
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
-		env->ThrowError("ResizeVMT: Source chroma height (%d) is too small for this resizing method, must be minimum of %d",h_UV,resampling_program_chroma->filter_size);
+		env->ThrowError("ResizeVMT: Source chroma height (%d) is too small for this resizing method, must be minimum of %d!",h_UV,filter_sz);
 	}
+	
+    resampler_chroma_aligned = GetResampler(true,filter_storage_chroma_aligned,resampling_program_chroma);
+    resampler_chroma_unaligned = GetResampler(false,filter_storage_chroma_unaligned,resampling_program_chroma);
   }
+
+  resampler_luma_aligned   = GetResampler(true,filter_storage_luma_aligned,resampling_program_luma);
+  resampler_luma_unaligned = GetResampler(false,filter_storage_luma_unaligned,resampling_program_luma);
 
   threads_number=CreateMTData(threads_number,work_width,vi.height,work_width,SizeV,shift_w,shift_h);
 
@@ -4236,6 +4280,8 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 
   if (desample) SizeH=f->GetDesamplingData(target_width, subrange_left, subrange_width, vi.width,bits_per_pixel,shift,env);
   else SizeH=target_width;
+  
+  if (SizeH==-1) env->ThrowError("ResizeMT: Error while GetDesamplingData");
 
   bool fast_resize=((env->GetCPUFlags() & CPUF_SSSE3) == CPUF_SSSE3 ) && vi.IsPlanar();
 

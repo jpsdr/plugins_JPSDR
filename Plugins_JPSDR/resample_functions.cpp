@@ -371,12 +371,22 @@ ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, dou
 
   ResamplingProgram *program = new ResamplingProgram(fir_filter_size, source_size, target_size, crop_start, crop_size,bits_per_pixel, env);
 
+  if (!program->StatusOk)
+  {
+	  delete program;
+	  return NULL;
+  }
+
   // this variable translates such that the image center remains fixed
   double pos;
   double pos_step = crop_size/target_size;
 
   if (source_size <= filter_support)
-    env->ThrowError("Resize: Source image too small for this resize method. Width=%d, Support=%d",source_size,int(ceil(filter_support)));
+  {
+	  delete program;
+	  return NULL;
+  }
+    //env->ThrowError("Resize: Source image too small for this resize method. Width=%d, Support=%d",source_size,int(ceil(filter_support)));
 
   if (fir_filter_size == 1) // PointResize
     pos = crop_start;
@@ -476,12 +486,22 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
 
   ResamplingProgram *program = new ResamplingProgram(fir_filter_size, source_size, target_size, crop_start, crop_size, 32, env);
 
+  if (!program->StatusOk)
+  {
+	  delete program;
+	  return NULL;
+  }
+
   // this variable translates such that the image center remains fixed
   double pos;
   double pos_step = crop_size/target_size;
 
   if ((source_size<=filter_support) || (target_size<=filter_support))
-    env->ThrowError("Resize: Source or target image too small for this resize method. Width=%d,%d, Support=%d",source_size,target_size,int(ceil(filter_support)));
+  {
+	  delete program;
+	  return NULL;
+  }
+    //env->ThrowError("Resize: Source or target image too small for this resize method. Width=%d,%d, Support=%d",source_size,target_size,int(ceil(filter_support)));
 
   if (fir_filter_size == 1) // PointResize
     pos = crop_start;
@@ -634,6 +654,12 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
 
   program = new ResamplingProgram(fir_filter_size, target_size, SizeS, 0, SizeS, bits_per_pixel, env);
 
+  if (!program->StatusOk)
+  {
+	  delete program;
+	  return NULL;
+  }
+
   if (SizeS0<SizeS) SizeM=SizeS0;
   else SizeM=SizeS;
 
@@ -742,12 +768,22 @@ int ResamplingFunction::GetDesamplingData(int source_size, double crop_start, do
 
   ResamplingProgram *program = new ResamplingProgram(fir_filter_size, source_size, target_size, crop_start, crop_size, 32, env);
 
+  if (!program->StatusOk)
+  {
+	  delete program;
+	  return -1;
+  }
+
   // this variable translates such that the image center remains fixed
   double pos;
   double pos_step = crop_size/target_size;
 
   if ((source_size<=filter_support) || (target_size<=filter_support))
-    env->ThrowError("Resize: Source or target image too small for this resize method. Width=%d,%d, Support=%d",source_size,target_size,int(ceil(filter_support)));
+  {
+	  delete program;
+	  return -1;
+  }
+    //env->ThrowError("Resize: Source or target image too small for this resize method. Width=%d,%d, Support=%d",source_size,target_size,int(ceil(filter_support)));
 
   if (fir_filter_size == 1) // PointResize
     pos = crop_start;

@@ -75,7 +75,7 @@ struct ResamplingProgram
   float* pixel_coefficient_float;
 
   // anti-overread helpers for float resizer simd code reading 8 pixels from a given offset
-  bool overread_possible;
+  bool overread_possible,StatusOk;
   int source_overread_offset; // offset from where reading 8 bytes requires masking garbage on the right side
   int source_overread_beyond_targetx;
 
@@ -83,6 +83,7 @@ struct ResamplingProgram
     : filter_size(filter_size), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size), bits_per_pixel(bits_per_pixel),
     pixel_offset(NULL), pixel_coefficient(NULL), pixel_coefficient_float(NULL)
   {
+	StatusOk = true;
     overread_possible = false;
     source_overread_offset = -1;
     source_overread_beyond_targetx = -1;
@@ -102,7 +103,8 @@ struct ResamplingProgram
 	  myalignedfree(pixel_coefficient_float);
 	  myalignedfree(pixel_coefficient);
       myalignedfree(pixel_offset);
-      env->ThrowError("ResamplingProgram: Could not reserve memory.");
+	  StatusOk = false;
+      //env->ThrowError("ResamplingProgram: Could not reserve memory.");
     }
 	
   };
