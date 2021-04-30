@@ -4,5 +4,5 @@ Merge of :
 AutoYUY2 v4.1.3
 NNEDI3 v0.9.4.57
 ResampleMT v2.3.3
-aWarSharpMT v2.1.3
+aWarSharpMT v2.1.4
 HDRTools : v0.6.1
