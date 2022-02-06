@@ -930,17 +930,6 @@ static bool is_cplace_mpeg2(const AVSValue &args, int pos)
 }
 
 
-// thresh: 0..255
-// blur:   0..?
-// type:   0..1
-// depth:  -128..127
-// chroma modes:
-// 0 - zero
-// 1 - don't care
-// 2 - copy
-// 3 - process
-// 4 - guide by luma - warp only
-// remap from MarcFD's aWarpSharp: thresh=_thresh*256, blur=_blurlevel, type= (bm=0)->1, (bm=2)->0, depth=_depth*_blurlevel/2, chroma= 0->2, 1->4, 2->3
 AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnvironment *env)
 {
 	int threads,prefetch,thread_level;
@@ -958,6 +947,8 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
 		BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
 
+	bool negativePrefetch=false;
+
   switch ((int)(size_t)user_data)
   {
   case 0 :
@@ -972,11 +963,14 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  prefetch=args[19].AsInt(0);
 	  thread_level=args[20].AsInt(6);
 
+	  negativePrefetch=(prefetch<0)?true:false;
+	  prefetch=abs(prefetch);
+
 	  if ((threads<0) || (threads>MAX_MT_THREADS))
 		  env->ThrowError("aWarpSharp2: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	  if (prefetch==0) prefetch=1;
-	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		  env->ThrowError("aWarpSharp2: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	  if (prefetch>MAX_THREAD_POOL)
+		  env->ThrowError("aWarpSharp2: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("aWarpSharp2: [ThreadLevel] must be between 1 and 7.");
 
@@ -1040,7 +1034,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  args[13].Defined() ? threshC=args[13].AsInt(-1) : threshC=thresh;
 
     return new aWarpSharp(args[0].AsClip(),thresh,blur,blurt,depth,args[5].AsInt(4),depthC,is_cplace_mpeg2(args,7),
-		blurV,depthV,depthVC,blurC,blurVC,threshC,threads_number,sleep,avsp,env);
+		blurV,depthV,depthVC,blurC,blurVC,threshC,threads_number,sleep,negativePrefetch,avsp,env);
 	break;
 	  }
   case 1 :
@@ -1060,11 +1054,14 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  prefetch=args[12].AsInt(0);
 	  thread_level=args[13].AsInt(6);
 
+	  negativePrefetch=(prefetch<0)?true:false;
+	  prefetch=abs(prefetch);
+
 	  if ((threads<0) || (threads>MAX_MT_THREADS))
 		  env->ThrowError("aWarpSharp: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	  if (prefetch==0) prefetch=1;
-	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		  env->ThrowError("aWarpSharp: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	  if (prefetch>MAX_THREAD_POOL)
+		  env->ThrowError("aWarpSharp: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("aWarpSharp: [ThreadLevel] must be between 1 and 7.");
 
@@ -1127,7 +1124,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  threshC=thresh;
 
     return new aWarpSharp(args[0].AsClip(),thresh,blur,blurt,depth,(cm<4)?map[cm]:-1,depthC,false,
-		blurV,depthV,depthVC,blurC,blurVC,threshC,threads_number,sleep,avsp,env);
+		blurV,depthV,depthVC,blurC,blurVC,threshC,threads_number,sleep,negativePrefetch,avsp,env);
 	break;
 	  }
   case 2 :
@@ -1143,11 +1140,14 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aSobel: SSE2 capable CPU is required");
 
+	  negativePrefetch=(prefetch<0)?true:false;
+	  prefetch=abs(prefetch);
+
 	  if ((threads<0) || (threads>MAX_MT_THREADS))
 		  env->ThrowError("aSobel: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	  if (prefetch==0) prefetch=1;
-	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		  env->ThrowError("aSobel: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	  if (prefetch>MAX_THREAD_POOL)
+		  env->ThrowError("aSobel: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("aSobel: [ThreadLevel] must be between 1 and 7.");
 
@@ -1201,7 +1201,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  thresh=args[1].AsInt(0x80);
 	  args[3].Defined() ? threshC=args[3].AsInt(-1) : threshC=thresh;
 
-	return new aSobel(args[0].AsClip(),thresh,args[2].AsInt(1),threshC,threads_number,sleep,avsp,env);
+	return new aSobel(args[0].AsClip(),thresh,args[2].AsInt(1),threshC,threads_number,sleep,negativePrefetch,avsp,env);
 	break;
 	  }
   case 3 :
@@ -1217,11 +1217,14 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aBlur: SSE2 capable CPU is required");
 
+	  negativePrefetch=(prefetch<0)?true:false;
+	  prefetch=abs(prefetch);
+
 	  if ((threads<0) || (threads>MAX_MT_THREADS))
 		  env->ThrowError("aBlur: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	  if (prefetch==0) prefetch=1;
-	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		  env->ThrowError("aBlur: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	  if (prefetch>MAX_THREAD_POOL)
+		  env->ThrowError("aBlur: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("aBlur: [ThreadLevel] must be between 1 and 7.");
 
@@ -1278,7 +1281,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  args[5].Defined() ? blurC=args[5].AsInt(-1) : blurC=(blur+1)>>1;
 	  args[6].Defined() ? blurVC=args[6].AsInt(-1) : blurVC=blurC;
 
-    return new aBlur(args[0].AsClip(),blur,blurt,args[3].AsInt(1),blurV,blurC,blurVC,threads_number,sleep,avsp,env);
+    return new aBlur(args[0].AsClip(),blur,blurt,args[3].AsInt(1),blurV,blurC,blurVC,threads_number,sleep,negativePrefetch,avsp,env);
 	break;
 	  }
   case 4 :
@@ -1294,11 +1297,14 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aWarp: SSE2 capable CPU is required");
 
+	  negativePrefetch=(prefetch<0)?true:false;
+	  prefetch=abs(prefetch);
+
 	  if ((threads<0) || (threads>MAX_MT_THREADS))
 		  env->ThrowError("aWarp: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	  if (prefetch==0) prefetch=1;
-	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		  env->ThrowError("aWarp: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	  if (prefetch>MAX_THREAD_POOL)
+		  env->ThrowError("aWarp: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("aWarp: [ThreadLevel] must be between 1 and 7.");
 
@@ -1355,7 +1361,7 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  args[7].Defined() ? depthVC=args[7].AsInt(128) : depthVC=depthC;
 
     return new aWarp(args[0].AsClip(),args[1].AsClip(),depth,args[3].AsInt(4),depthC,is_cplace_mpeg2(args,5),
-		depthV,depthVC,threads_number,sleep,avsp,env);
+		depthV,depthVC,threads_number,sleep,negativePrefetch,avsp,env);
 	break;
 	  }
   case 5 :
@@ -1370,11 +1376,14 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 
 	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aWarp4: SSE2 capable CPU is required");
 
+	  negativePrefetch=(prefetch<0)?true:false;
+	  prefetch=abs(prefetch);
+
 	  if ((threads<0) || (threads>MAX_MT_THREADS))
 		  env->ThrowError("aWarp4: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	  if (prefetch==0) prefetch=1;
-	  if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		  env->ThrowError("aWarp4: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	  if (prefetch>MAX_THREAD_POOL)
+		  env->ThrowError("aWarp4: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("aWarp4: [ThreadLevel] must be between 1 and 7.");
 
@@ -1431,13 +1440,25 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  args[7].Defined() ? depthVC=args[7].AsInt(128) : depthVC=depthC;
 
     return new aWarp4(args[0].AsClip(),args[1].AsClip(),depth,args[3].AsInt(4),depthC,is_cplace_mpeg2(args,5),
-		depthV,depthVC,threads_number,sleep,avsp,env);
+		depthV,depthVC,threads_number,sleep,negativePrefetch,avsp,env);
 	break;
 	  }
   default : break;
   }
   return NULL;
 }
+
+// thresh: 0..255
+// blur:   0..?
+// type:   0..1
+// depth:  -128..127
+// chroma modes:
+// 0 - zero
+// 1 - don't care
+// 2 - copy
+// 3 - process
+// 4 - guide by luma - warp only
+// remap from MarcFD's aWarpSharp: thresh=_thresh*256, blur=_blurlevel, type= (bm=0)->1, (bm=2)->0, depth=_depth*_blurlevel/2, chroma= 0->2, 1->4, 2->3
 
 
 /***********************/
@@ -1489,6 +1510,8 @@ AVSValue __cdecl Create_ConvertYUVtoLinearRGB(AVSValue args, void* user_data, IS
 	int thread_level=args[17].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if (!avsp) OutputMode=0;
 
@@ -1502,8 +1525,8 @@ AVSValue __cdecl Create_ConvertYUVtoLinearRGB(AVSValue args, void* user_data, IS
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConvertYUVtoLinearRGB: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConvertYUVtoLinearRGB: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertYUVtoLinearRGB: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConvertYUVtoLinearRGB: [ThreadLevel] must be between 1 and 7.");
 
@@ -1560,7 +1583,7 @@ AVSValue __cdecl Create_ConvertYUVtoLinearRGB(AVSValue args, void* user_data, IS
 	}
 
 	return new ConvertYUVtoLinearRGB(args[0].AsClip(),Color,OutputMode,HDRMode,HLG_Lb,HLG_Lw,HLGColor,OOTF,EOTF,fullrange,
-		mpeg2c,threads_number,sleep,env);
+		mpeg2c,threads_number,sleep,negativePrefetch,env);
 }
 
 
@@ -1614,6 +1637,8 @@ AVSValue __cdecl Create_ConvertYUVtoXYZ(AVSValue args, void* user_data, IScriptE
 	int thread_level=args[26].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if (!avsp) OutputMode=0;
 
@@ -1678,8 +1703,8 @@ AVSValue __cdecl Create_ConvertYUVtoXYZ(AVSValue args, void* user_data, IScriptE
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConvertYUVtoXYZ: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConvertYUVtoXYZ: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertYUVtoXYZ: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConvertYUVtoXYZ: [ThreadLevel] must be between 1 and 7.");
 
@@ -1736,7 +1761,7 @@ AVSValue __cdecl Create_ConvertYUVtoXYZ(AVSValue args, void* user_data, IScriptE
 	}
 
 	return new ConvertYUVtoXYZ(args[0].AsClip(),Color,OutputMode,HDRMode,HLG_Lb,HLG_Lw,Crosstalk,HLGColor,OOTF,EOTF,
-		fullrange,mpeg2c,Rx,Ry,Gx,Gy,Bx,By,Wx,Wy,threads_number,sleep,env);
+		fullrange,mpeg2c,Rx,Ry,Gx,Gy,Bx,By,Wx,Wy,threads_number,sleep,negativePrefetch,env);
 }
 
 
@@ -1788,6 +1813,8 @@ AVSValue __cdecl Create_ConvertLinearRGBtoYUV(AVSValue args, void* user_data, IS
 	int thread_level=args[18].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if ((Color<0) || (Color>4))
 		env->ThrowError("ConvertLinearRGBtoYUV: [Color] must be 0 (BT2100), 1 (BT2020), 2 (BT709), 3 (BT601_525), 4 (BT601_625)");
@@ -1799,8 +1826,8 @@ AVSValue __cdecl Create_ConvertLinearRGBtoYUV(AVSValue args, void* user_data, IS
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConvertLinearRGBtoYUV: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConvertLinearRGBtoYUV: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertLinearRGBtoYUV: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConvertLinearRGBtoYUV: [ThreadLevel] must be between 1 and 7.");
 
@@ -1857,7 +1884,7 @@ AVSValue __cdecl Create_ConvertLinearRGBtoYUV(AVSValue args, void* user_data, IS
 	}
 
 	return new ConvertLinearRGBtoYUV(args[0].AsClip(),Color,OutputMode,HDRMode,HLG_Lb,HLG_Lw,HLGColor,OOTF,EOTF,fullrange,
-		mpeg2c,fastmode,threads_number,sleep,env);
+		mpeg2c,fastmode,threads_number,sleep,negativePrefetch,env);
 }
 
 
@@ -1910,6 +1937,8 @@ AVSValue __cdecl Create_ConvertRGBtoXYZ(AVSValue args, void* user_data, IScriptE
 	int thread_level=args[25].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if (!avsp) OutputMode=0;
 
@@ -1974,8 +2003,8 @@ AVSValue __cdecl Create_ConvertRGBtoXYZ(AVSValue args, void* user_data, IScriptE
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConvertRGBtoXYZ: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConvertRGBtoXYZ: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertRGBtoXYZ: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConvertRGBtoXYZ: [ThreadLevel] must be between 1 and 7.");
 
@@ -2032,7 +2061,7 @@ AVSValue __cdecl Create_ConvertRGBtoXYZ(AVSValue args, void* user_data, IScriptE
 	}
 
 	return new ConvertRGBtoXYZ(args[0].AsClip(),Color,OutputMode,HDRMode,HLG_Lb,HLG_Lw,crosstalk,HLGColor,
-		OOTF,EOTF,fastmode,Rx,Ry,Gx,Gy,Bx,By,Wx,Wy,threads_number,sleep,env);
+		OOTF,EOTF,fastmode,Rx,Ry,Gx,Gy,Bx,By,Wx,Wy,threads_number,sleep,negativePrefetch,env);
 }
 
 
@@ -2094,6 +2123,8 @@ AVSValue __cdecl Create_ConvertXYZtoYUV(AVSValue args, void* user_data, IScriptE
 	int thread_level=args[36].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if ((Color<0) || (Color>4))
 		env->ThrowError("ConvertXYZtoYUV: [Color] must be 0 (BT2100), 1 (BT2020), 2 (BT709), 3 (BT601_525), 4 (BT601_625)");
@@ -2232,8 +2263,8 @@ AVSValue __cdecl Create_ConvertXYZtoYUV(AVSValue args, void* user_data, IScriptE
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConvertXYZtoYUV: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConvertXYZtoYUV: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertXYZtoYUV: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConvertXYZtoYUV: [ThreadLevel] must be between 1 and 7.");
 
@@ -2291,7 +2322,7 @@ AVSValue __cdecl Create_ConvertXYZtoYUV(AVSValue args, void* user_data, IScriptE
 
 	return new ConvertXYZtoYUV(args[0].AsClip(),Color,OutputMode,HDRMode,HLG_Lb,HLG_Lw,crosstalk,HLGColor,
 		OOTF,EOTF,fullrange,mpeg2c,fastmode,Rx,Ry,Gx,Gy,Bx,By,Wx,Wy,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,
-		threads_number,sleep,env);
+		threads_number,sleep,negativePrefetch,env);
 }
 
 
@@ -2348,6 +2379,8 @@ AVSValue __cdecl Create_ConvertXYZtoRGB(AVSValue args, void* user_data, IScriptE
 	int thread_level=args[34].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if ((Color<0) || (Color>4))
 		env->ThrowError("ConvertXYZtoRGB: [Color] must be 0 (BT2100), 1 (BT2020), 2 (BT709), 3 (BT601_525), 4 (BT601_625)");
@@ -2487,8 +2520,8 @@ AVSValue __cdecl Create_ConvertXYZtoRGB(AVSValue args, void* user_data, IScriptE
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConvertXYZtoRGB: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConvertXYZtoRGB: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertXYZtoRGB: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConvertXYZtoRGB: [ThreadLevel] must be between 1 and 7.");
 
@@ -2546,7 +2579,7 @@ AVSValue __cdecl Create_ConvertXYZtoRGB(AVSValue args, void* user_data, IScriptE
 
 	return new ConvertXYZtoRGB(args[0].AsClip(),Color,OutputMode,HDRMode,HLG_Lb,HLG_Lw,crosstalk,HLGColor,
 		OOTF,EOTF,fastmode,Rx,Ry,Gx,Gy,Bx,By,Wx,Wy,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,
-		threads_number,sleep,env);
+		threads_number,sleep,negativePrefetch,env);
 }
 
 
@@ -2574,12 +2607,14 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_HDRtoSDR(AVSValue args, void* user_data
 	int thread_level=args[10].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConvertXYZ_Scale_HDRtoSDR: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConvertXYZ_Scale_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertXYZ_Scale_HDRtoSDR: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConvertXYZ_Scale_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
@@ -2635,7 +2670,7 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_HDRtoSDR(AVSValue args, void* user_data
 		}
 	}
 
-	return new ConvertXYZ_Scale_HDRtoSDR(args[0].AsClip(),Coeff_X,Coeff_Y,Coeff_Z,threads_number,sleep,env);
+	return new ConvertXYZ_Scale_HDRtoSDR(args[0].AsClip(),Coeff_X,Coeff_Y,Coeff_Z,threads_number,sleep,negativePrefetch,env);
 }
 
 
@@ -2663,12 +2698,14 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_SDRtoHDR(AVSValue args, void* user_data
 		env->ThrowError("ConvertXYZ_Scale_SDRtoHDR: Wrong parameter value!");
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConvertXYZ_Scale_SDRtoHDR: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConvertXYZ_Scale_SDRtoHDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertXYZ_Scale_SDRtoHDR: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConvertXYZ_Scale_SDRtoHDR: [ThreadLevel] must be between 1 and 7.");
 
@@ -2724,7 +2761,7 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_SDRtoHDR(AVSValue args, void* user_data
 		}
 	}
 
-	return new ConvertXYZ_Scale_SDRtoHDR(args[0].AsClip(),Coeff_X,Coeff_Y,Coeff_Z,threads_number,sleep,env);
+	return new ConvertXYZ_Scale_SDRtoHDR(args[0].AsClip(),Coeff_X,Coeff_Y,Coeff_Z,threads_number,sleep,negativePrefetch,env);
 }
 
 
@@ -2845,12 +2882,14 @@ AVSValue __cdecl Create_ConvertXYZ_Hable_HDRtoSDR(AVSValue args, void* user_data
 	int thread_level=args[41].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConvertXYZ_Hable_HDRtoSDR: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConvertXYZ_Hable_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertXYZ_Hable_HDRtoSDR: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConvertXYZ_Hable_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
@@ -2907,7 +2946,7 @@ AVSValue __cdecl Create_ConvertXYZ_Hable_HDRtoSDR(AVSValue args, void* user_data
 	}
 
 	return new ConvertXYZ_Hable_HDRtoSDR(args[0].AsClip(),exp_X,w_X,a_X,b_X,c_X,d_X,e_X,f_X,exp_Y,w_Y,a_Y,b_Y,c_Y,d_Y,e_Y,f_Y,
-		exp_Z,w_Z,a_Z,b_Z,c_Z,d_Z,e_Z,f_Z,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,fastmode,threads_number,sleep,env);
+		exp_Z,w_Z,a_Z,b_Z,c_Z,d_Z,e_Z,f_Z,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,fastmode,threads_number,sleep,negativePrefetch,env);
 }
 
 
@@ -2962,12 +3001,14 @@ AVSValue __cdecl Create_ConvertRGB_Hable_HDRtoSDR(AVSValue args, void* user_data
 	int thread_level=args[32].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConvertRGB_Hable_HDRtoSDR: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConvertRGB_Hable_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertRGB_Hable_HDRtoSDR: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConvertRGB_Hable_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
@@ -3024,7 +3065,7 @@ AVSValue __cdecl Create_ConvertRGB_Hable_HDRtoSDR(AVSValue args, void* user_data
 	}
 
 	return new ConvertRGB_Hable_HDRtoSDR(args[0].AsClip(),exp_R,w_R,a_R,b_R,c_R,d_R,e_R,f_R,exp_G,w_G,a_G,b_G,c_G,d_G,e_G,f_G,
-		exp_B,w_B,a_B,b_B,c_B,d_B,e_B,f_B,fastmode,threads_number,sleep,env);
+		exp_B,w_B,a_B,b_B,c_B,d_B,e_B,f_B,fastmode,threads_number,sleep,negativePrefetch,env);
 }
 
 
@@ -3127,12 +3168,14 @@ AVSValue __cdecl Create_ConvertXYZ_Mobius_HDRtoSDR(AVSValue args, void* user_dat
 	int thread_level=args[26].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConvertXYZ_Mobius_HDRtoSDR: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConvertXYZ_Mobius_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertXYZ_Mobius_HDRtoSDR: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConvertXYZ_Mobius_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
@@ -3189,7 +3232,7 @@ AVSValue __cdecl Create_ConvertXYZ_Mobius_HDRtoSDR(AVSValue args, void* user_dat
 	}
 
 	return new ConvertXYZ_Mobius_HDRtoSDR(args[0].AsClip(),exp_X,trans_X,peak_X,exp_Y,trans_Y,peak_Y,
-		exp_Z,trans_Z,peak_Z,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,fastmode,threads_number,sleep,env);
+		exp_Z,trans_Z,peak_Z,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,fastmode,threads_number,sleep,negativePrefetch,env);
 }
 
 
@@ -3226,12 +3269,14 @@ AVSValue __cdecl Create_ConvertRGB_Mobius_HDRtoSDR(AVSValue args, void* user_dat
 	int thread_level=args[17].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConvertRGB_Mobius_HDRtoSDR: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConvertRGB_Mobius_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertRGB_Mobius_HDRtoSDR: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConvertRGB_Mobius_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
@@ -3288,7 +3333,7 @@ AVSValue __cdecl Create_ConvertRGB_Mobius_HDRtoSDR(AVSValue args, void* user_dat
 	}
 
 	return new ConvertRGB_Mobius_HDRtoSDR(args[0].AsClip(),exp_R,trans_R,peak_R,exp_G,trans_G,peak_G,
-		exp_B,trans_B,peak_B,fastmode,threads_number,sleep,env);
+		exp_B,trans_B,peak_B,fastmode,threads_number,sleep,negativePrefetch,env);
 }
 
 
@@ -3395,12 +3440,14 @@ AVSValue __cdecl Create_ConvertXYZ_Reinhard_HDRtoSDR(AVSValue args, void* user_d
 	int thread_level=args[26].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConvertXYZ_Reinhard_HDRtoSDR: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConvertXYZ_Reinhard_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+		env->ThrowError("ConvertXYZ_Reinhard_HDRtoSDR: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConvertXYZ_Reinhard_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
@@ -3457,7 +3504,7 @@ AVSValue __cdecl Create_ConvertXYZ_Reinhard_HDRtoSDR(AVSValue args, void* user_d
 	}
 
 	return new ConvertXYZ_Reinhard_HDRtoSDR(args[0].AsClip(),exp_X,contr_X,peak_X,exp_Y,contr_Y,peak_Y,
-		exp_Z,contr_Z,peak_Z,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,fastmode,threads_number,sleep,env);
+		exp_Z,contr_Z,peak_Z,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,fastmode,threads_number,sleep,negativePrefetch,env);
 }
 
 
@@ -3498,12 +3545,14 @@ AVSValue __cdecl Create_ConvertRGB_Reinhard_HDRtoSDR(AVSValue args, void* user_d
 		env->ThrowError("ConvertXYZ_Reinhard_HDRtoSDR: Wrong parameter value!");
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConvertRGB_Reinhard_HDRtoSDR: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConvertRGB_Reinhard_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertRGB_Reinhard_HDRtoSDR: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConvertRGB_Reinhard_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
@@ -3560,7 +3609,7 @@ AVSValue __cdecl Create_ConvertRGB_Reinhard_HDRtoSDR(AVSValue args, void* user_d
 	}
 
 	return new ConvertRGB_Reinhard_HDRtoSDR(args[0].AsClip(),exp_R,contr_R,peak_R,exp_G,contr_G,peak_G,
-		exp_B,contr_B,peak_B,fastmode,threads_number,sleep,env);
+		exp_B,contr_B,peak_B,fastmode,threads_number,sleep,negativePrefetch,env);
 }
 
 
@@ -3591,12 +3640,14 @@ AVSValue __cdecl Create_ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR(AVSValue args, v
 		env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: Wrong parameter value!");
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
@@ -3653,7 +3704,7 @@ AVSValue __cdecl Create_ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR(AVSValue args, v
 	}
 
 	return new ConvertLinearRGBtoYUV_BT2446_A_HDRtoSDR(args[0].AsClip(),Lhdr,Lsdr,CoeffAdj,
-		fastmode,threads_number,sleep,env);
+		fastmode,threads_number,sleep,negativePrefetch,env);
 }
 
 
@@ -3759,12 +3810,14 @@ AVSValue __cdecl Create_ConverXYZ_BT2446_C_HDRtoSDR(AVSValue args, void* user_da
 	int thread_level=args[27].AsInt(6);
 
 	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
 
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL))
-		env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("ConverXYZ_BT2446_C_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
 
@@ -3821,7 +3874,7 @@ AVSValue __cdecl Create_ConverXYZ_BT2446_C_HDRtoSDR(AVSValue args, void* user_da
 	}
 
 	return new ConverXYZ_BT2446_C_HDRtoSDR(args[0].AsClip(),ChromaC,PQMode,Lhdr,Lsdr,pct_ref,pct_ip,pct_wp,
-		pct_sdr_skin,pct_hdr_skin,WhiteShift,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,fastmode,threads_number,sleep,env);
+		pct_sdr_skin,pct_hdr_skin,WhiteShift,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,fastmode,threads_number,sleep,negativePrefetch,env);
 }
 
 

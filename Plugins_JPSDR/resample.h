@@ -41,7 +41,7 @@
 #include "./resample_functions.h"
 #include "./ThreadPoolInterface.h"
 
-#define RESAMPLE_MT_VERSION "ResampleMT 2.3.4 JPSDR"
+#define RESAMPLE_MT_VERSION "ResampleMT 2.3.5 JPSDR"
 
 // Resizer function pointer
 typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2);
@@ -75,7 +75,8 @@ class FilteredResizeH : public GenericVideoFilter
 {
 public:
   FilteredResizeH( PClip _child, double subrange_left, double subrange_width, int target_width, uint8_t _threads,
-	  bool _sleep,int range_mode,bool desample,int accuracy,bool _avsp, ResamplingFunction* func, IScriptEnvironment* env );
+	  bool _sleep,int range_mode,bool desample,int accuracy, bool negativePrefetch,
+	  bool _avsp, ResamplingFunction* func, IScriptEnvironment* env );
   virtual ~FilteredResizeH(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
@@ -137,7 +138,8 @@ class FilteredResizeV : public GenericVideoFilter
 {
 public:
   FilteredResizeV( PClip _child, double subrange_top, double subrange_height, int target_height, uint8_t _threads,
-	  bool _sleep,int range_mode,bool desample,int accuracy,int ChromaS,uint8_t ShiftC, bool _avsp,ResamplingFunction* func, IScriptEnvironment* env);
+	  bool _sleep,int range_mode,bool desample,int accuracy,int ChromaS,uint8_t ShiftC, bool negativePrefetch,
+	  bool _avsp,ResamplingFunction* func, IScriptEnvironment* env);
   virtual ~FilteredResizeV(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
@@ -209,11 +211,12 @@ class FilteredResizeMT
 {
 public:
 static PClip CreateResizeV( PClip clip, double subrange_top, double subrange_height, int target_height, uint8_t _threads,
-	                         bool _sleep,int range_mode,bool desample,int accuracy,int ChromaS,uint8_t ShiftC,bool _avsp,ResamplingFunction* func,
+	                         bool _sleep,int range_mode,bool desample,int accuracy,int ChromaS,uint8_t ShiftC, bool negativePrefetch,
+							 bool _avsp,ResamplingFunction* func,
 							 IScriptEnvironment* env );
 static PClip CreateResizeH( PClip clip, double subrange_top, double subrange_height, int target_height, uint8_t _threads,
-	                         bool _sleep,int range_mode,bool desample,int accuracy,bool _avsp,ResamplingFunction* func,
-							 IScriptEnvironment* env );
+	                         bool _sleep,int range_mode,bool desample,int accuracy, bool negativePrefetch,
+							 bool _avsp,ResamplingFunction* func, IScriptEnvironment* env );
 
 static PClip CreateResize( PClip clip, int target_width, int target_height, int _threads,
 	bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,bool _sleep,int prefetch,int range_mode,
