@@ -50,7 +50,7 @@ typedef struct _MT_Data_Info_AutoYUY2
 class AutoYUY2 : public GenericVideoFilter
 {
 public:
-	AutoYUY2(PClip _child, int _threshold, int _mode, int _output,uint8_t _threads, bool _sleep, IScriptEnvironment* env);
+	AutoYUY2(PClip _child, int _threshold, int _mode, int _output,uint8_t _threads, bool _sleep, bool negativePrefetch, IScriptEnvironment* env);
 	virtual ~AutoYUY2();
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 

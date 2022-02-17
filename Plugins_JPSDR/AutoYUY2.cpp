@@ -6776,7 +6776,7 @@ static void Convert_Test_YUY2(const MT_Data_Info_AutoYUY2 &mt_data_inf,const uin
 }
 
 
-AutoYUY2::AutoYUY2(PClip _child, int _threshold, int _mode,  int _output, uint8_t _threads,bool _sleep,IScriptEnvironment* env) :
+AutoYUY2::AutoYUY2(PClip _child, int _threshold, int _mode,  int _output, uint8_t _threads,bool _sleep, bool negativePrefetch,IScriptEnvironment* env) :
 	GenericVideoFilter(_child), threshold(_threshold), mode(_mode), output(_output), threads(_threads),sleep(_sleep)
 {
 	bool ok;
@@ -6899,6 +6899,14 @@ AutoYUY2::AutoYUY2(PClip _child, int _threshold, int _mode,  int _output, uint8_
 			FreeData();
 			poolInterface->DeAllocateAllThreads(true);
 			env->ThrowError("AutoYUY2: Error with the TheadPool while getting UserId!");
+		}
+		if (negativePrefetch)
+		{
+			if (!poolInterface->DisableWaitonRequest(UserId))
+			{
+				poolInterface->DeAllocateAllThreads(true);
+				env->ThrowError("AutoYUY2: Error with the TheadPool while disabling wait on request on UserId!");
+			}
 		}
 	}
 	has_at_least_v8=true;

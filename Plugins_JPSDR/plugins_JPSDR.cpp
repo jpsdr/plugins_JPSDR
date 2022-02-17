@@ -36,6 +36,7 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 	VideoInfo vi = args[0].AsClip()->GetVideoInfo();
 
 	const uint8_t pixelsize = (uint8_t)vi.ComponentSize();
+	bool negativePrefetch=false;
 
 	if ((pixelsize>16) || !vi.Is420())
 		env->ThrowError("AutoYUY2: Input format must be YUV420, 8 to 16 bits");
@@ -57,6 +58,9 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 	int prefetch=args[9].AsInt(0);
 	int thread_level=args[10].AsInt(6);
 
+	negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
+
 	if ((mode<-1) || (mode>2))
 		env->ThrowError("AutoYUY2: [mode] must be -1 (Automatic), 0 (Progessive) , 1 (Interlaced) or 2 (Test).");
 	if ((output<0) || (output>1))
@@ -67,7 +71,7 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 		env->ThrowError("AutoYUY2: [ThreadLevel] must be between 1 and 7.");
 
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("AutoYUY2: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL) env->ThrowError("AutoYUY2: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
 
 	uint8_t threads_number=1;
 
@@ -121,7 +125,7 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 		}
 	}
 
-	return new AutoYUY2(args[0].AsClip(), thrs, mode, output, threads_number,sleep, env);
+	return new AutoYUY2(args[0].AsClip(), thrs, mode, output, threads_number,sleep,negativePrefetch, env);
 }
 
 
@@ -135,6 +139,8 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
   const bool RGB32=vi.IsRGB32();
   const bool RGB48=vi.IsRGB48();
   const bool RGB64=vi.IsRGB64();
+
+  bool negativePrefetch=false;
 
 	if (avsp)
 	{
@@ -154,11 +160,14 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 	int prefetch = args[19].AsInt(0);
 	int thread_level=args[21].AsInt(6);
 
+	negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
+
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("nnedi3: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("nnedi3: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL) env->ThrowError("nnedi3: [prefetch] can't be higher than %d.", MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("nnedi3: [ThreadLevel] must be between 1 and 7.");
 			
@@ -229,7 +238,7 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 			v= new nnedi3(v.AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
 				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),args[17].AsBool(true),
 				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),args[10].AsInt(2),
-				threads_number,args[12].AsInt(0),args[13].AsInt(15),args[18].AsBool(false),args[20].AsInt(1),avsp,env);
+				threads_number,args[12].AsInt(0),args[13].AsInt(15),args[18].AsBool(false),args[20].AsInt(1),negativePrefetch,avsp,env);
 			if (RGB32) return env->Invoke("ConvertToRGB32",v).AsClip();
 			else
 			{
@@ -240,13 +249,13 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 		else return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
 				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),args[17].AsBool(true),
 				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),args[10].AsInt(2),
-				threads_number,args[12].AsInt(0),args[13].AsInt(15),args[18].AsBool(false),args[20].AsInt(1),avsp,env);			
+				threads_number,args[12].AsInt(0),args[13].AsInt(15),args[18].AsBool(false),args[20].AsInt(1),negativePrefetch,avsp,env);			
 	}
 	else
 		return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
 				args[3].AsBool(true),false,false,false,args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),
 				args[9].AsInt(0),args[10].AsInt(2),threads_number,args[12].AsInt(0),args[13].AsInt(15),args[18].AsBool(false),
-				args[20].AsInt(1),avsp,env);
+				args[20].AsInt(1),negativePrefetch,avsp,env);
 }
 
 
@@ -263,6 +272,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
   const bool isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
   const bool grey = vi.IsY();  
   const bool isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
+
+  bool negativePrefetch=false;
 	
 	if (avsp)
 	{
@@ -306,6 +317,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	int thread_level=args[27].AsInt(6);
 	int thread_level_rs=args[28].AsInt(6);
 
+	negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
+
 	if ((rfactor<2) || (rfactor>1024)) env->ThrowError("nnedi3_rpow2: 2 <= rfactor <= 1024, and rfactor be a power of 2!\n");
 	int rf=1,ct=0;
 
@@ -335,7 +349,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	if ((range_mode<0) || (range_mode>4)) env->ThrowError("nnedi3_rpow2: [range] must be between 0 and 4!");
 
 	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("nnedi3_rpow2: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
+	if (prefetch>MAX_THREAD_POOL) env->ThrowError("nnedi3_rpow2: [prefetch] can't be higher than %d.", MAX_THREAD_POOL);
 	if ((thread_level<1) || (thread_level>7))
 		env->ThrowError("nnedi3_rpow2: [ThreadLevel] must be between 1 and 7.");
 	if ((thread_level_rs<1) || (thread_level_rs>7))
@@ -520,9 +534,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			for (int i=0; i<ct; i++)
 			{
 				v = env->Invoke(turnRightFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,avsp,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,negativePrefetch,avsp,env);
 				v = env->Invoke(turnLeftFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,avsp,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,negativePrefetch,avsp,env);
 			}
 		}
 		else
@@ -555,9 +569,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				v = env->Invoke(turnRightFunction,v).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				v = new nnedi3(v.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,avsp,env);
+				v = new nnedi3(v.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,negativePrefetch,avsp,env);
 				v = env->Invoke(turnLeftFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,avsp,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,negativePrefetch,avsp,env);
 			}
 
 			range_=(do_resize) ? 1 : plane_range[1];
@@ -565,9 +579,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				vu = env->Invoke(turnRightFunction,vu).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				vu = new nnedi3(vu.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,avsp,env);
+				vu = new nnedi3(vu.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,negativePrefetch,avsp,env);
 				vu = env->Invoke(turnLeftFunction,vu).AsClip();
-				vu = new nnedi3(vu.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,avsp,env);
+				vu = new nnedi3(vu.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,negativePrefetch,avsp,env);
 			}
 
 			range_=(do_resize) ? 1 : plane_range[2];
@@ -575,9 +589,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				vv = env->Invoke(turnRightFunction,vv).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				vv = new nnedi3(vv.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,avsp,env);
+				vv = new nnedi3(vv.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,negativePrefetch,avsp,env);
 				vv = env->Invoke(turnLeftFunction,vv).AsClip();
-				vv = new nnedi3(vv.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,avsp,env);
+				vv = new nnedi3(vv.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,negativePrefetch,avsp,env);
 			}
 
 			range_=(do_resize) ? 1 : plane_range[3];
@@ -587,12 +601,14 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				{
 					va = env->Invoke(turnRightFunction,va).AsClip();
 					// always use field=1 to keep chroma/luma horizontal alignment
-					va = new nnedi3(va.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,avsp,env);
+					va = new nnedi3(va.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,negativePrefetch,avsp,env);
 					va = env->Invoke(turnLeftFunction,va).AsClip();
-					va = new nnedi3(va.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,avsp,env);
+					va = new nnedi3(va.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,negativePrefetch,avsp,env);
 				}				
 			}
 		}
+
+		if (negativePrefetch) prefetch=-prefetch;
 
 		if (cshift[0]!=0)
 		{

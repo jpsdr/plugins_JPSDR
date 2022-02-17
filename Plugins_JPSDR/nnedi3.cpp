@@ -165,7 +165,7 @@ void shufflePreScrnL2L3(float *wf, float *rf, const int opt)
 
 
 nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,int _nsize,int _nns,int _qual,int _etype,int _pscrn,
-	uint8_t _threads,int _opt,int _fapprox,bool _sleep,int range_mode,bool _avsp, IScriptEnvironment *env) :
+	uint8_t _threads,int _opt,int _fapprox,bool _sleep,int range_mode, bool negativePrefetch,bool _avsp, IScriptEnvironment *env) :
 	GenericVideoFilter(_child),field(_field),dh(_dh),Y(_Y),U(_U),V(_V),A(_A),nsize(_nsize),nns(_nns),qual(_qual),
 	etype(_etype),pscrn(_pscrn),threads(_threads),opt(_opt),fapprox(_fapprox),sleep(_sleep),avsp(_avsp)
 {
@@ -995,6 +995,14 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			FreeData();
 			poolInterface->DeAllocateAllThreads(true);
 			env->ThrowError("nnedi3: Error with the TheadPool while getting UserId!");
+		}
+		if (negativePrefetch)
+		{
+			if (!poolInterface->DisableWaitonRequest(UserId))
+			{
+				poolInterface->DeAllocateAllThreads(true);
+				env->ThrowError("nnedi3: Error with the TheadPool while disabling wait on request on UserId!");
+			}
 		}
 	}
 }
