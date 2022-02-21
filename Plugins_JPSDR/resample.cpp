@@ -3393,14 +3393,6 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 	if (vi.height<32) threads_number=1;
 	else threads_number=threads;
 
-  if (vi.IsRGB() && !isRGBPfamily)
-  {
-	  if (desample)
-		subrange_top = target_height - subrange_top - subrange_height; // why?
-	  else
-		subrange_top = vi.height - subrange_top - subrange_height; // why?
-  }
-
   // Create resampling program and pitch table
   int SizeV;
 
@@ -4255,7 +4247,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
 	const AVSValue* args,ResamplingFunction* f,IScriptEnvironment* env)
 {
   const VideoInfo& vi = clip->GetVideoInfo();
-  const double subrange_left = args[0].AsFloat(0), subrange_top = args[1].AsFloat(0);
+  double subrange_left = args[0].AsFloat(0), subrange_top = args[1].AsFloat(0);
   const bool negativePrefetch=(prefetch<0)?true:false;
   
   if (target_height <= 0)
@@ -4309,6 +4301,15 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
   {
 	if (subrange_width  <= 0.0) subrange_width  = vi.width  - subrange_left + subrange_width;
 	if (subrange_height <= 0.0) subrange_height = vi.height - subrange_top  + subrange_height;
+  }
+
+  // Packed RGB is bottom-top reversed
+  if (vi.IsRGB() && !isRGBPfamily)
+  {
+	  if (desample)
+		subrange_top = target_height - subrange_top - subrange_height;
+	  else
+		subrange_top = vi.height - subrange_top - subrange_height;
   }
 
   const int shift = (!grey && vi.IsPlanar() && !isRGBPfamily) ? vi.GetPlaneWidthSubsampling(PLANAR_U) : 0;
