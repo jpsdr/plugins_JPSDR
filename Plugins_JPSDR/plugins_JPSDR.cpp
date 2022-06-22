@@ -11,7 +11,14 @@ bool aWarpSharp_Enable_SSE2,aWarpSharp_Enable_SSE41,aWarpSharp_Enable_AVX;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.2.8"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.3.0"
+
+
+/*
+==================================================
+                AUTOYUY2
+==================================================
+*/
 
 /*
   threshold : int, default value : 4
@@ -128,6 +135,12 @@ AVSValue __cdecl Create_AutoYUY2(AVSValue args, void* user_data, IScriptEnvironm
 	return new AutoYUY2(args[0].AsClip(), thrs, mode, output, threads_number,sleep,negativePrefetch, env);
 }
 
+
+/*
+==================================================
+                NNEDI3
+==================================================
+*/
 
 AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
@@ -938,6 +951,12 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 }
 
 
+/*
+==================================================
+                AWARPSHARP
+==================================================
+*/
+
 static bool is_cplace_mpeg2(const AVSValue &args, int pos)
 {
   const char *cplace_0=args[pos].AsString("");
@@ -1477,9 +1496,11 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 // remap from MarcFD's aWarpSharp: thresh=_thresh*256, blur=_blurlevel, type= (bm=0)->1, (bm=2)->0, depth=_depth*_blurlevel/2, chroma= 0->2, 1->4, 2->3
 
 
-/***********************/
-/*  HDRTools functions */
-/***********************/
+/*
+==================================================
+                HDRTOOLS
+==================================================
+*/
 
 /*
   Color : int, default value : 2
@@ -3894,6 +3915,300 @@ AVSValue __cdecl Create_ConverXYZ_BT2446_C_HDRtoSDR(AVSValue args, void* user_da
 }
 
 
+AVSValue __cdecl Create_ConvertXYZ_ACES_HDRtoSDR(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+	if (!args[0].IsClip()) env->ThrowError("ConvertXYZ_ACES_HDRtoSDR: arg 0 must be a clip !");
+
+	VideoInfo vi = args[0].AsClip()->GetVideoInfo();
+
+	if ((vi.pixel_type!=VideoInfo::CS_BGR64) && (vi.pixel_type!=VideoInfo::CS_RGBPS))
+		env->ThrowError("ConvertXYZ_ACES_HDRtoSDR: Input format must be RGB64 or RGBPS");
+
+
+	const double a_X=args[1].AsFloat(0.0245786f);
+	const double b_X=args[2].AsFloat(-0.000090537f);
+	const double c_X=args[3].AsFloat(0.983729f);
+	const double d_X=args[4].AsFloat(0.4329510f);
+	const double e_X=args[5].AsFloat(0.238081f);
+
+	const double a_Y=args[6].AsFloat((float)a_X);
+	const double b_Y=args[7].AsFloat((float)b_X);
+	const double c_Y=args[8].AsFloat((float)c_X);
+	const double d_Y=args[9].AsFloat((float)d_X);
+	const double e_Y=args[10].AsFloat((float)e_X);
+
+	const double a_Z=args[11].AsFloat((float)a_X);
+	const double b_Z=args[12].AsFloat((float)b_X);
+	const double c_Z=args[13].AsFloat((float)c_X);
+	const double d_Z=args[14].AsFloat((float)d_X);
+	const double e_Z=args[15].AsFloat((float)e_X);
+
+	const double exp_X=args[16].AsFloat(1.0f);
+	const double exp_Y=args[17].AsFloat((float)exp_X);
+	const double exp_Z=args[18].AsFloat((float)exp_X);
+
+	const uint8_t pColor=args[19].AsInt(0);
+
+	if ((pColor<0) || (pColor>4))
+		env->ThrowError("ConvertXYZ_ACES_HDRtoSDR: [pColor] must be 0 (BT2100), 1 (BT2020), 2 (BT709), 3 (BT601_525), 4 (BT601_625)");
+
+	float pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy;
+
+	switch(pColor)
+	{
+		case 0 :
+		case 1 :
+			pRx=(float)args[20].AsFloat(0.708f);
+			pRy=(float)args[21].AsFloat(0.292f);
+			pGx=(float)args[22].AsFloat(0.170f);
+			pGy=(float)args[23].AsFloat(0.797f);
+			pBx=(float)args[24].AsFloat(0.131f);
+			pBy=(float)args[25].AsFloat(0.046f);
+			pWx=(float)args[26].AsFloat(0.31271f);
+			pWy=(float)args[27].AsFloat(0.32902f);
+			break;
+		case 2 :
+			pRx=(float)args[20].AsFloat(0.640f);
+			pRy=(float)args[21].AsFloat(0.330f);
+			pGx=(float)args[22].AsFloat(0.300f);
+			pGy=(float)args[23].AsFloat(0.600f);
+			pBx=(float)args[24].AsFloat(0.150f);
+			pBy=(float)args[25].AsFloat(0.060f);
+			pWx=(float)args[26].AsFloat(0.31271f);
+			pWy=(float)args[27].AsFloat(0.32902f);
+			break;
+		case 3 :
+			pRx=(float)args[20].AsFloat(0.630f);
+			pRy=(float)args[21].AsFloat(0.340f);
+			pGx=(float)args[22].AsFloat(0.310f);
+			pGy=(float)args[23].AsFloat(0.595f);
+			pBx=(float)args[24].AsFloat(0.155f);
+			pBy=(float)args[25].AsFloat(0.070f);
+			pWx=(float)args[26].AsFloat(0.31271f);
+			pWy=(float)args[27].AsFloat(0.32902f);
+			break;
+		case 4 :
+			pRx=(float)args[20].AsFloat(0.640f);
+			pRy=(float)args[21].AsFloat(0.330f);
+			pGx=(float)args[22].AsFloat(0.290f);
+			pGy=(float)args[23].AsFloat(0.600f);
+			pBx=(float)args[24].AsFloat(0.150f);
+			pBy=(float)args[25].AsFloat(0.060f);
+			pWx=(float)args[26].AsFloat(0.31271f);
+			pWy=(float)args[27].AsFloat(0.32902f);
+			break;
+		default :
+			pRx=(float)args[20].AsFloat(0.640f);
+			pRy=(float)args[21].AsFloat(0.330f);
+			pGx=(float)args[22].AsFloat(0.300f);
+			pGy=(float)args[23].AsFloat(0.600f);
+			pBx=(float)args[24].AsFloat(0.150f);
+			pBy=(float)args[25].AsFloat(0.060f);
+			pWx=(float)args[26].AsFloat(0.31271f);
+			pWy=(float)args[27].AsFloat(0.32902f);
+			break;
+	}
+
+	if (((pRx<0.0f) || (pRx>1.0f)) || ((pGx<0.0f) || (pGx>1.0f)) || ((pBx<0.0f) || (pBx>1.0f)) || ((pWx<0.0f) || (pWx>1.0f))
+		|| ((pRy<=0.0f) || (pRy>1.0f)) || ((pGy<=0.0f) || (pGy>1.0f)) || ((pBy<=0.0f) || (pBy>1.0f)) || ((pWy<=0.0f) || (pWy>1.0f)))
+		env->ThrowError("ConvertXYZ_ACES_HDRtoSDR: Invalid [pR,pG,pB,pW][x,y] chromaticity datas");
+
+	const bool fastmode=args[28].AsBool(true);
+
+	const int threads=args[29].AsInt(0);
+	const bool LogicalCores=args[30].AsBool(true);
+	const bool MaxPhysCores=args[31].AsBool(true);
+	const bool SetAffinity=args[32].AsBool(false);
+	const bool sleep = args[33].AsBool(false);
+	int prefetch=args[34].AsInt(0);
+	int thread_level=args[35].AsInt(6);
+
+	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
+
+	if ((threads<0) || (threads>MAX_MT_THREADS))
+		env->ThrowError("ConvertXYZ_ACES_HDRtoSDR: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
+	if (prefetch==0) prefetch=1;
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertXYZ_ACES_HDRtoSDR: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertXYZ_ACES_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
+
+	uint8_t threads_number=1;
+
+	if (threads!=1)
+	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
+		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertXYZ_ACES_HDRtoSDR: Unable to create ThreadPool!");
+
+		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
+
+		if (threads_number==0) env->ThrowError("ConvertXYZ_ACES_HDRtoSDR: Error with the TheadPool while getting CPU info!");
+
+		if (threads_number>1)
+		{
+			if (prefetch>1)
+			{
+				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+
+					for(uint8_t i=0; i<prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("ConvertXYZ_ACES_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset+=delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("ConvertXYZ_ACES_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("ConvertXYZ_ACES_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
+				}
+			}
+		}
+	}
+
+	return new ConvertXYZ_ACES_HDRtoSDR(args[0].AsClip(),a_X,b_X,c_X,d_X,e_X,a_Y,b_Y,c_Y,d_Y,e_Y,a_Z,b_Z,c_Z,d_Z,e_Z,
+		exp_X,exp_Y,exp_Z,pRx,pRy,pGx,pGy,pBx,pBy,pWx,pWy,fastmode,threads_number,sleep,negativePrefetch,env);
+}
+
+
+AVSValue __cdecl Create_ConvertRGB_ACES_HDRtoSDR(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+	if (!args[0].IsClip()) env->ThrowError("ConvertRGB_ACES_HDRtoSDR: arg 0 must be a clip !");
+
+	VideoInfo vi = args[0].AsClip()->GetVideoInfo();
+
+	if ((vi.pixel_type!=VideoInfo::CS_BGR64) && (vi.pixel_type!=VideoInfo::CS_RGBPS))
+		env->ThrowError("ConvertRGB_ACES_HDRtoSDR: Input format must be RGB64 or RGBPS");
+
+
+	const double a_R=args[1].AsFloat(2.51f);
+	const double b_R=args[2].AsFloat(0.03f);
+	const double c_R=args[3].AsFloat(2.43f);
+	const double d_R=args[4].AsFloat(0.59f);
+	const double e_R=args[5].AsFloat(0.14f);
+
+	const double a_G=args[6].AsFloat((float)a_R);
+	const double b_G=args[7].AsFloat((float)b_R);
+	const double c_G=args[8].AsFloat((float)c_R);
+	const double d_G=args[9].AsFloat((float)d_R);
+	const double e_G=args[10].AsFloat((float)e_R);
+
+	const double a_B=args[11].AsFloat((float)a_R);
+	const double b_B=args[12].AsFloat((float)b_R);
+	const double c_B=args[13].AsFloat((float)c_R);
+	const double d_B=args[14].AsFloat((float)d_R);
+	const double e_B=args[15].AsFloat((float)e_R);
+
+	const double exp_R=args[16].AsFloat(1.0f);
+	const double exp_G=args[17].AsFloat((float)exp_R);
+	const double exp_B=args[18].AsFloat((float)exp_R);
+
+	const bool fastmode=args[19].AsBool(true);
+
+	const int threads=args[20].AsInt(0);
+	const bool LogicalCores=args[21].AsBool(true);
+	const bool MaxPhysCores=args[22].AsBool(true);
+	const bool SetAffinity=args[23].AsBool(false);
+	const bool sleep = args[24].AsBool(false);
+	int prefetch=args[25].AsInt(0);
+	int thread_level=args[26].AsInt(6);
+
+	const bool avsp=env->FunctionExists("ConvertBits");
+	const bool negativePrefetch=(prefetch<0)?true:false;
+	prefetch=abs(prefetch);
+
+	if ((threads<0) || (threads>MAX_MT_THREADS))
+		env->ThrowError("ConvertRGB_ACES_HDRtoSDR: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
+	if (prefetch==0) prefetch=1;
+	if (prefetch>MAX_THREAD_POOL)
+		env->ThrowError("ConvertRGB_ACES_HDRtoSDR: [prefetch] can't be higher than %d.",MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("ConvertRGB_ACES_HDRtoSDR: [ThreadLevel] must be between 1 and 7.");
+
+	uint8_t threads_number=1;
+
+	if (threads!=1)
+	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
+		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("ConvertRGB_ACES_HDRtoSDR: Unable to create ThreadPool!");
+
+		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
+
+		if (threads_number==0) env->ThrowError("ConvertRGB_ACES_HDRtoSDR: Error with the TheadPool while getting CPU info!");
+
+		if (threads_number>1)
+		{
+			if (prefetch>1)
+			{
+				if (SetAffinity && (prefetch<=poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta=(float)poolInterface->GetPhysicalCoreNumber()/(float)prefetch,Offset=0.0f;
+
+					for(uint8_t i=0; i<prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("ConvertRGB_ACES_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset+=delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("ConvertRGB_ACES_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("ConvertRGB_ACES_HDRtoSDR: Error with the TheadPool while allocating threadpool!");
+				}
+			}
+		}
+	}
+
+	return new ConvertRGB_ACES_HDRtoSDR(args[0].AsClip(),a_R,b_R,c_R,d_R,e_R,a_G,b_G,c_G,d_G,e_G,a_B,b_B,c_B,d_B,e_B,exp_R,exp_G,exp_B,
+		fastmode,threads_number,sleep,negativePrefetch,env);
+}
+
+
+/*
+====================================================
+              PLUGIN INIT
+====================================================
+*/
+
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
 {
 	AVS_linkage = vectors;
@@ -3906,11 +4221,13 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 	aWarpSharp_Enable_SSE41=(env->GetCPUFlags() & CPUF_SSE4_1)!=0;
 	aWarpSharp_Enable_AVX=(env->GetCPUFlags() & CPUF_AVX)!=0;
 
+	// AUTOYUY2
 	SetCPUMatrixClass((env->GetCPUFlags() & CPUF_SSE2)!=0,(env->GetCPUFlags() & CPUF_AVX)!=0,(env->GetCPUFlags() & CPUF_AVX2)!=0);
     env->AddFunction("AutoYUY2",
 		"c[threshold]i[mode]i[output]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_AutoYUY2, 0);
 
+	// NNEDI3
 	env->AddFunction("nnedi3", "c[field]i[dh]b[Y]b[U]b[V]b[nsize]i[nns]i[qual]i[etype]i[pscrn]i" \
 		"[threads]i[opt]i[fapprox]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[A]b[sleep]b[prefetch]i" \
 		"[range]i[ThreadLevel]i", Create_nnedi3, 0);
@@ -3919,6 +4236,7 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 		"[SetAffinity]b[threads_rs]i[logicalCores_rs]b[MaxPhysCore_rs]b[SetAffinity_rs]b[sleep]b" \
 		"[prefetch]i[range]i[ThreadLevel]i[ThreadLevel_rs]i", Create_nnedi3_rpow2, 0);
 
+	// RESAMPLE
 	env->AddFunction("PointResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_PointResize, 0);
 	env->AddFunction("BilinearResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
@@ -3977,6 +4295,7 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 	env->AddFunction("DeUserDefined2ResizeMT", "c[target_width]i[target_height]i[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeUserDefined2Resize, 0);
 
+	// AWARPSHARP
   env->AddFunction("aWarpSharp2", "c[thresh]i[blur]i[type]i[depth]i[chroma]i[depthC]i[cplace]s[blurV]i[depthV]i[depthVC]i" \
 	  "[blurC]i[blurVC]i[threshC]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_aWarpSharp, (void*)0);
   env->AddFunction("aWarpSharp", "c[depth]f[blurlevel]i[thresh]f[cm]i[bm]i[show]b" \
@@ -3989,6 +4308,8 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_aWarpSharp, (void*)4);
   env->AddFunction("aWarp4", "cc[depth]i[chroma]i[depthC]i[cplace]s[depthV]i[depthVC]i" \
 	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_aWarpSharp, (void*)5);
+
+  // HDRTOOLS
 
     env->AddFunction("ConvertYUVtoLinearRGB",
 		"c[Color]i[OutputMode]i[HDRMode]i[HLGLb]f[HLGLw]f[HLGColor]i[OOTF]b[EOTF]b[fullrange]b[mpeg2c]b" \
@@ -4076,6 +4397,22 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 		"[pColor]i[pRx]f[pRy]f[pGx]f[pGy]f[pBx]f[pBy]f[pWx]f[pWy]f[fastmode]b" \
 		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConverXYZ_BT2446_C_HDRtoSDR, 0);
+
+    env->AddFunction("ConvertXYZ_ACES_HDRtoSDR",
+		"c[a_X]f[b_X]f[c_X]f[d_X]f[e_X]f" \
+		"[a_Y]f[b_Y]f[c_Y]f[d_Y]f[e_Y]f" \
+		"[a_Z]f[b_Z]f[c_Z]f[d_Z]f[e_Z]f" \
+		"[exposure_X]f[exposure_Y]f[exposure_Z]f" \
+		"[pColor]i[pRx]f[pRy]f[pGx]f[pGy]f[pBx]f[pBy]f[pWx]f[pWy]f[fastmode]b" \
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
+		Create_ConvertXYZ_ACES_HDRtoSDR, 0);
+    env->AddFunction("ConvertRGB_ACES_HDRtoSDR",
+		"c[a_R]f[b_R]f[c_R]f[d_R]f[e_R]f" \
+		"[a_G]f[b_G]f[c_G]f[d_G]f[e_G]f" \
+		"[a_B]f[b_B]f[c_B]f[d_B]f[e_B]f" \
+		"[exposure_R]f[exposure_G]f[exposure_B]f[fastmode]b" \
+		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
+		Create_ConvertRGB_ACES_HDRtoSDR, 0);
 
 	return PLUGINS_JPSDR_VERSION;	
 }
