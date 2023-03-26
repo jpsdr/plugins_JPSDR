@@ -11,7 +11,7 @@ bool aWarpSharp_Enable_SSE2,aWarpSharp_Enable_SSE41,aWarpSharp_Enable_AVX;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.3.3"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.3.4"
 
 
 /*
@@ -4263,7 +4263,7 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_SinPowerResize, 0);
 	env->AddFunction("SincLin2ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i" \
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_SincLin2Resize, 0);
-	env->AddFunction("UserDefined2ResizeMT", "c[target_width]i[target_height]i[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
+	env->AddFunction("UserDefined2ResizeMT", "c[target_width]i[target_height]i[b]f[c]f[s]f[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i", FilteredResizeMT::Create_UserDefined2Resize, 0);
 
 // Desample functions
@@ -4292,7 +4292,7 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeSinPowerResize, 0);
 	env->AddFunction("DeSincLin2ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i" \
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeSincLin2Resize, 0);
-	env->AddFunction("DeUserDefined2ResizeMT", "c[target_width]i[target_height]i[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
+	env->AddFunction("DeUserDefined2ResizeMT", "c[target_width]i[target_height]i[b]f[c]f[s]f[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeUserDefined2Resize, 0);
 
 	// AWARPSHARP
