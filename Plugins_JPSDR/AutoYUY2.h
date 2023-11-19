@@ -25,7 +25,7 @@
 #include "./avisynth.h"
 #include "./ThreadPoolInterface.h"
 
-#define AUTOYUY2_VERSION "AutoYUY2 4.1.8 JPSDR"
+#define AUTOYUY2_VERSION "AutoYUY2 4.1.9 JPSDR"
 // Inspired from Neuron2 filter
 
 #define Interlaced_Tab_Size 3
