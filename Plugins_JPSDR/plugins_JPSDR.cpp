@@ -11,7 +11,7 @@ bool aWarpSharp_Enable_SSE2,aWarpSharp_Enable_SSE41,aWarpSharp_Enable_AVX;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.3.6"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.3.7"
 
 
 /*
@@ -4255,7 +4255,7 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_Spline36Resize, 0);
 	env->AddFunction("Spline64ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_Spline64Resize, 0);
-	env->AddFunction("GaussResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[p]f[threads]i" \
+	env->AddFunction("GaussResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[p]f[b]f[s]f[threads]i" \
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_GaussianResize, 0);
 	env->AddFunction("SincResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i" \
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[ThreadLevel]i",FilteredResizeMT::Create_SincResize, 0);
@@ -4284,7 +4284,7 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeSpline36Resize, 0);
 	env->AddFunction("DeSpline64ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[threads]i" \
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeSpline64Resize, 0);
-	env->AddFunction("DeGaussResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[p]f[threads]i" \
+	env->AddFunction("DeGaussResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[p]f[b]f[s]f[threads]i" \
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeGaussianResize, 0);
 	env->AddFunction("DeSincResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[taps]i[threads]i" \
 		"[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[range]i[accuracy]i[order]i[ThreadLevel]i",FilteredResizeMT::Create_DeSincResize, 0);

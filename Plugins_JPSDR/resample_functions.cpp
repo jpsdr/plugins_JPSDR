@@ -238,15 +238,28 @@ double Spline64Filter::f(double value)
                      value*value < {900, 4.0, 3.0, 0.9}
                      value       < {30, 2.0, 1.73, 0.949}         */
 
-GaussianFilter::GaussianFilter(double p)
+GaussianFilter::GaussianFilter(double p, double _b, double _s)
 {
-  param = clamp(p, 0.1, 100.0);
+  param = clamp(p, 0.01, 100.0);
+  b = clamp(_b, 1.5, 3.5);
+
+  s = _s;
+
+  if (_s == 0) // auto-support signal
+  {
+      // get support from b and param for 0.01 of resudual kernel value
+      // equatiion is s = sqrt(-ln(0.01)/(param*ln(b))
+      // where ln(0.01) is about -4.6 and -ln(0.01) is 4.6
+      s = sqrt(4.6 / ((param * 0.1) * log(b)));
+  }
+   
+  s = clamp(s, 0.1, 150.0);
 }
 
 double GaussianFilter::f(double value)
 {
-	double p = param*0.1;
-	return pow(2.0, - p*value*value);
+	double p = param * 0.1;
+    return pow(b, -p * value * value);
 }
 
 
