@@ -177,6 +177,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="resample_functions.cpp" />
+    <ClCompile Include="resample_sse.cpp" />
     <ClCompile Include="ThreadPool.cpp" />
     <ClCompile Include="ThreadPoolInterface.cpp" />
     <ClCompile Include="TransferFunctions.cpp" />
@@ -192,6 +193,7 @@
     <ClInclude Include="resample.h" />
     <ClInclude Include="resample_avx2.h" />
     <ClInclude Include="resample_functions.h" />
+    <ClInclude Include="resample_sse.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="ThreadPoolDef.h" />
