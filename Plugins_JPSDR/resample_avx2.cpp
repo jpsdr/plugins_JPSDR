@@ -270,6 +270,9 @@ void internal_resize_v_avx2_planar_uint16_t(BYTE* dst0, const BYTE* src0, int ds
 //-------- 256 bit float Verticals
 
 template<int _filtersize>
+#if defined(CLANG)
+__attribute__((__target__("fma")))
+#endif
 void internal_resize_v_avx2_planar_float(BYTE* dst0, const BYTE* src0, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2)
 {
   // 1..8: special case for compiler optimization
@@ -692,6 +695,9 @@ static void internal_resizer_h_avx2_generic_uint8_t(BYTE* dst, const BYTE* src, 
 
 //-------- 256 bit float Horizontals
 
+#if defined(CLANG)
+__attribute__((__target__("fma")))
+#endif
 __forceinline static void process_one_pixel_h_float(const float *src, int begin, int i, float *&current_coeff, __m256 &result)
 {
   __m256 data_single = _mm256_loadu_ps(reinterpret_cast<const float*>(src + begin + (i << 3))); // float 8*32=256 8 pixels at a time
@@ -702,6 +708,9 @@ __forceinline static void process_one_pixel_h_float(const float *src, int begin,
 
 
 template<int filtersizemod8>
+#if defined(CLANG)
+__attribute__((__target__("fma")))
+#endif
 __forceinline static void process_one_pixel_h_float_mask(const float *src, int begin, int i, float *&current_coeff, __m256 &result, __m256 &zero)
 {
   __m256 data_single = _mm256_loadu_ps(reinterpret_cast<const float*>(src + begin + (i << 3))); // float 8*32=256 8 pixels at a time
@@ -714,6 +723,9 @@ __forceinline static void process_one_pixel_h_float_mask(const float *src, int b
 
 // filtersizealigned8: special: 1, 2. Generic: -1
 template<int filtersizealigned8, int filtersizemod8>
+#if defined(CLANG)
+__attribute__((__target__("fma")))
+#endif
 void resizer_h_avx2_generic_float(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
 {
   const int filter_size_numOfBlk8 = (filtersizealigned8 >= 1) ? filtersizealigned8 : (AlignNumber(program->filter_size,8) >> 3);
