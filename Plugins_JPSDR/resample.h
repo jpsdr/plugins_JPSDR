@@ -41,7 +41,19 @@
 #include "./resample_functions.h"
 #include "./ThreadPoolInterface.h"
 
-#define RESAMPLE_MT_VERSION "ResampleMT 2.4.0 JPSDR"
+#define RESAMPLE_MT_VERSION "ResampleMT 2.5.1 JPSDR"
+
+typedef enum ChromaLocation_e
+{
+  AVS_CHROMA_UNUSED = -1,
+  AVS_CHROMA_LEFT = 0,
+  AVS_CHROMA_CENTER = 1,
+  AVS_CHROMA_TOP_LEFT = 2,
+  AVS_CHROMA_TOP = 3,
+  AVS_CHROMA_BOTTOM_LEFT = 4,
+  AVS_CHROMA_BOTTOM = 5,
+  AVS_CHROMA_DV = 6 // Special to Avisynth
+} ChromaLocation_e;
 
 // Resizer function pointer
 typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2);
@@ -76,7 +88,8 @@ class FilteredResizeH : public GenericVideoFilter
 public:
   FilteredResizeH( PClip _child, double subrange_left, double subrange_width, int target_width, uint8_t _threads,
 	  bool _sleep,int range_mode,bool desample,int accuracy, bool negativePrefetch,
-	  bool _avsp, ResamplingFunction* func, IScriptEnvironment* env );
+	  bool _avsp,bool preserve_center,ChromaLocation_e chroma_placement,
+	  ResamplingFunction* func,IScriptEnvironment* env );
   virtual ~FilteredResizeH(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
@@ -138,15 +151,17 @@ class FilteredResizeV : public GenericVideoFilter
 {
 public:
   FilteredResizeV( PClip _child, double subrange_top, double subrange_height, int target_height, uint8_t _threads,
-	  bool _sleep,int range_mode,bool desample,int accuracy,int ChromaS,uint8_t ShiftC, bool negativePrefetch,
-	  bool _avsp,ResamplingFunction* func, IScriptEnvironment* env);
+	  bool _sleep,int range_mode,bool desample,int accuracy,int ChromaS,uint8_t ShiftC,bool negativePrefetch,
+	  bool _avsp,bool preserve_center,ChromaLocation_e chroma_placement,
+	  bool ResizeH,ResamplingFunction* func,IScriptEnvironment* env);
   virtual ~FilteredResizeV(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
 	int __stdcall SetCacheHints(int cachehints, int frame_range);
 
   //static ResamplerV GetResampler(int CPU, bool aligned,int pixelsize, int bits_per_pixel, void*& storage, ResamplingProgram* program);
-  ResamplerV GetResampler(bool aligned,void*& storage, ResamplingProgram* program);
+  //ResamplerV GetResampler(bool aligned,void*& storage, ResamplingProgram* program);
+  ResamplerV GetResampler(bool aligned, ResamplingProgram* program, IScriptEnvironment* env);
 
 private:
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
@@ -212,16 +227,19 @@ class FilteredResizeMT
 public:
 static PClip CreateResizeH( PClip clip, double subrange_left, double subrange_width, int target_width, uint8_t _threads,
 	                         bool _sleep,int range_mode,bool desample,int accuracy, bool negativePrefetch,
-							 bool _avsp,ResamplingFunction* func, IScriptEnvironment* env );
+							 bool _avsp, bool preserve_center,ChromaLocation_e chroma_placement,
+							 ResamplingFunction* func,IScriptEnvironment* env );
 static PClip CreateResizeV( PClip clip, double subrange_top, double subrange_height, int target_height, uint8_t _threads,
 	                         bool _sleep,int range_mode,bool desample,int accuracy,int ChromaS,uint8_t ShiftC, bool negativePrefetch,
-							 bool _avsp,ResamplingFunction* func,
-							 IScriptEnvironment* env );
+							 bool _avsp,bool preserve_center,ChromaLocation_e chroma_placement,
+							 bool ResizeH,ResamplingFunction* func,IScriptEnvironment* env );
 
 static PClip CreateResize( PClip clip, int target_width, int target_height, int force, int _threads,
 	bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,bool _sleep,int prefetch,int range_mode,
 	bool desample,int accuracy,int order,int thread_level,
-	const AVSValue* args, ResamplingFunction* f, IScriptEnvironment* env );
+	const AVSValue* args,ResamplingFunction* f,
+	bool preserve_center,const char *placement_name,ChromaLocation_e forced_chroma_placement,
+	IScriptEnvironment* env );
 
 static AVSValue __cdecl Create_PointResize(AVSValue args, void*, IScriptEnvironment* env);
 

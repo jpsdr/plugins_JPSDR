@@ -37,6 +37,9 @@
 
 #include <malloc.h>
 #include <math.h>
+#include <vector>
+#include <string.h>
+
 #include "./avisynth.h"
 #include "./MatrixClass.h"
 #include "./avs/alignment.h"
@@ -59,65 +62,78 @@ const int ALIGN_FLOAT_RESIZER_COEFF_SIZE = 8; // simd friendly
 
 struct ResamplingProgram
 {
+  IScriptEnvironment *Env;
   int source_size, target_size;
   double crop_start, crop_size;
   int filter_size;
+  int filter_size_real; // maybe less than filter_size if dimensions are small
   int filter_size_alignment; // for info, 1 (C), 8 (sse or avx2) or 16 (avx2)
 
   // Array of Integer indicate starting point of sampling
-  int* pixel_offset;
+  std::vector<int> pixel_offset;
 
   int bits_per_pixel;
 
   // Array of array of coefficient for each pixel
   // {{pixel[0]_coeff}, {pixel[1]_coeff}, ...}
-  short* pixel_coefficient;
-  float* pixel_coefficient_float;
+  short *pixel_coefficient;
+  float *pixel_coefficient_float;
+  // Array of real kernel size, handles edge cases! <= filter_size
+  // for SIMD, coefficients are copied over a padded aligned storage
+  std::vector<short> kernel_sizes; 
+  // 3.7.4- can be different for each line but then they get equalized and aligned.
 
   // anti-overread helpers for float resizer simd code reading 8 pixels from a given offset
   bool overread_possible,StatusOk;
   int source_overread_offset; // offset from where reading 8 bytes requires masking garbage on the right side
   int source_overread_beyond_targetx;
+  // in H resizers danger zone starts from here.
+  // When reading aligned_filter_size elements from (src+offset) no longer fits image scanline dimensions
 
   ResamplingProgram(int filter_size, int source_size, int target_size, double crop_start, double crop_size, int bits_per_pixel, IScriptEnvironment* env)
-    : filter_size(filter_size), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size), bits_per_pixel(bits_per_pixel),
-    pixel_offset(NULL), pixel_coefficient(NULL), pixel_coefficient_float(NULL)
+    : Env(env), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size), filter_size(filter_size), filter_size_real(filter_size),
+    bits_per_pixel(bits_per_pixel), pixel_coefficient(NULL), pixel_coefficient_float(NULL)
   {
 	StatusOk = true;
     overread_possible = false;
     source_overread_offset = -1;
     source_overread_beyond_targetx = -1;
 
+    pixel_offset.resize(target_size);
+    kernel_sizes.resize(target_size);
+
     // align target_size to 8 units to allow safe 8 pixels/cycle in H resizers
     // pixel_offset is in unrolled loop, 128/256bit simd size does not affect.
-    pixel_offset = (int*) _aligned_malloc(sizeof(int) * AlignNumber(target_size, ALIGN_RESIZER_TARGET_SIZE), 64); // 64-byte alignment
 	filter_size_alignment = 1; // just info. nothing special, for C. resize_h_prepare_coeff_8or16 can override and realign the coefficients for SIMD processing
 	if (bits_per_pixel<32)
 		pixel_coefficient = (short*) _aligned_malloc(sizeof(short)*target_size*filter_size, 64);
 	else
 		pixel_coefficient_float = (float*) _aligned_malloc(sizeof(float)*target_size*filter_size, 64);
 
-    if ((pixel_offset==NULL) || ((pixel_coefficient==NULL) && (bits_per_pixel<32)) || 
-		((pixel_coefficient_float==NULL) && (bits_per_pixel==32)))
+    if (((bits_per_pixel<32) && (pixel_coefficient==NULL)) || 
+		((bits_per_pixel==32) && (pixel_coefficient_float==NULL)))
 	{
 	  myalignedfree(pixel_coefficient_float);
 	  myalignedfree(pixel_coefficient);
-      myalignedfree(pixel_offset);
 	  StatusOk = false;
       //env->ThrowError("ResamplingProgram: Could not reserve memory.");
     }
 	
+	// Set all values to 0
+	if (bits_per_pixel<32) memset(pixel_coefficient,0,sizeof(short)*target_size*filter_size);
+	else std::fill_n(pixel_coefficient_float, target_size*filter_size, 0.0f);
   };
 
-  ~ResamplingProgram() {
+  ~ResamplingProgram()
+  {
 	myalignedfree(pixel_coefficient_float);
 	myalignedfree(pixel_coefficient);
-    myalignedfree(pixel_offset);
   };
 };
 
 typedef struct ResamplingProgram ResamplingProgram;
 
+void resize_prepare_coeffs(ResamplingProgram* p, IScriptEnvironment* env, int filter_size_alignment);
 
 /*******************************************
    ***************************************
@@ -135,9 +151,12 @@ public:
   virtual double f(double x) = 0;
   virtual double support() = 0;
 
-  virtual ResamplingProgram* GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, IScriptEnvironment* env);
-  virtual ResamplingProgram* GetDesamplingProgram(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, uint8_t accuracy, int SizeY, uint8_t ShiftC, int &SizeOut,IScriptEnvironment* env);
-  virtual int GetDesamplingData(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel, uint8_t ShiftC, IScriptEnvironment* env);
+  virtual ResamplingProgram* GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel,
+	double center_pos_src, double center_pos_dst, IScriptEnvironment* env);
+  virtual ResamplingProgram* GetDesamplingProgram(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel,
+	double center_pos_src, double center_pos_dst, uint8_t accuracy, int SizeY, uint8_t ShiftC, int &SizeOut,IScriptEnvironment* env);
+  virtual int GetDesamplingData(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel,
+  double center_pos_src, double center_pos_dst, uint8_t ShiftC, IScriptEnvironment* env);
 };
 
 class PointFilter : public ResamplingFunction 
@@ -147,7 +166,9 @@ class PointFilter : public ResamplingFunction
 {
 public:
   double f(double x);  
-  double support() { return 0.0001; }  // 0.0 crashes it.
+  double support() { return 0.0; }  // 0.0 crashes it.
+  // Pre 3.7.4 : 0.0001. Comment: 0.0 crashes it. 
+  // 3.7.4- this 0 is specially handled in GetResamplingProgram
 };
 
 
@@ -253,12 +274,12 @@ class GaussianFilter : public ResamplingFunction
 public:
   GaussianFilter(double p=30.0, double _b=2.0, double _s=4.0);
 	double f(double x);
-	double support() { return s; };
+	double support() { return s; }; // <3.7.4 was fixed at 4.0
 
 private:
  double param;
- double b; // base value
- double s; // variable support
+ double b; // base value since 3.7.4
+ double s; // variable support since 3.7.4
 };
 
 class SincFilter : public ResamplingFunction
