@@ -52,7 +52,6 @@
 
 extern ThreadPoolInterface *poolInterface;
 
-
 static bool is_paramstring_empty_or_auto(const char* param)
 {
 	if (param==nullptr) return true;
@@ -1229,57 +1228,7 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 			const int filtersizemod8 = program->filter_size_real & 7;
 
 #ifdef AVX2_BUILD_POSSIBLE
-			if (Enable_AVX2)
-			{
-				if (filtersizealign8==8)
-				{
-					switch (filtersizemod8)
-					{
-						case 0 : return resizer_h_avx2_generic_float<1,0>; break;
-						case 1 : return resizer_h_avx2_generic_float<1,1>; break;
-						case 2 : return resizer_h_avx2_generic_float<1,2>; break;
-						case 3 : return resizer_h_avx2_generic_float<1,3>; break;
-						case 4 : return resizer_h_avx2_generic_float<1,4>; break;
-						case 5 : return resizer_h_avx2_generic_float<1,5>; break;
-						case 6 : return resizer_h_avx2_generic_float<1,6>; break;
-						case 7 : return resizer_h_avx2_generic_float<1,7>; break;
-						default : return NULL; break;
-					}
-				}
-				else
-				{
-					if (filtersizealign8==16)
-					{
-						switch (filtersizemod8)
-						{
-							case 0 : return resizer_h_avx2_generic_float<2,0>; break;
-							case 1 : return resizer_h_avx2_generic_float<2,1>; break;
-							case 2 : return resizer_h_avx2_generic_float<2,2>; break;
-							case 3 : return resizer_h_avx2_generic_float<2,3>; break;
-							case 4 : return resizer_h_avx2_generic_float<2,4>; break;
-							case 5 : return resizer_h_avx2_generic_float<2,5>; break;
-							case 6 : return resizer_h_avx2_generic_float<2,6>; break;
-							case 7 : return resizer_h_avx2_generic_float<2,7>; break;
-							default : return NULL; break;
-						}
-					}
-					else
-					{
-						switch (filtersizemod8)
-						{
-							case 0 : return resizer_h_avx2_generic_float<-1,0>; break;
-							case 1 : return resizer_h_avx2_generic_float<-1,1>; break;
-							case 2 : return resizer_h_avx2_generic_float<-1,2>; break;
-							case 3 : return resizer_h_avx2_generic_float<-1,3>; break;
-							case 4 : return resizer_h_avx2_generic_float<-1,4>; break;
-							case 5 : return resizer_h_avx2_generic_float<-1,5>; break;
-							case 6 : return resizer_h_avx2_generic_float<-1,6>; break;
-							case 7 : return resizer_h_avx2_generic_float<-1,7>; break;
-							default : return NULL; break;
-						}
-					}
-				}
-			}
+			if (Enable_AVX2) return resizer_h_avx2_generic_float;
 			else
 #endif		
 			// SSSE3
@@ -2206,7 +2155,7 @@ ResamplerV FilteredResizeV::GetResampler(bool aligned, ResamplingProgram* progra
 #ifdef AVX2_BUILD_POSSIBLE		
 		if (aligned && Enable_AVX2)
 		{
-			if(bits_per_pixel<16) return resize_v_avx2_planar_uint16_t<true>;
+			if (bits_per_pixel<16) return resize_v_avx2_planar_uint16_t<true>;
 			else return resize_v_avx2_planar_uint16_t<false>;
 		}
 		else
