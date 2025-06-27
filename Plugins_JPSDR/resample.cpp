@@ -43,7 +43,12 @@
 #include "./resample_sse.h"
 
 #if _MSC_VER >= 1900
+  #define JPSDR_RESTRICT __restrict
+  #define JPSDR_CONSTEXPR constexpr
   #define AVX2_BUILD_POSSIBLE
+#else
+  #define JPSDR_RESTRICT
+  #define JPSDR_CONSTEXPR
 #endif
 
 #ifdef AVX2_BUILD_POSSIBLE
@@ -268,10 +273,10 @@ static void GetCenterShiftForResizers(double& center_pos_luma, double& center_po
  ***************************************/
 
 template<typename pixel_t>
-static void resize_v_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2)
+static void resize_v_planar_pointresize(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2)
 {
-  pixel_t *src0 = (pixel_t *)src;
-  pixel_t *dst0 = (pixel_t *)dst;
+  pixel_t *src0 = (pixel_t *)src8;
+  pixel_t *dst0 = (pixel_t *)dst8;
   dst_pitch/=sizeof(pixel_t);
 
   for (int y = MinY; y < MaxY; y++)
@@ -285,131 +290,256 @@ static void resize_v_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitc
 }
 
 
-static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2)
-{
-	const int filter_size = program->filter_size;
-	const int kernel_size = program->filter_size_real;
-	const short *current_coeff = program->pixel_coefficient+filter_size*MinY;
-
-	const int val_min = (range==1) ? 0 : 16;
-	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
-	const int Offset = 1 << (FPScale8bits-1);
-
-	if ((mode_YUY2) && ((range>=2) && (range<=3)))
-	{
-		const int TabMax[4] = {235,240,235,240};
-
-		for (int y = MinY; y < MaxY; y++)
-		{
-			const BYTE *src_ptr = src + pitch_table[program->pixel_offset[y]];
-
-			for (int x = 0; x < width; x++)
-			{
-				int result = 0;
-
-				for (int i = 0; i < kernel_size; i++)
-					result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
-
-				result = (result+Offset) >> FPScale8bits;
-				result = (result>TabMax[x & 0x03]) ? TabMax[x & 0x3] : (result<16) ? 16 : result;
-				dst[x] = (BYTE) result;
-			}
-
-			dst += dst_pitch;
-			current_coeff += filter_size;
-		}
-	}
-	else
-	{
-		for (int y = MinY; y < MaxY; y++)
-		{
-			const BYTE *src_ptr = src + pitch_table[program->pixel_offset[y]];
-
-			for (int x = 0; x < width; x++)
-			{
-				int result = 0;
-
-				for (int i = 0; i < kernel_size; i++)
-					result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
-
-				result = (result+Offset) >> FPScale8bits;
-				result = (result>val_max) ? val_max : (result<val_min) ? val_min : result;
-				dst[x] = (BYTE) result;
-			}
-
-			dst += dst_pitch;
-			current_coeff += filter_size;
-		}
-	}
-}
-
-
-static void resize_v_c_planar_f(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2)
+static void resize_v_c_planar_u8(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2)
 {
   const int filter_size = program->filter_size;
   const int kernel_size = program->filter_size_real;
-  const float *current_coeff = program->pixel_coefficient_float+filter_size*MinY;
 
-  const float *src0 = (float *)src;
-  float *dst0 = (float *)dst;
+  const short* JPSDR_RESTRICT current_coeff = program->pixel_coefficient+filter_size*MinY;
 
-  dst_pitch>>=2;
+  const BYTE *src = src8;
+  BYTE *dst = dst8;
+  
+  const int src_pitch1 = src_pitch;
+  const int dst_pitch1 = dst_pitch;
+  
+  const int src_pitch2 = src_pitch1 << 1;
+  const int src_pitch3 = 3*src_pitch1;
+  const int src_pitch4 = src_pitch1 << 2;
+
+  // perhaps helps vectorizing decision
+  const int ksmod4 = (kernel_size >> 2) << 2;
+
+  const int rounder = 1 << (FPScale8bits - 1); // rounder;
+
+  const int val_min = (range==1) ? 0 : 16;
+  const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
+
+  if ((mode_YUY2) && ((range>=2) && (range<=3)))
+  {
+	const int TabMax[4] = {235,240,235,240};
+
+    for (int y = MinY; y < MaxY; y++)
+    {
+      const BYTE *src_ptr = src + pitch_table[program->pixel_offset[y]];
+
+      for (int x = 0; x < width; x++)
+	  {
+        const BYTE* JPSDR_RESTRICT src2_ptr = src_ptr + x;
+		
+        int resultx4[4] = {rounder,0,0,0};
+		
+        for (int i = 0; i < ksmod4; i += 4)
+	    {
+		  resultx4[0] += ((short)*(src2_ptr))*current_coeff[i];
+		  resultx4[1] += ((short)*(src2_ptr+src_pitch1))*current_coeff[i+1];
+		  resultx4[2] += ((short)*(src2_ptr+src_pitch2))*current_coeff[i+2];
+		  resultx4[3] += ((short)*(src2_ptr+src_pitch3))*current_coeff[i+3];
+		  src2_ptr += src_pitch4;
+        }
+		
+		int result_single = resultx4[0]+resultx4[1]+resultx4[2]+resultx4[3];
+		
+        for (int i = ksmod4; i < kernel_size; i++)
+	    {
+	      result_single += ((short)*(src2_ptr))*current_coeff[i];
+		  src2_ptr += src_pitch1;
+        }
+        result_single = result_single >> FPScale8bits;
+		result_single = (result_single>TabMax[x & 0x03]) ? TabMax[x & 0x3] : (result_single<16) ? 16 : result_single;
+		dst[x] = (BYTE) result_single;
+      }
+
+      dst += dst_pitch1;
+      current_coeff += filter_size;
+    }
+  }
+  else
+  {
+    for (int y = MinY; y < MaxY; y++)
+    {
+      const BYTE *src_ptr = src + pitch_table[program->pixel_offset[y]];
+
+      for (int x = 0; x < width; x++)
+	  {
+        const BYTE* JPSDR_RESTRICT src2_ptr = src_ptr + x;
+		
+        int resultx4[4] = {rounder,0,0,0};
+		
+        for (int i = 0; i < ksmod4; i += 4)
+	    {
+		  resultx4[0] += ((short)*(src2_ptr))*current_coeff[i];
+		  resultx4[1] += ((short)*(src2_ptr+src_pitch1))*current_coeff[i+1];
+		  resultx4[2] += ((short)*(src2_ptr+src_pitch2))*current_coeff[i+2];
+		  resultx4[3] += ((short)*(src2_ptr+src_pitch3))*current_coeff[i+3];
+		  src2_ptr += src_pitch4;
+        }
+		
+		int result_single = resultx4[0]+resultx4[1]+resultx4[2]+resultx4[3];
+		
+        for (int i = ksmod4; i < kernel_size; i++)
+	    {
+	      result_single += ((short)*(src2_ptr))*current_coeff[i];
+		  src2_ptr += src_pitch1;
+        }
+        result_single = result_single >> FPScale8bits;
+		result_single = (result_single>val_max) ? val_max : (result_single<val_min) ? val_min : result_single;
+		dst[x] = (BYTE) result_single;
+      }
+
+      dst += dst_pitch1;
+      current_coeff += filter_size;
+    }
+  }
+}
+
+
+template<bool lessthan16bit>
+static void resize_v_c_planar_u16(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2)
+{
+  const int filter_size = program->filter_size;
+  const int kernel_size = program->filter_size_real;
+
+  const short* JPSDR_RESTRICT current_coeff = program->pixel_coefficient+filter_size*MinY;
+
+  const uint16_t *src = (uint16_t *)src8;
+  uint16_t *dst = (uint16_t *)dst8;
+  
+  const int src_pitch1 = src_pitch >> 1;
+  const int dst_pitch1 = dst_pitch >> 1;
+  
+  const int src_pitch2 = src_pitch1 << 1;
+  const int src_pitch3 = 3*src_pitch1;
+  const int src_pitch4 = src_pitch1 << 2;
+
+  // perhaps helps vectorizing decision
+  const int ksmod4 = (kernel_size >> 2) << 2;
+
+  const int val_min = (range==1) ? 0 : (int)16 << (bits_per_pixel-8);
+  const int val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ?
+		(int)235 << (bits_per_pixel-8) : (int)240 << (bits_per_pixel-8);
+
+  const int rounder = 1 << (FPScale16bits - 1); // rounder;
+
+  // for 16 bits only
+  const short shifttosigned_short = -32768;
+  const int shiftfromsigned_int = 32768 << FPScale16bits;
 
   for (int y = MinY; y < MaxY; y++)
   {
-	const float *src_ptr = src0 + pitch_table[program->pixel_offset[y]];
+    const uint16_t *src_ptr = src + pitch_table[program->pixel_offset[y]];
 
     for (int x = 0; x < width; x++)
 	{
-      float result = 0;
 
-      for (int i = 0; i < kernel_size; i++)
-		result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
+      // theoretically, no need for int64 accumulator,
+      // sum of coeffs is 1.0 that is (1 << FPScale16bits) in integer arithmetic
+      const uint16_t* JPSDR_RESTRICT src2_ptr = src_ptr + x;
+	  int result_single,resultx4[4] = {rounder,0,0,0};
+		
+	  if JPSDR_CONSTEXPR (!lessthan16bit)
+	  {
+		for (int i = 0; i < ksmod4; i+=4)
+		{
+		  resultx4[0] += ((short)(*(src2_ptr) + shifttosigned_short))*current_coeff[i];
+		  resultx4[1] += ((short)(*(src2_ptr+src_pitch1) + shifttosigned_short))*current_coeff[i+1];
+		  resultx4[2] += ((short)(*(src2_ptr+src_pitch2) + shifttosigned_short))*current_coeff[i+2];
+		  resultx4[3] += ((short)(*(src2_ptr+src_pitch3) + shifttosigned_short))*current_coeff[i+3];
+		  src2_ptr += src_pitch4;
+		}
+		
+		result_single = resultx4[0]+resultx4[1]+resultx4[2]+resultx4[3];
+		
+		for (int i = ksmod4; i < kernel_size; i++)
+		{
+		  result_single +=((short)(*(src2_ptr) + shifttosigned_short))*current_coeff[i];
+		  src2_ptr += src_pitch1;
+		}
+		result_single += shiftfromsigned_int;
+	  }
+	  else
+	  {
+		for (int i = 0; i < ksmod4; i+=4)
+		{
+		  resultx4[0] += ((short)*(src2_ptr))*current_coeff[i];
+		  resultx4[1] += ((short)*(src2_ptr+src_pitch1))*current_coeff[i+1];
+		  resultx4[2] += ((short)*(src2_ptr+src_pitch2))*current_coeff[i+2];
+		  resultx4[3] += ((short)*(src2_ptr+src_pitch3))*current_coeff[i+3];
+		  src2_ptr += src_pitch4;
+		}
+		
+		result_single = resultx4[0]+resultx4[1]+resultx4[2]+resultx4[3];
+		
+		for (int i = ksmod4; i < kernel_size; i++)
+		{
+		  result_single += ((short)*(src2_ptr))*current_coeff[i];
+		  src2_ptr += src_pitch1;
+		}
+	  }
 
-      dst0[x] = result;
+      result_single = result_single >> FPScale16bits;
+	  result_single = (result_single>val_max) ? val_max : (result_single<val_min) ? val_min : result_single;
+      dst[x] = (uint16_t)result_single;
     }
 
-    dst0 += dst_pitch;
+    dst += dst_pitch1;
     current_coeff += filter_size;
   }
 }
 
 
-static void resize_v_c_planar_s(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2)
+static void resize_v_c_planar_f(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2)
 {
-	const int filter_size = program->filter_size;
-	const int kernel_size = program->filter_size_real;
-	const short *current_coeff = program->pixel_coefficient+filter_size*MinY;
+  const int filter_size = program->filter_size;
+  const int kernel_size = program->filter_size_real;
 
-	const uint16_t *src0 = (uint16_t *)src;
-	uint16_t *dst0 = (uint16_t *)dst;
-	const __int64 val_min = (range==1) ? 0 : (int)16 << (bits_per_pixel-8);
-	const __int64 val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ?
-		((int)235 << (bits_per_pixel-8)) : ((int)240 << (bits_per_pixel-8));
+  const float* JPSDR_RESTRICT current_coeff = program->pixel_coefficient_float+filter_size*MinY;
 
-	const __int64 Offset = 1 << (FPScale16bits-1);
+  const float *src = (float *)src8;
+  float *dst = (float *)dst8;
+  const int src_pitch1 = src_pitch >> 2;
+  const int dst_pitch1 = dst_pitch >> 2;
+  
+  const int src_pitch2 = src_pitch1 << 1;
+  const int src_pitch3 = 3*src_pitch1;
+  const int src_pitch4 = src_pitch1 << 2;
 
-	dst_pitch>>=1;
+  // perhaps helps vectorizing decision
+  const int ksmod4 = (kernel_size >> 2) << 2;
 
-	for (int y = MinY; y < MaxY; y++)
+  for (int y = MinY; y < MaxY; y++)
+  {
+    const float *src_ptr = src + pitch_table[program->pixel_offset[y]];
+
+    for (int x = 0; x < width; x++)
 	{
-		const uint16_t *src_ptr = src0 + pitch_table[program->pixel_offset[y]];
+      const float* JPSDR_RESTRICT src2_ptr = src_ptr + x;
+	  float resultx4[4]={0.0,0.0,0.0,0.0};
+		
+      for (int i = 0; i < ksmod4; i += 4)
+	  {
+        resultx4[0] += (*(src2_ptr))*current_coeff[i];
+        resultx4[1] += (*(src2_ptr+src_pitch1))*current_coeff[i+1];
+        resultx4[2] += (*(src2_ptr+src_pitch2))*current_coeff[i+2];
+        resultx4[3] += (*(src2_ptr+src_pitch3))*current_coeff[i+3];
+        src2_ptr += src_pitch4;
+      }
+	  
+	  float result_single = resultx4[0]+resultx4[1]+resultx4[2]+resultx4[3];
+	  
+      for (int i = ksmod4; i < kernel_size; i++)
+	  {
+        result_single += (*src2_ptr)*current_coeff[i];
+        src2_ptr += src_pitch1;
+      }
+      dst[x] = result_single;
+    }
 
-		for (int x = 0; x < width; x++)
-		{
-			__int64 result = 0;
-
-			for (int i = 0; i < kernel_size; i++)
-				result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
-
-			result = (result+Offset) >> FPScale16bits;
-			result = (result>val_max) ? val_max : (result<val_min) ? val_min : result;
-			dst0[x] = (uint16_t) result;
-		}
-		dst0 += dst_pitch;
-		current_coeff += filter_size;
-	}
+    dst += dst_pitch1;
+    current_coeff += filter_size;
+  }
 }
+
 
 __forceinline static void resize_v_create_pitch_table(int* table, int pitch, int height, uint8_t pixel_size)
 {
@@ -428,140 +558,266 @@ __forceinline static void resize_v_create_pitch_table(int* table, int pitch, int
  ********* Horizontal Resizer** ********
  ***************************************/
 
-static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
+
+static void resize_h_c_planar_u8(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
 {
-  const int filter_size = program->filter_size;
-  const int kernel_size = program->filter_size_real;
-  int y_src_pitch=0,y_dst_pitch=0;
+	int filter_size = program->filter_size;
+
+	const BYTE *src_ptr = src8;
+	BYTE *dst_ptr = dst8;
   
+	const int src_pitch1 = src_pitch;
+	const int dst_pitch1 = dst_pitch;
+
 	const int val_min = (range==1) ? 0 : 16;
 	const int val_max = ((range==1) || (range==4)) ? 255 : (range==2) ? 235 : 240;
-	const int Offset = 1 << (FPScale8bits-1);
 
-  // external loop y is much faster
+	// perhaps helps vectorizing decision
+	const int kernel_size = program->filter_size_real;
+	const int ksmod4 = (kernel_size >> 2) << 2;
+	const int ksmod8 = (kernel_size >> 3) << 3;
+	
+	const int rounder = 1 << (FPScale8bits - 1); // rounder;
 
 	if ((mode_YUY2) && ((range>=2) && (range<=3)))
 	{
 		const int TabMax[4] = {235,240,235,240};
 
-		for (int y = 0; y < height; y++)
+		// external loop y is much faster
+		for (int y = 0; y < height; y++)  
 		{
-			const short *current_coeff=program->pixel_coefficient;
-	  
+			const short* JPSDR_RESTRICT current_coeff = program->pixel_coefficient;
+			BYTE* JPSDR_RESTRICT dst2_ptr = dst_ptr;
+
 			for (int x = 0; x < width; x++)
 			{
-				const int begin = program->pixel_offset[x];
-				int result = 0;
-		  
-				for (int i = 0; i < kernel_size; i++)
-	    			result+=(src+y_src_pitch)[(begin+i)]*current_coeff[i];
-		
-				result = (result + Offset) >> FPScale8bits;
-				result = (result>TabMax[x & 0x03]) ? TabMax[x & 0x03] : (result<16) ? 16 : result;
-				(dst + y_dst_pitch)[x] = (BYTE)result;		  		  
+				const BYTE* JPSDR_RESTRICT src2_ptr = src_ptr + program->pixel_offset[x];
+				int resultx8[8] = {rounder,0,0,0,0,0,0,0},resultx4[4] = {0,0,0,0};
+				
+				for (int i = 0; i < ksmod8; i += 8)
+				{
+					resultx8[0] += ((short)src2_ptr[i])*current_coeff[i];
+					resultx8[1] += ((short)src2_ptr[i+1])*current_coeff[i+1];
+					resultx8[2] += ((short)src2_ptr[i+2])*current_coeff[i+2];
+					resultx8[3] += ((short)src2_ptr[i+3])*current_coeff[i+3];
+					resultx8[4] += ((short)src2_ptr[i+4])*current_coeff[i+4];
+					resultx8[5] += ((short)src2_ptr[i+5])*current_coeff[i+5];
+					resultx8[6] += ((short)src2_ptr[i+6])*current_coeff[i+6];
+					resultx8[7] += ((short)src2_ptr[i+7])*current_coeff[i+7];
+				}
+				
+				int result_singlex8 = resultx8[0]+resultx8[1]+resultx8[2]+resultx8[3]+resultx8[4]
+					+resultx8[5]+resultx8[6]+resultx8[7];
+
+				for (int i = ksmod8; i < ksmod4; i += 4)
+				{
+					resultx4[0] += ((short)src2_ptr[i])*current_coeff[i];
+					resultx4[1] += ((short)src2_ptr[i+1])*current_coeff[i+1];
+					resultx4[2] += ((short)src2_ptr[i+2])*current_coeff[i+2];
+					resultx4[3] += ((short)src2_ptr[i+3])*current_coeff[i+3];
+				}
+				
+				int result_singlex4 = resultx4[0]+resultx4[1]+resultx4[2]+resultx4[3];
+				int result_single = result_singlex8 + result_singlex4;
+				
+				for (int i = ksmod4; i < kernel_size; i++)
+					result_single += ((short)src2_ptr[i])*current_coeff[i];
+				
+				result_single = result_single >> FPScale8bits;
+				result_single = (result_single>TabMax[x & 0x03]) ? TabMax[x & 0x3] : (result_single<16) ? 16 : result_single;
+				dst2_ptr[x] = (BYTE)result_single;
+				
 				current_coeff+=filter_size;
 			}
-			y_dst_pitch+=dst_pitch;
-			y_src_pitch+=src_pitch;	  
+			dst_ptr +=dst_pitch1;
+			src_ptr +=src_pitch1;
 		}
 	}
 	else
 	{
-		for (int y = 0; y < height; y++)
+		// external loop y is much faster
+		for (int y = 0; y < height; y++)  
 		{
-			const short *current_coeff=program->pixel_coefficient;
-	  
+			const short* JPSDR_RESTRICT current_coeff = program->pixel_coefficient;
+			BYTE* JPSDR_RESTRICT dst2_ptr = dst_ptr;
+
 			for (int x = 0; x < width; x++)
 			{
-				const int begin = program->pixel_offset[x];
-				int result = 0;
-		  
-				for (int i = 0; i < kernel_size; i++)
-	    			result+=(src+y_src_pitch)[(begin+i)]*current_coeff[i];
-		
-				result = (result + Offset) >> FPScale8bits;
-				result = (result>val_max) ? val_max : (result<val_min) ? val_min : result;
-				(dst + y_dst_pitch)[x] = (BYTE)result;		  		  
+				const BYTE* JPSDR_RESTRICT src2_ptr = src_ptr + program->pixel_offset[x];
+				int resultx8[8] = {rounder,0,0,0,0,0,0,0},resultx4[4] = {0,0,0,0};
+				
+				for (int i = 0; i < ksmod8; i += 8)
+				{
+					resultx8[0] += ((short)src2_ptr[i])*current_coeff[i];
+					resultx8[1] += ((short)src2_ptr[i+1])*current_coeff[i+1];
+					resultx8[2] += ((short)src2_ptr[i+2])*current_coeff[i+2];
+					resultx8[3] += ((short)src2_ptr[i+3])*current_coeff[i+3];
+					resultx8[4] += ((short)src2_ptr[i+4])*current_coeff[i+4];
+					resultx8[5] += ((short)src2_ptr[i+5])*current_coeff[i+5];
+					resultx8[6] += ((short)src2_ptr[i+6])*current_coeff[i+6];
+					resultx8[7] += ((short)src2_ptr[i+7])*current_coeff[i+7];
+				}
+
+				int result_singlex8 = resultx8[0]+resultx8[1]+resultx8[2]+resultx8[3]+resultx8[4]
+					+resultx8[5]+resultx8[6]+resultx8[7];
+
+				for (int i = ksmod8; i < ksmod4; i += 4)
+				{
+					resultx4[0] += ((short)src2_ptr[i])*current_coeff[i];
+					resultx4[1] += ((short)src2_ptr[i+1])*current_coeff[i+1];
+					resultx4[2] += ((short)src2_ptr[i+2])*current_coeff[i+2];
+					resultx4[3] += ((short)src2_ptr[i+3])*current_coeff[i+3];
+				}
+
+				int result_singlex4 = resultx4[0]+resultx4[1]+resultx4[2]+resultx4[3];
+				int result_single = result_singlex8 + result_singlex4;
+
+				for (int i = ksmod4; i < kernel_size; i++)
+					result_single += ((short)src2_ptr[i])*current_coeff[i];
+				
+				result_single = result_single >> FPScale8bits;
+				result_single = (result_single>val_max) ? val_max : (result_single<val_min) ? val_min : result_single;
+				dst2_ptr[x] = (BYTE)result_single;
+				
 				current_coeff+=filter_size;
 			}
-			y_dst_pitch+=dst_pitch;
-			y_src_pitch+=src_pitch;	  
+			dst_ptr +=dst_pitch1;
+			src_ptr +=src_pitch1;
 		}
 	}
- 
 }
 
 
-static void resize_h_c_planar_s(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
+template<bool lessthan16bit>
+static void resize_h_c_planar_u16(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
 {
-  const int filter_size = program->filter_size;
-  const int kernel_size = program->filter_size_real;
-  int y_src_pitch=0,y_dst_pitch=0;
-  const uint16_t *src0 = (uint16_t *)src;
-  uint16_t *dst0 = (uint16_t *)dst;
-	const __int64 val_min = (range==1) ? 0 : (int)16 << (bits_per_pixel-8);
-	const __int64 val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ?
+	int filter_size = program->filter_size;
+
+	const uint16_t *src_ptr = (uint16_t *)src8;
+	uint16_t *dst_ptr = (uint16_t *)dst8;
+
+	const int src_pitch1 = src_pitch >> 1;
+	const int dst_pitch1 = dst_pitch >> 1;
+
+	const int val_min = (range==1) ? 0 : (int)16 << (bits_per_pixel-8);
+	const int val_max = ((range==1) || (range==4)) ? ((int)1 << bits_per_pixel)-1 : (range==2) ?
 		((int)235 << (bits_per_pixel-8)) : ((int)240 << (bits_per_pixel-8));
 
-	const __int64 Offset = 1 << (FPScale16bits-1);
+	// for 16 bits only
+	const short shifttosigned_short = -32768;
+	const int shiftfromsigned_int = 32768 << FPScale16bits;
 
+	// perhaps helps vectorizing decision
+	const int kernel_size = program->filter_size_real;
+	const int ksmod4 = (kernel_size >> 2) << 2;
+	
+	const int rounder = 1 << (FPScale16bits - 1); // rounder;
 
-  src_pitch>>=1;
-  dst_pitch>>=1;
-  
+	// external loop y is much faster
 	for (int y = 0; y < height; y++)
 	{
-		const short *current_coeff=program->pixel_coefficient;
-  
+		const short* JPSDR_RESTRICT current_coeff = program->pixel_coefficient;
+		uint16_t* JPSDR_RESTRICT dst2_ptr = dst_ptr;
+
 		for (int x = 0; x < width; x++)
 		{
-			const int begin = program->pixel_offset[x];
-			__int64 result = 0;
-		  
-			for (int i = 0; i < kernel_size; i++)
-				result+=(src0+y_src_pitch)[(begin+i)]*current_coeff[i];
-		  
-			result = (result + Offset) >> FPScale16bits;
-			result = (result>val_max) ? val_max : (result<val_min) ? val_min : result;
-			(dst0 + y_dst_pitch)[x] = (uint16_t)result;
-			current_coeff+=filter_size;
+			const uint16_t* JPSDR_RESTRICT src2_ptr = src_ptr + program->pixel_offset[x];
+
+			// theoretically, no need for int64 accumulator,
+			// sum of coeffs is 1.0 that is (1 << FPScale16bits) in integer arithmetic
+			int result_single,resultx4[4] = {rounder,0,0,0};
+			
+			if JPSDR_CONSTEXPR (!lessthan16bit)
+			{
+				for (int i = 0; i < ksmod4; i += 4)
+				{
+					resultx4[0] += ((short)(src2_ptr[i]+shifttosigned_short))*current_coeff[i];
+					resultx4[1] += ((short)(src2_ptr[i+1]+shifttosigned_short))*current_coeff[i+1];
+					resultx4[2] += ((short)(src2_ptr[i+2]+shifttosigned_short))*current_coeff[i+2];
+					resultx4[3] += ((short)(src2_ptr[i+3]+shifttosigned_short))*current_coeff[i+3];
+				}
+
+				result_single = resultx4[0]+resultx4[1]+resultx4[2]+resultx4[3];
+
+				for (int i = ksmod4; i < kernel_size; i++)
+					result_single += ((short)(src2_ptr[i]+shifttosigned_short))*current_coeff[i];
+				result_single += shiftfromsigned_int;				
+			}
+			else
+			{
+				for (int i = 0; i < ksmod4; i += 4)
+				{
+					resultx4[0] += ((short)src2_ptr[i])*current_coeff[i];
+					resultx4[1] += ((short)src2_ptr[i+1])*current_coeff[i+1];
+					resultx4[2] += ((short)src2_ptr[i+2])*current_coeff[i+2];
+					resultx4[3] += ((short)src2_ptr[i+3])*current_coeff[i+3];
+				}
+
+				result_single = resultx4[0]+resultx4[1]+resultx4[2]+resultx4[3];
+
+				for (int i = ksmod4; i < kernel_size; i++)
+					result_single += ((short)src2_ptr[i])*current_coeff[i];
+			}				
+
+			result_single = result_single >> FPScale16bits;
+			result_single = (result_single>val_max) ? val_max : (result_single<val_min) ? val_min : result_single;
+			dst2_ptr[x] = (uint16_t)result_single;
+
+			current_coeff += filter_size;
 		}
-		y_dst_pitch+=dst_pitch;
-		y_src_pitch+=src_pitch;
+		dst_ptr +=dst_pitch1;
+		src_ptr +=src_pitch1;		
 	}
 }
 
 
-static void resize_h_c_planar_f(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
+static void resize_h_c_planar_f(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
 {
-  const int filter_size = program->filter_size;
-  const int kernel_size = program->filter_size_real;
-  int y_src_pitch=0,y_dst_pitch=0;
-  const float *src0=(float *)src;
-  float *dst0=(float *)dst;
+	int filter_size = program->filter_size;
+	
+	const float *src_ptr = (float *)src8;
+	float *dst_ptr = (float *)dst8;
 
-  src_pitch>>=2;
-  dst_pitch>>=2;
+	const int src_pitch1 = src_pitch >> 2;
+	const int dst_pitch1 = dst_pitch >> 2;
+	
+	// perhaps helps vectorizing decision
+	const int kernel_size = program->filter_size_real;
+	const int ksmod4 = (kernel_size >> 2) << 2;
 
-  for (int y = 0; y < height; y++)
-  {
-	  const float *current_coeff=program->pixel_coefficient_float;
-	  
-	  for (int x = 0; x < width; x++)
-	  {
-		  const int begin = program->pixel_offset[x];
-		  float result = 0;
-		  
-		  for (int i = 0; i < kernel_size; i++)
-			  result+=(src0+y_src_pitch)[(begin+i)]*current_coeff[i];
-		  
-		  (dst0 + y_dst_pitch)[x] = result;
-		  current_coeff+=filter_size;
-	  }
-	  y_dst_pitch+=dst_pitch;
-	  y_src_pitch+=src_pitch;
-  }
-}
+	// external loop y is much faster
+	for (int y = 0; y < height; y++)
+	{
+		const float* JPSDR_RESTRICT current_coeff = program->pixel_coefficient_float;
+		float* JPSDR_RESTRICT dst2_ptr = dst_ptr;
+
+		for (int x = 0; x < width; x++)
+		{
+			const float* JPSDR_RESTRICT src2_ptr = src_ptr + program->pixel_offset[x];
+			float result[4]={0.0,0.0,0.0,0.0};
+
+			for (int i = 0; i < ksmod4; i += 4)
+			{
+				result[0] += src2_ptr[i]*current_coeff[i];
+				result[1] += src2_ptr[i+1]*current_coeff[i+1];
+				result[2] += src2_ptr[i+2]*current_coeff[i+2];
+				result[3] += src2_ptr[i+3]*current_coeff[i+3];
+			}
+			
+			float result_single = result[0]+result[1]+result[2]+result[3];
+			
+			for (int i = ksmod4; i < kernel_size; i++)
+				result_single += src2_ptr[i]*current_coeff[i];
+			
+			dst2_ptr[x] = result_single;
+			
+			current_coeff += filter_size;
+		}
+		dst_ptr +=dst_pitch1;
+		src_ptr +=src_pitch1;		
+	}
+}		
+
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
@@ -1187,11 +1443,10 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 			else
 #endif			
 			{
-				if (program->filter_size_real>8) return resizer_h_ssse3_generic;
-				else return resizer_h_ssse3_8;
+				return resizer_h_ssse3_generic_uint8_16<uint8_t, true>;
 			}
 		}
-		else return resize_h_c_planar;
+		else return resize_h_c_planar_u8;
 	}
 	else if (pixelsize==2)
 	{ 
@@ -1206,82 +1461,25 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 			else
 #endif
 			{
-				if (Enable_SSE4_1) 
-				{
-					if (bits_per_pixel<16) return resizer_h_sse41_generic_uint16_t<true>;
-					else return resizer_h_sse41_generic_uint16_t<false>;
-				}
-				else // SSSE3 needed
-				{
-					if (bits_per_pixel<16) return resizer_h_ssse3_generic_uint16_t<true>;
-					else return resizer_h_ssse3_generic_uint16_t<false>;
-				}
+				if (bits_per_pixel<16) return resizer_h_ssse3_generic_uint8_16<uint16_t, true>;
+				else return resizer_h_ssse3_generic_uint8_16<uint16_t, false>;
 			}
 		}
-		else return resize_h_c_planar_s;
+		else
+		{
+			if (bits_per_pixel<16) return resize_h_c_planar_u16<true>;
+			else return resize_h_c_planar_u16<false>;
+		}
 	}
 	else
 	{ //if (pixelsize == 4)
 		if (Enable_SSSE3)
 		{
-			const int filtersizealign8 = AlignNumber(program->filter_size_real,8);
-			const int filtersizemod8 = program->filter_size_real & 7;
-
 #ifdef AVX2_BUILD_POSSIBLE
 			if (Enable_AVX2) return resizer_h_avx2_generic_float;
 			else
 #endif		
-			// SSSE3
-			{
-				if (filtersizealign8==8) 
-				{
-					switch (filtersizemod8)
-					{
-						case 0 : return resizer_h_ssse3_generic_float<1,0>; break;
-						case 1 : return resizer_h_ssse3_generic_float<1,1>; break;
-						case 2 : return resizer_h_ssse3_generic_float<1,2>; break;
-						case 3 : return resizer_h_ssse3_generic_float<1,3>; break;
-						case 4 : return resizer_h_ssse3_generic_float<1,4>; break;
-						case 5 : return resizer_h_ssse3_generic_float<1,5>; break;
-						case 6 : return resizer_h_ssse3_generic_float<1,6>; break;
-						case 7 : return resizer_h_ssse3_generic_float<1,7>; break;
-						default : return NULL; break;
-					}
-				}
-				else
-				{
-					if (filtersizealign8==16)
-					{
-						switch (filtersizemod8)
-						{
-							case 0 : return resizer_h_ssse3_generic_float<2,0>; break;
-							case 1 : return resizer_h_ssse3_generic_float<2,1>; break;
-							case 2 : return resizer_h_ssse3_generic_float<2,2>; break;
-							case 3 : return resizer_h_ssse3_generic_float<2,3>; break;
-							case 4 : return resizer_h_ssse3_generic_float<2,4>; break;
-							case 5 : return resizer_h_ssse3_generic_float<2,5>; break;
-							case 6 : return resizer_h_ssse3_generic_float<2,6>; break;
-							case 7 : return resizer_h_ssse3_generic_float<2,7>; break;
-							default : return NULL; break;
-						}
-					}
-					else
-					{
-						switch (filtersizemod8)
-						{
-							case 0 : return resizer_h_ssse3_generic_float<-1,0>; break;
-							case 1 : return resizer_h_ssse3_generic_float<-1,1>; break;
-							case 2 : return resizer_h_ssse3_generic_float<-1,2>; break;
-							case 3 : return resizer_h_ssse3_generic_float<-1,3>; break;
-							case 4 : return resizer_h_ssse3_generic_float<-1,4>; break;
-							case 5 : return resizer_h_ssse3_generic_float<-1,5>; break;
-							case 6 : return resizer_h_ssse3_generic_float<-1,6>; break;
-							case 7 : return resizer_h_ssse3_generic_float<-1,7>; break;
-							default : return NULL; break;
-						}
-					}
-				}
-			}
+			return resizer_h_ssse3_generic_float;  // SSSE3
 		}
 		else return resize_h_c_planar_f;
 	}
@@ -2085,10 +2283,10 @@ ResamplerV FilteredResizeV::GetResampler(bool aligned, ResamplingProgram* progra
     // Fast pointresize
     switch (pixelsize) // AVS16
     {
-    case 1: return resize_v_planar_pointresize<uint8_t>;
-    case 2: return resize_v_planar_pointresize<uint16_t>;
-    default: // case 4:
-      return resize_v_planar_pointresize<float>;
+      case 1: return resize_v_planar_pointresize<uint8_t>;
+      case 2: return resize_v_planar_pointresize<uint16_t>;
+      default: // case 4:
+        return resize_v_planar_pointresize<float>;
     }
   }
   else
@@ -2096,93 +2294,58 @@ ResamplerV FilteredResizeV::GetResampler(bool aligned, ResamplingProgram* progra
     // Other resizers
     if (pixelsize==1)
     {
-      if (Enable_SSSE3)
+      if (aligned && Enable_SSE2)
 	  {
 #ifdef AVX2_BUILD_POSSIBLE
-		  if (aligned && Enable_AVX2) return resize_v_avx2_planar_uint8_t;
+		  if (Enable_AVX2) return resize_v_avx2_planar_uint8_t;
 		  else
 #endif
 		  {
-			if (aligned && Enable_SSE4_1)
-			{
-				return resize_v_sse41_planar;
-			}
-			else if (aligned)
-			{ // SSSE3 aligned
-				return resize_v_ssse3_planarT<simd_load_aligned>;
-			}
-			else if (Enable_SSE3)
-			{ // SSE3 lddqu
-				return resize_v_ssse3_planarT<simd_load_unaligned_sse3>;
-			}
-			else
-			{ // SSSE3 unaligned
-				return resize_v_ssse3_planarT<simd_load_unaligned>;
-			}
+			  return resize_v_sse2_planar;
 		  }
       }
-      else if (Enable_SSE2)
-	  {
-        if (aligned && Enable_SSE4_1)
-		{ // SSE4.1 movntdqa constantly provide ~2% performance increase in my testing
-          return resize_v_sse2_planar;
-        }
-        else if (aligned)
-		{ // SSE2 aligned
-          return resize_v_sse2_planarT<simd_load_aligned>;
-        }
-        else if (Enable_SSE3)
-		{ // SSE2 lddqu
-          return resize_v_ssse3_planar;
-        }
-        else
-		{ // SSE2 unaligned
-          return resize_v_sse2_planarT<simd_load_unaligned>;
-        }
 #ifdef X86_32
-      }
       else if (Enable_MMX)
 	  {
         return resize_v_mmx_planar;
+      }
 #endif
-      }
-      else { // C version
-        return resize_v_c_planar;
-      }
+	  else return resize_v_c_planar_u8; // C version
     } 
     else if (pixelsize==2)
 	{
+      if (aligned && Enable_SSE2)
+	  {
 #ifdef AVX2_BUILD_POSSIBLE		
-		if (aligned && Enable_AVX2)
+		if (Enable_AVX2)
 		{
 			if (bits_per_pixel<16) return resize_v_avx2_planar_uint16_t<true>;
 			else return resize_v_avx2_planar_uint16_t<false>;
 		}
 		else
 #endif			
-		if (aligned && Enable_SSE4_1)
-		{
-			if (bits_per_pixel<16) return resize_v_sse41_planar_uint16_t<true>;
-			else return resize_v_sse41_planar_uint16_t<false>;
-		}
-		else if (aligned && Enable_SSE2)
 		{
 			if (bits_per_pixel<16) return resize_v_sse2_planar_uint16_t<true>;
 			else return resize_v_sse2_planar_uint16_t<false>;
 		}
-		else
-		{ // C version
-			return resize_v_c_planar_s;
-		}
+	  }
+	  else
+	  {
+		  if (bits_per_pixel<16) return resize_v_c_planar_u16<true>; // C version
+		  else return resize_v_c_planar_u16<false>;
+	  }
     }
     else
 	{ // if (pixelsize== 4) 
+      if (aligned && Enable_SSE2)
+	  {
 #ifdef AVX2_BUILD_POSSIBLE			
-		if (aligned && Enable_AVX2) return resize_v_avx2_planar_float;
+		if (Enable_AVX2) return resize_v_avx2_planar_float;
 		else
 #endif			
-		if (aligned && Enable_SSE2) return resize_v_sse2_planar_float;
-		else return resize_v_c_planar_f;
+		return resize_v_sse2_planar_float;
+	  }
+	  else return resize_v_c_planar_f;
     }
   }
 }
