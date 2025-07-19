@@ -151,6 +151,24 @@
     <MASM Include="HDRTools_AVX2_asm_x64.asm">
       <Filter>Fichiers sources</Filter>
     </MASM>
+    <MASM Include="HDRTools_AVX512_asm.asm">
+      <Filter>Fichiers sources</Filter>
+    </MASM>
+    <MASM Include="HDRTools_AVX512_asm_x64.asm">
+      <Filter>Fichiers sources</Filter>
+    </MASM>
+    <MASM Include="MatrixClass_AVX512_x86.asm">
+      <Filter>Fichiers sources</Filter>
+    </MASM>
+    <MASM Include="MatrixClass_AVX512_x64.asm">
+      <Filter>Fichiers sources</Filter>
+    </MASM>
+    <MASM Include="nnedi3_asm_AVX512.asm">
+      <Filter>Fichiers sources</Filter>
+    </MASM>
+    <MASM Include="nnedi3_asm_AVX512_x64.asm">
+      <Filter>Fichiers sources</Filter>
+    </MASM>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="AutoYUY2_asm_x64.asm">
