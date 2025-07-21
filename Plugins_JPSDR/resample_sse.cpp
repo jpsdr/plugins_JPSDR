@@ -333,7 +333,7 @@ void resize_v_sse2_planar(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_p
       if (notMod2)
 	  { // do last odd row
         // Load a single coefficients as a single packed value and broadcast
-        __m128i coeff = _mm_set1_epi16(*reinterpret_cast<const short*>(current_coeff[sizeMod2])); // 0|co|0|co|0|co|0|co
+        __m128i coeff = _mm_set1_epi16(*reinterpret_cast<const short*>(current_coeff+sizeMod2)); // 0|co|0|co|0|co|0|co
 
         __m128i src_even = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src2_ptr)); // 8x 8bit pixels
         __m128i src_even2 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src2_ptr + 8)); // 8x 8bit pixels
@@ -483,8 +483,7 @@ void resize_v_sse2_planar_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, 
       const uint16_t* JPSDR_RESTRICT src2_ptr = src_ptr + x;
 
       // Process pairs of rows for better efficiency (2 coeffs/cycle)
-      int i = 0;
-      for (; i < kernel_size_mod2; i += 2)
+      for (int i = 0; i < kernel_size_mod2; i += 2)
 	  {
         // Load _two_ coefficients as a single packed value and broadcast
         __m128i coeff = _mm_set1_epi32(*reinterpret_cast<const int*>(current_coeff + i)); // CO|co|CO|co|CO|co|CO|co
@@ -507,7 +506,7 @@ void resize_v_sse2_planar_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, 
       if (notMod2)
 	  {
         // Load a single coefficients as a single packed value and broadcast
-        __m128i coeff = _mm_set1_epi16(*reinterpret_cast<const short*>(current_coeff + i)); // 0|co|0|co|0|co|0|co
+        __m128i coeff = _mm_set1_epi16(*reinterpret_cast<const short*>(current_coeff + kernel_size_mod2)); // 0|co|0|co|0|co|0|co
 
         __m128i src_even = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src2_ptr)); // 8x 16bit pixels
         if JPSDR_CONSTEXPR (!lessthan16bit)
