@@ -42,6 +42,7 @@
 
 #include "./resample_sse.h"
 
+// VS 2015
 #if _MSC_VER >= 1900
   #define JPSDR_RESTRICT __restrict
   #define JPSDR_CONSTEXPR constexpr
@@ -51,8 +52,17 @@
   #define JPSDR_CONSTEXPR
 #endif
 
+// VS 2019 v16.3
+#if _MSC_VER >= 1923
+#define AVX512_BUILD_POSSIBLE
+#endif
+
 #ifdef AVX2_BUILD_POSSIBLE
 #include "./resample_avx2.h"
+#endif
+
+#ifdef AVX512_BUILD_POSSIBLE
+#include "./ResampleMT_AVX512.h"
 #endif
 
 extern ThreadPoolInterface *poolInterface;
@@ -848,8 +858,13 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   Enable_SSSE3 = (env->GetCPUFlags() & CPUF_SSSE3)!=0;
   Enable_SSE4_1 = (env->GetCPUFlags() & CPUF_SSE4_1)!=0;
   Enable_AVX2 = false;
+  Enable_AVX512 = false;
 #ifdef AVX2_BUILD_POSSIBLE
   Enable_AVX2 = avsp && ((env->GetCPUFlags() & CPUF_AVX2)!=0);
+#endif
+#ifdef AVX512_BUILD_POSSIBLE
+  Enable_AVX512 = avsp && ((env->GetCPUFlags() & CPUF_AVX512F)!=0) && ((env->GetCPUFlags() & CPUF_AVX512DQ)!=0)
+	&& ((env->GetCPUFlags() & CPUF_AVX512BW)!=0);
 #endif
 
   double center_pos_h_luma;
@@ -1534,8 +1549,13 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   Enable_SSSE3 = (env->GetCPUFlags() & CPUF_SSSE3)!=0;
   Enable_SSE4_1 = (env->GetCPUFlags() & CPUF_SSE4_1)!=0;
   Enable_AVX2 = false;
+  Enable_AVX512 = false;
 #ifdef AVX2_BUILD_POSSIBLE
   Enable_AVX2 = avsp && ((env->GetCPUFlags() & CPUF_AVX2)!=0);
+#endif
+#ifdef AVX512_BUILD_POSSIBLE
+  Enable_AVX512 = avsp && ((env->GetCPUFlags() & CPUF_AVX512F)!=0) && ((env->GetCPUFlags() & CPUF_AVX512DQ)!=0)
+	&& ((env->GetCPUFlags() & CPUF_AVX512BW)!=0);
 #endif
 
   double center_pos_v_luma;
@@ -2296,12 +2316,18 @@ ResamplerV FilteredResizeV::GetResampler(bool aligned, ResamplingProgram* progra
     {
       if (aligned && Enable_SSE2)
 	  {
-#ifdef AVX2_BUILD_POSSIBLE
-		  if (Enable_AVX2) return resize_v_avx2_planar_uint8_t;
+#ifdef AVX512_BUILD_POSSIBLE
+		  if (Enable_AVX512) return Resize_V_AVX512_8bits;
 		  else
 #endif
 		  {
-			  return resize_v_sse2_planar;
+#ifdef AVX2_BUILD_POSSIBLE
+		    if (Enable_AVX2) return resize_v_avx2_planar_uint8_t;
+		    else
+#endif
+		    {
+			    return resize_v_sse2_planar;
+		    }
 		  }
       }
 #ifdef X86_32
@@ -2316,17 +2342,23 @@ ResamplerV FilteredResizeV::GetResampler(bool aligned, ResamplingProgram* progra
 	{
       if (aligned && Enable_SSE2)
 	  {
-#ifdef AVX2_BUILD_POSSIBLE		
-		if (Enable_AVX2)
-		{
-			if (bits_per_pixel<16) return resize_v_avx2_planar_uint16_t<true>;
-			else return resize_v_avx2_planar_uint16_t<false>;
-		}
+#ifdef AVX512_BUILD_POSSIBLE		
+		if (Enable_AVX512) return Resize_V_AVX512_16bits;
 		else
 #endif			
 		{
-			if (bits_per_pixel<16) return resize_v_sse2_planar_uint16_t<true>;
-			else return resize_v_sse2_planar_uint16_t<false>;
+#ifdef AVX2_BUILD_POSSIBLE		
+			if (Enable_AVX2)
+			{
+				if (bits_per_pixel<16) return resize_v_avx2_planar_uint16_t<true>;
+				else return resize_v_avx2_planar_uint16_t<false>;
+			}
+			else
+#endif			
+			{
+				if (bits_per_pixel<16) return resize_v_sse2_planar_uint16_t<true>;
+				else return resize_v_sse2_planar_uint16_t<false>;
+			}
 		}
 	  }
 	  else
@@ -2339,11 +2371,17 @@ ResamplerV FilteredResizeV::GetResampler(bool aligned, ResamplingProgram* progra
 	{ // if (pixelsize== 4) 
       if (aligned && Enable_SSE2)
 	  {
-#ifdef AVX2_BUILD_POSSIBLE			
-		if (Enable_AVX2) return resize_v_avx2_planar_float;
+#ifdef AVX512_BUILD_POSSIBLE			
+		if (Enable_AVX512) return Resize_V_AVX512_32bits;
 		else
 #endif			
-		return resize_v_sse2_planar_float;
+		{
+#ifdef AVX2_BUILD_POSSIBLE			
+			if (Enable_AVX2) return resize_v_avx2_planar_float;
+			else
+#endif			
+			return resize_v_sse2_planar_float;
+		}
 	  }
 	  else return resize_v_c_planar_f;
     }

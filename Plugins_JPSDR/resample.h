@@ -41,7 +41,7 @@
 #include "./resample_functions.h"
 #include "./ThreadPoolInterface.h"
 
-#define RESAMPLE_MT_VERSION "ResampleMT 2.7.2 JPSDR"
+#define RESAMPLE_MT_VERSION "ResampleMT 2.8.0 JPSDR"
 
 typedef enum ChromaLocation_e
 {
@@ -136,7 +136,7 @@ private:
   uint8_t bits_per_pixel;
   uint8_t plane_range[4];
   bool mode_YUY2;
-  bool Enable_MMX,Enable_SSE2,Enable_SSE3,Enable_SSSE3,Enable_SSE4_1,Enable_AVX2;
+  bool Enable_MMX,Enable_SSE2,Enable_SSE3,Enable_SSSE3,Enable_SSE4_1,Enable_AVX2,Enable_AVX512;
 
   ResamplerH resampler_h_luma;
   ResamplerH resampler_h_chroma;
@@ -196,7 +196,7 @@ private:
   uint8_t bits_per_pixel;
   uint8_t plane_range[4];
   bool mode_YUY2;
-  bool Enable_MMX,Enable_SSE2,Enable_SSE3,Enable_SSSE3,Enable_SSE4_1,Enable_AVX2;
+  bool Enable_MMX,Enable_SSE2,Enable_SSE3,Enable_SSSE3,Enable_SSE4_1,Enable_AVX2,Enable_AVX512;
 	
   ResamplingProgram *resampling_program_luma;
   ResamplingProgram *resampling_program_chroma;
@@ -302,5 +302,3 @@ static AVSValue __cdecl Create_DeUserDefined2Resize(AVSValue args, void*, IScrip
 
 
 #endif // __Resample_H__
-
-

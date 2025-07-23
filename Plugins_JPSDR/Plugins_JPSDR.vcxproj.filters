@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Fichiers asm">
+      <UniqueIdentifier>{146f958c-e553-4d53-a169-7bd4a6470e95}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="nnedi3.cpp">
@@ -55,6 +58,9 @@
       <Filter>Fichiers sources</Filter>
     </ClCompile>
     <ClCompile Include="resample_sse.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="ResampleMT_AVX512.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
   </ItemGroup>
@@ -107,81 +113,90 @@
     <ClInclude Include="resample_sse.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
+    <ClInclude Include="ResampleMT_AVX512.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="AutoYUY2_asm.asm">
-      <Filter>Fichiers sources</Filter>
-    </MASM>
-    <MASM Include="nnedi3_asm.asm">
-      <Filter>Fichiers sources</Filter>
-    </MASM>
-    <MASM Include="nnedi3_asm_FMA.asm">
-      <Filter>Fichiers sources</Filter>
-    </MASM>
-    <MASM Include="PlanarFrame_asm.asm">
-      <Filter>Fichiers sources</Filter>
-    </MASM>
-    <MASM Include="MatrixClass_x64.asm">
-      <Filter>Fichiers sources</Filter>
-    </MASM>
-    <MASM Include="MatrixClass_x86.asm">
-      <Filter>Fichiers sources</Filter>
-    </MASM>
-    <MASM Include="aWarpSharp_asm.asm">
-      <Filter>Fichiers sources</Filter>
-    </MASM>
-    <MASM Include="aWarpSharp_asm_x64.asm">
-      <Filter>Fichiers sources</Filter>
+      <Filter>Fichiers asm</Filter>
     </MASM>
     <MASM Include="AutoYUY2_AVX2_asm.asm">
-      <Filter>Fichiers sources</Filter>
+      <Filter>Fichiers asm</Filter>
     </MASM>
     <MASM Include="AutoYUY2_AVX2_asm_x64.asm">
-      <Filter>Fichiers sources</Filter>
+      <Filter>Fichiers asm</Filter>
     </MASM>
-    <MASM Include="HDRTools_asm.asm">
-      <Filter>Fichiers sources</Filter>
+    <MASM Include="aWarpSharp_asm.asm">
+      <Filter>Fichiers asm</Filter>
+    </MASM>
+    <MASM Include="aWarpSharp_asm_x64.asm">
+      <Filter>Fichiers asm</Filter>
     </MASM>
     <MASM Include="HDRTools_asm_x64.asm">
-      <Filter>Fichiers sources</Filter>
+      <Filter>Fichiers asm</Filter>
     </MASM>
     <MASM Include="HDRTools_AVX2_asm.asm">
-      <Filter>Fichiers sources</Filter>
+      <Filter>Fichiers asm</Filter>
     </MASM>
     <MASM Include="HDRTools_AVX2_asm_x64.asm">
-      <Filter>Fichiers sources</Filter>
+      <Filter>Fichiers asm</Filter>
     </MASM>
     <MASM Include="HDRTools_AVX512_asm.asm">
-      <Filter>Fichiers sources</Filter>
+      <Filter>Fichiers asm</Filter>
     </MASM>
     <MASM Include="HDRTools_AVX512_asm_x64.asm">
-      <Filter>Fichiers sources</Filter>
-    </MASM>
-    <MASM Include="MatrixClass_AVX512_x86.asm">
-      <Filter>Fichiers sources</Filter>
+      <Filter>Fichiers asm</Filter>
     </MASM>
     <MASM Include="MatrixClass_AVX512_x64.asm">
-      <Filter>Fichiers sources</Filter>
+      <Filter>Fichiers asm</Filter>
+    </MASM>
+    <MASM Include="MatrixClass_AVX512_x86.asm">
+      <Filter>Fichiers asm</Filter>
+    </MASM>
+    <MASM Include="MatrixClass_x64.asm">
+      <Filter>Fichiers asm</Filter>
+    </MASM>
+    <MASM Include="MatrixClass_x86.asm">
+      <Filter>Fichiers asm</Filter>
     </MASM>
     <MASM Include="nnedi3_asm_AVX512.asm">
-      <Filter>Fichiers sources</Filter>
+      <Filter>Fichiers asm</Filter>
     </MASM>
     <MASM Include="nnedi3_asm_AVX512_x64.asm">
-      <Filter>Fichiers sources</Filter>
+      <Filter>Fichiers asm</Filter>
+    </MASM>
+    <MASM Include="nnedi3_asm_FMA.asm">
+      <Filter>Fichiers asm</Filter>
+    </MASM>
+    <MASM Include="PlanarFrame_asm.asm">
+      <Filter>Fichiers asm</Filter>
+    </MASM>
+    <MASM Include="HDRTools_asm.asm">
+      <Filter>Fichiers asm</Filter>
+    </MASM>
+    <MASM Include="nnedi3_asm.asm">
+      <Filter>Fichiers asm</Filter>
+    </MASM>
+    <MASM Include="ResampleMT_AVX512_x64.asm">
+      <Filter>Fichiers asm</Filter>
+    </MASM>
+    <MASM Include="ResampleMT_AVX512_x86.asm">
+      <Filter>Fichiers asm</Filter>
     </MASM>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="AutoYUY2_asm_x64.asm">
-      <Filter>Fichiers sources</Filter>
+      <Filter>Fichiers asm</Filter>
     </CustomBuild>
     <CustomBuild Include="nnedi3_asm_FMA_x64.asm">
-      <Filter>Fichiers sources</Filter>
+      <Filter>Fichiers asm</Filter>
     </CustomBuild>
     <CustomBuild Include="nnedi3_asm_x64.asm">
-      <Filter>Fichiers sources</Filter>
+      <Filter>Fichiers asm</Filter>
     </CustomBuild>
     <CustomBuild Include="PlanarFrame_asm_x64.asm">
-      <Filter>Fichiers sources</Filter>
+      <Filter>Fichiers asm</Filter>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
