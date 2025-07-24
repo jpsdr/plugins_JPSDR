@@ -22,15 +22,6 @@
 .xmm
 .model flat,c
 
-.data
-
-align 16
-
-data segment align(64)
-
-ZValMin word 32 dup(0)
-ZValMax word 32 dup(0)
-
 .code
 
 Resize_V_AVX512_Planar_8bits_ASM proc src:dword,dst:dword,coeff:dword,width32:dword,src_pitch:dword,
@@ -195,21 +186,26 @@ Resize_V_AVX512_Planar_16bits_ASM proc src:dword,dst:dword,coeff:dword,width32:d
 	shifttosigned:dword,shiftfromsigned:dword
 
     public Resize_V_AVX512_Planar_16bits_ASM
-
+	
+	local ZValMin : ZMMWORD
+	local ZValMax : ZMMWORD
+	local ZShiftfromSigned : ZMMWORD
+	
 	push ebx
 	push edi
 	push esi		
 
-	mov esi,valmin
-	vbroadcastss zmm7,dword ptr[esi]
-	vmovdqa64 ZMMWORD ptr ZValMin,zmm7
-	mov esi,valmax
-	vbroadcastss zmm7,dword ptr[esi]
-	vmovdqa64 ZMMWORD ptr ZValMax,zmm7
 	mov esi,shifttosigned
 	vbroadcastss zmm5,dword ptr[esi]
+	mov esi,valmin
+	vbroadcastss zmm6,dword ptr[esi]
+	vmovdqu64 ZValMin,zmm6
+	mov esi,valmax
+	vbroadcastss zmm6,dword ptr[esi]
+	vmovdqu64 ZValMax,zmm6
 	mov esi,shiftfromsigned
 	vbroadcastss zmm6,dword ptr[esi]
+	vmovdqu64 ZShiftfromSigned,zmm6
 	mov esi,rounder
 	vbroadcastss zmm7,dword ptr[esi]
 
@@ -255,12 +251,18 @@ Resize_V_AVX512_Planar_16bits_loop_2:
 	vpsrad zmm0,zmm0,13 ;FPScale16bits = 13
 	vpsrad zmm1,zmm1,13
 
+	vmovdqu64 zmm6,ZValMin
+
 	vpackusdw zmm0,zmm0,zmm1
 
-	vpmaxuw zmm0,zmm0,ZMMWORD ptr ZValMin
-	vpminuw zmm0,zmm0,ZMMWORD ptr ZValMax
-	
+	vpmaxuw zmm0,zmm0,zmm6
+
+	vmovdqu64 zmm6,ZValMax
+	vpminuw zmm0,zmm0,zmm6
+
 	vmovdqa64 ZMMWORD ptr [edi],zmm0
+
+	vmovdqu64 zmm6,ZShiftfromSigned
 		
 	add edi,64
 	add src,64
