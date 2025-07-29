@@ -43,4 +43,14 @@ void Resize_V_AVX512_16bits(BYTE* dst8, const BYTE* src8, int dst_pitch, int src
 
 void Resize_V_AVX512_32bits(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2);
 
+////////
+
+void Resize_H_AVX512_8bits(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height,
+	int bits_per_pixel,const uint8_t range,const bool mode_YUY2);
+void Resize_H_AVX512_16bits(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height,
+	int bits_per_pixel,const uint8_t range,const bool mode_YUY2);
+void Resize_H_AVX512_32bits(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height,
+	int bits_per_pixel,const uint8_t range,const bool mode_YUY2);
+
+
 #endif // __ResampleMT_AVX512_H__

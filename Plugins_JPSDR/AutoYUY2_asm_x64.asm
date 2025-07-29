@@ -329,11 +329,11 @@ w equ dword ptr[rbp+64]
 	.pushreg rdi
 	push rbx
 	.pushreg rbx
-	sub rsp,32
-	.allocstack 32
-	movdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	movdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu XMMWORD ptr[rsp+16],xmm7
+	movdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 	
@@ -382,9 +382,9 @@ _SSE2_2_a:
 	loop _SSE2_2_a
 		
 _SSE2_2_c:		
-	movdqu xmm7,XMMWORD ptr[rsp+16]
-	movdqu xmm6,XMMWORD ptr[rsp]
-	add rsp,32
+	movdqa xmm7,XMMWORD ptr[rsp+16]
+	movdqa xmm6,XMMWORD ptr[rsp]
+	add rsp,40
 	pop rbx
 	pop rdi
 	pop rsi
@@ -416,11 +416,11 @@ w equ dword ptr[rbp+64]
 	.pushreg rdi
 	push rbx
 	.pushreg rbx
-	sub rsp,32
-	.allocstack 32
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 	
@@ -469,9 +469,9 @@ _AVX_2_a:
 	loop _AVX_2_a
 		
 _AVX_2_c:		
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]
-	add rsp,32
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]
+	add rsp,40
 	pop rbx
 	pop rdi
 	pop rsi
@@ -756,11 +756,11 @@ w equ dword ptr[rbp+64]
 	.pushreg rdi
 	push rbx
 	.pushreg rbx
-	sub rsp,32
-	.allocstack 32
-	movdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	movdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu XMMWORD ptr[rsp+16],xmm7
+	movdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 	
@@ -807,9 +807,9 @@ _SSE2_3_a:
 	loop _SSE2_3_a
 	
 _SSE2_3_c:		
-	movdqu xmm7,XMMWORD ptr[rsp+16]
-	movdqu xmm6,XMMWORD ptr[rsp]
-	add rsp,32
+	movdqa xmm7,XMMWORD ptr[rsp+16]
+	movdqa xmm6,XMMWORD ptr[rsp]
+	add rsp,40
 	pop rbx
 	pop rdi
 	pop rsi
@@ -841,11 +841,11 @@ w equ dword ptr[rbp+64]
 	.pushreg rdi
 	push rbx
 	.pushreg rbx
-	sub rsp,32
-	.allocstack 32
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 	
@@ -892,9 +892,9 @@ _AVX_3_a:
 	loop _AVX_3_a
 	
 _AVX_3_c:		
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]
-	add rsp,32
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]
+	add rsp,40
 	pop rbx
 	pop rdi
 	pop rsi
@@ -935,9 +935,9 @@ w equ dword ptr[rbp+64]
 	movdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
-	
+
 	pxor xmm7,xmm7
-	
+
 	mov rsi,rcx		; rsi = src_y
 	mov r10,rdx		; r10=src1_u
 	mov rdi,dst
@@ -947,10 +947,10 @@ w equ dword ptr[rbp+64]
 	mov r12,2
 	mov r13,16
 	mov ecx,w
-	
+
 	movdqa xmm6,XMMWORD ptr uw_4
 	movdqa xmm5,XMMWORD ptr uw_7
-	
+
 	xor rax,rax
 	shr ecx,1
 	jz short _SSE2_3b_b
@@ -1167,11 +1167,11 @@ w equ dword ptr[rbp+64]
 	.pushreg rdi
 	push rbx
 	.pushreg rbx
-	sub rsp,32
-	.allocstack 32
-	movdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	movdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu XMMWORD ptr[rsp+16],xmm7
+	movdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 	
@@ -1218,9 +1218,9 @@ _SSE2_4_a:
 	loop _SSE2_4_a
 		
 _SSE2_4_c:		
-	movdqu xmm7,XMMWORD ptr[rsp+16]
-	movdqu xmm6,XMMWORD ptr[rsp]
-	add rsp,32
+	movdqa xmm7,XMMWORD ptr[rsp+16]
+	movdqa xmm6,XMMWORD ptr[rsp]
+	add rsp,40
 	pop rbx
 	pop rdi
 	pop rsi
@@ -1252,11 +1252,11 @@ w equ dword ptr[rbp+64]
 	.pushreg rdi
 	push rbx
 	.pushreg rbx
-	sub rsp,32
-	.allocstack 32
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 	
@@ -1303,9 +1303,9 @@ _AVX_4_a:
 	loop _AVX_4_a
 		
 _AVX_4_c:		
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]
-	add rsp,32
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]
+	add rsp,40
 	pop rbx
 	pop rdi
 	pop rsi

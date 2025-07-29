@@ -3005,8 +3005,8 @@ void evalFunc_2(void *ps)
 				}
 			}
 		}
-#endif
 		else
+#endif
 		{
 			if (opt>=4)
 			{
@@ -3453,8 +3453,8 @@ void evalFunc_2_16(void *ps)
 				}
 			}
 		}
-#endif
 		else
+#endif
 		{
 			if (opt>=4)
 			{
@@ -3771,8 +3771,8 @@ void evalFunc_2_32(void *ps)
 				}
 			}
 		}
-#endif
 		else
+#endif
 		{
 			if (opt>=4)
 			{

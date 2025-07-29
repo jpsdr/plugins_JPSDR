@@ -58,7 +58,7 @@
 #endif
 
 #ifdef AVX2_BUILD_POSSIBLE
-#include "./resample_avx2.h"
+#include "./ResampleMT_AVX2.h"
 #endif
 
 #ifdef AVX512_BUILD_POSSIBLE
@@ -568,6 +568,23 @@ __forceinline static void resize_v_create_pitch_table(int* table, int pitch, int
  ********* Horizontal Resizer** ********
  ***************************************/
 
+template<typename pixel_t>
+static void resize_h_planar_pointresize(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
+{
+	pixel_t *src0 = (pixel_t *)src8;
+	pixel_t *dst0 = (pixel_t *)dst8;
+	dst_pitch/=sizeof(pixel_t);
+	src_pitch/=sizeof(pixel_t);
+
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+			dst0[x] = src0[program->pixel_offset[x]];
+
+		src0+=src_pitch;
+		dst0+=dst_pitch;
+	}
+}
 
 static void resize_h_c_planar_u8(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
 {
@@ -851,20 +868,22 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
   isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
   mode_YUY2 = vi.IsYUY2();
+  
+  const int CPUF = env->GetCPUFlags();
 
-  Enable_MMX = (env->GetCPUFlags() & CPUF_MMX)!=0;
-  Enable_SSE2 = (env->GetCPUFlags() & CPUF_SSE2)!=0;
-  Enable_SSE3 = (env->GetCPUFlags() & CPUF_SSE3)!=0;
-  Enable_SSSE3 = (env->GetCPUFlags() & CPUF_SSSE3)!=0;
-  Enable_SSE4_1 = (env->GetCPUFlags() & CPUF_SSE4_1)!=0;
+  Enable_MMX = (CPUF & CPUF_MMX)!=0;
+  Enable_SSE2 = (CPUF & CPUF_SSE2)!=0;
+  Enable_SSE3 = (CPUF & CPUF_SSE3)!=0;
+  Enable_SSSE3 = (CPUF & CPUF_SSSE3)!=0;
+  Enable_SSE4_1 = (CPUF & CPUF_SSE4_1)!=0;
   Enable_AVX2 = false;
   Enable_AVX512 = false;
 #ifdef AVX2_BUILD_POSSIBLE
-  Enable_AVX2 = avsp && ((env->GetCPUFlags() & CPUF_AVX2)!=0);
+  Enable_AVX2 = avsp && ((CPUF & CPUF_AVX2)!=0) && ((CPUF & CPUF_FMA3)!=0);
 #endif
 #ifdef AVX512_BUILD_POSSIBLE
-  Enable_AVX512 = avsp && ((env->GetCPUFlags() & CPUF_AVX512F)!=0) && ((env->GetCPUFlags() & CPUF_AVX512DQ)!=0)
-	&& ((env->GetCPUFlags() & CPUF_AVX512BW)!=0);
+  Enable_AVX512 = avsp && ((CPUF & CPUF_AVX512F)!=0) && ((CPUF & CPUF_AVX512DQ)!=0)
+	&& ((CPUF & CPUF_AVX512BW)!=0) && ((CPUF & CPUF_AVX512VL)!=0);
 #endif
 
   double center_pos_h_luma;
@@ -1439,45 +1458,74 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* program, IScriptEnvironment* env)
 {
 	int simd_coeff_count_padding = 8;
-
-	if (Enable_SSSE3)
+	
+	if (Enable_AVX512)
 	{
-		// both 8 and 16 bit SSSE3 and AVX2 horizontal resizer benefits from 16 pixels/cycle
-		// float is also using 32 bytes, but as 32/sizeof(float) = 8, then don't need 16
-		if (pixelsize == 1 || pixelsize == 2) simd_coeff_count_padding = 16;
-   }
-
-	resize_prepare_coeffs(program, env, simd_coeff_count_padding);
-
-	if (pixelsize==1)
+		if (pixelsize == 1 || pixelsize == 2) simd_coeff_count_padding = 32;
+		else simd_coeff_count_padding = 16;
+	}
+	else
 	{
 		if (Enable_SSSE3)
 		{
-#ifdef AVX2_BUILD_POSSIBLE				
-			if (Enable_AVX2) return resizer_h_avx2_generic_uint8_t;
-			else
-#endif			
-			{
-				return resizer_h_ssse3_generic_uint8_16<uint8_t, true>;
-			}
+			// both 8 and 16 bit SSSE3 and AVX2 horizontal resizer benefits from 16 pixels/cycle
+			// float is also using 32 bytes, but as 32/sizeof(float) = 8, then don't need 16
+			if (pixelsize == 1 || pixelsize == 2) simd_coeff_count_padding = 16;
 		}
-		else return resize_h_c_planar_u8;
+	}
+
+	resize_prepare_coeffs(program, env, simd_coeff_count_padding);
+	
+  if (program->filter_size_real==1)
+  {
+    // Fast pointresize
+    switch (pixelsize)
+    {
+      case 1: return resize_h_planar_pointresize<uint8_t>;
+      case 2: return resize_h_planar_pointresize<uint16_t>;
+      default: // case 4:
+        return resize_h_planar_pointresize<float>;
+    }
+  }
+  else
+  {// Others resamplers
+	if (pixelsize==1)
+	{
+#ifdef AVX512_BUILD_POSSIBLE				
+		if (Enable_AVX512) return Resize_H_AVX512_8bits;
+		else
+#endif			
+		{
+			if (Enable_SSSE3)
+			{
+#ifdef AVX2_BUILD_POSSIBLE				
+				if (Enable_AVX2) return Resize_H_AVX2_8bits;
+				else
+#endif			
+				{
+					return resizer_h_ssse3_generic_uint8_16<uint8_t, true>;
+				}
+			}
+			else return resize_h_c_planar_u8;
+		}
 	}
 	else if (pixelsize==2)
 	{ 
 		if (Enable_SSSE3)
 		{
-#ifdef AVX2_BUILD_POSSIBLE				
-			if (Enable_AVX2)
-			{
-				if(bits_per_pixel<16) return resizer_h_avx2_generic_uint16_t<true>;
-				else return resizer_h_avx2_generic_uint16_t<false>;
-			}
+#ifdef AVX512_BUILD_POSSIBLE				
+			if (Enable_AVX512) return Resize_H_AVX512_16bits;
 			else
-#endif
+#endif			
 			{
-				if (bits_per_pixel<16) return resizer_h_ssse3_generic_uint8_16<uint16_t, true>;
-				else return resizer_h_ssse3_generic_uint8_16<uint16_t, false>;
+#ifdef AVX2_BUILD_POSSIBLE				
+				if (Enable_AVX2) return Resize_H_AVX2_16bits;
+				else
+#endif
+				{
+					if (bits_per_pixel<16) return resizer_h_ssse3_generic_uint8_16<uint16_t, true>;
+					else return resizer_h_ssse3_generic_uint8_16<uint16_t, false>;
+				}
 			}
 		}
 		else
@@ -1490,14 +1538,21 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 	{ //if (pixelsize == 4)
 		if (Enable_SSSE3)
 		{
-#ifdef AVX2_BUILD_POSSIBLE
-			if (Enable_AVX2) return resizer_h_avx2_generic_float;
+#ifdef AVX512_BUILD_POSSIBLE				
+			if (Enable_AVX512) return Resize_H_AVX512_32bits;
 			else
+#endif			
+			{
+#ifdef AVX2_BUILD_POSSIBLE
+				if (Enable_AVX2) return Resize_H_AVX2_32bits;
+				else
 #endif		
-			return resizer_h_ssse3_generic_float;  // SSSE3
+				return resizer_h_ssse3_generic_float;  // SSSE3
+			}
 		}
 		else return resize_h_c_planar_f;
 	}
+  } // Others resamplers
 }
 
 
@@ -1543,19 +1598,21 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	mode_YUY2 = vi.IsYUY2();
 
-  Enable_MMX = (env->GetCPUFlags() & CPUF_MMX)!=0;
-  Enable_SSE2 = (env->GetCPUFlags() & CPUF_SSE2)!=0;
-  Enable_SSE3 = (env->GetCPUFlags() & CPUF_SSE3)!=0;
-  Enable_SSSE3 = (env->GetCPUFlags() & CPUF_SSSE3)!=0;
-  Enable_SSE4_1 = (env->GetCPUFlags() & CPUF_SSE4_1)!=0;
+  const int CPUF = env->GetCPUFlags();
+  
+  Enable_MMX = (CPUF & CPUF_MMX)!=0;
+  Enable_SSE2 = (CPUF & CPUF_SSE2)!=0;
+  Enable_SSE3 = (CPUF & CPUF_SSE3)!=0;
+  Enable_SSSE3 = (CPUF & CPUF_SSSE3)!=0;
+  Enable_SSE4_1 = (CPUF & CPUF_SSE4_1)!=0;
   Enable_AVX2 = false;
   Enable_AVX512 = false;
 #ifdef AVX2_BUILD_POSSIBLE
-  Enable_AVX2 = avsp && ((env->GetCPUFlags() & CPUF_AVX2)!=0);
+  Enable_AVX2 = avsp && ((CPUF & CPUF_AVX2)!=0) && ((CPUF & CPUF_FMA3)!=0);
 #endif
 #ifdef AVX512_BUILD_POSSIBLE
-  Enable_AVX512 = avsp && ((env->GetCPUFlags() & CPUF_AVX512F)!=0) && ((env->GetCPUFlags() & CPUF_AVX512DQ)!=0)
-	&& ((env->GetCPUFlags() & CPUF_AVX512BW)!=0);
+  Enable_AVX512 = avsp && ((CPUF & CPUF_AVX512F)!=0) && ((CPUF & CPUF_AVX512DQ)!=0)
+	&& ((CPUF & CPUF_AVX512BW)!=0) && ((CPUF & CPUF_AVX512VL)!=0);
 #endif
 
   double center_pos_v_luma;
@@ -2322,7 +2379,7 @@ ResamplerV FilteredResizeV::GetResampler(bool aligned, ResamplingProgram* progra
 #endif
 		  {
 #ifdef AVX2_BUILD_POSSIBLE
-		    if (Enable_AVX2) return resize_v_avx2_planar_uint8_t;
+		    if (Enable_AVX2) return Resize_V_AVX2_8bits;
 		    else
 #endif
 		    {
@@ -2348,11 +2405,7 @@ ResamplerV FilteredResizeV::GetResampler(bool aligned, ResamplingProgram* progra
 #endif			
 		{
 #ifdef AVX2_BUILD_POSSIBLE		
-			if (Enable_AVX2)
-			{
-				if (bits_per_pixel<16) return resize_v_avx2_planar_uint16_t<true>;
-				else return resize_v_avx2_planar_uint16_t<false>;
-			}
+			if (Enable_AVX2) return Resize_V_AVX2_16bits;
 			else
 #endif			
 			{
@@ -2377,7 +2430,7 @@ ResamplerV FilteredResizeV::GetResampler(bool aligned, ResamplingProgram* progra
 #endif			
 		{
 #ifdef AVX2_BUILD_POSSIBLE			
-			if (Enable_AVX2) return resize_v_avx2_planar_float;
+			if (Enable_AVX2) return Resize_V_AVX2_32bits;
 			else
 #endif			
 			return resize_v_sse2_planar_float;
