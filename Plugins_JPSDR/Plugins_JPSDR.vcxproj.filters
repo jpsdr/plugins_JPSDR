@@ -63,6 +63,9 @@
     <ClCompile Include="ResampleMT_AVX2.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
+    <ClCompile Include="ResampleMT_AVX.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="avisynth.h">
@@ -114,6 +117,9 @@
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
     <ClInclude Include="ResampleMT_AVX2.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="ResampleMT_AVX.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
   </ItemGroup>
@@ -188,6 +194,12 @@
       <Filter>Fichiers asm</Filter>
     </MASM>
     <MASM Include="ResampleMT_AVX2_x64.asm">
+      <Filter>Fichiers asm</Filter>
+    </MASM>
+    <MASM Include="ResampleMT_AVX_x86.asm">
+      <Filter>Fichiers asm</Filter>
+    </MASM>
+    <MASM Include="ResampleMT_AVX_x64.asm">
       <Filter>Fichiers asm</Filter>
     </MASM>
   </ItemGroup>
