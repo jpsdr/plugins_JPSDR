@@ -82,6 +82,7 @@ Resize_V_AVX2_Planar_8bits_loop_2:
 	vpackuswb xmm0,xmm0,xmm1
 	vpmaxub xmm0,xmm0,xmm5
 	vpminub xmm0,xmm0,xmm6
+
 	vmovdqa XMMWORD ptr[edi],xmm0
 		
 	add edi,16
@@ -874,12 +875,9 @@ Resize_H_AVX2_Planar_32bits_loop_2:
 
 	mov edi,dst
 
-	vinsertf128 ymm0,ymm0,xmm2,1
+	vhaddps xmm0,xmm0,xmm2
 
 	mov edx,dst_pitch
-
-	vhaddps ymm0,ymm0,ymm0
-	vextracti128 xmm1,ymm0,1
 
 	vpextrd eax,xmm0,0
 	mov dword ptr[edi],eax
@@ -890,11 +888,11 @@ Resize_H_AVX2_Planar_32bits_loop_2:
 	mov dword ptr[edi],eax
 	mov ebx,edx
 	add edi,edx
-	vpextrd eax,xmm1,0
+	vpextrd eax,xmm0,2
 	sal ebx,2
 	mov dword ptr[edi],eax
 	add edi,edx
-	vpextrd eax,xmm1,1
+	vpextrd eax,xmm0,3
 	add dst,ebx
 	mov dword ptr[edi],eax
 	

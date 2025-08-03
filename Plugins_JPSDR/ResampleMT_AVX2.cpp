@@ -187,7 +187,7 @@ void Resize_H_AVX2_8bits(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pi
 	const uint32_t val_min = val_min0 | (val_min0 << 8) | (val_min0 << 16) | (val_min0 << 24);
 	const uint32_t val_max = val_max0 | (val_max0 << 16);
 	const uint32_t rounder = 1 << (FPScale8bits - 1);
-
+	
 	for (int x = 0; x < width; x++)
 	{
 		const BYTE *src_ptr = src8 + program->pixel_offset[x];

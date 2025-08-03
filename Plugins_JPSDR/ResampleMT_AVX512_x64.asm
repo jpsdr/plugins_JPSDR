@@ -118,6 +118,7 @@ Resize_V_AVX512_Planar_8bits_loop_2:
 	vpmaxub xmm3,xmm3,xmm5
 	vpminub xmm0,xmm0,xmm6
 	vpminub xmm3,xmm3,xmm6
+
 	vmovdqa XMMWORD ptr[rdi],xmm0
 	vmovdqa XMMWORD ptr[rdi+16],xmm3
 		
@@ -568,8 +569,85 @@ Resize_H_AVX512_Planar_8bits_loop_1:
 	vpxord zmm5,zmm5,zmm5
 	vpxord zmm6,zmm6,zmm6
 	vpxord zmm7,zmm7,zmm7
+	
+	shr rcx,1
+	jz Resize_H_AVX512_Planar_8bits_loop_2_b
 
 Resize_H_AVX512_Planar_8bits_loop_2:
+	vmovdqa64 zmm16,ZMMWORD ptr[rdi]		;coeff
+	vmovdqa64 zmm20,ZMMWORD ptr[rdi+r15]	;coeff+32(x2)
+
+	vpmovzxbw zmm8,YMMWORD ptr[rsi] 		;src
+	vpmovzxbw zmm21,YMMWORD ptr[rsi+r14]	;src+32(x1)
+	vpmovzxbw zmm9,YMMWORD ptr[r9]			;src+src_pitch
+	vpmovzxbw zmm22,YMMWORD ptr[r9+r14]		;src+src_pitch+32(x1)
+	vpmovzxbw zmm10,YMMWORD ptr[rax]		;src+2*src_pitch
+	vpmovzxbw zmm23,YMMWORD ptr[rax+r14]	;src+2*src_pitch+32(x1)
+	vpmovzxbw zmm11,YMMWORD ptr[rdx]		;src+3*src_pitch
+	vpmovzxbw zmm24,YMMWORD ptr[rdx+r14]	;src+3*src_pitch+32(x1)
+
+	vpmovzxbw zmm12,YMMWORD ptr[rsi+4*rbx]	;src+4*src_pitch
+	vpmaddwd zmm8,zmm8,zmm16
+	add rsi,r14
+	vpmaddwd zmm21,zmm21,zmm20
+	vpmovzxbw zmm25,YMMWORD ptr[rsi+4*rbx]	;src+4*src_pitch+32(x1)
+	vpmovzxbw zmm13,YMMWORD ptr[r9+4*rbx]	;src+5*src_pitch
+	vpmaddwd zmm9,zmm9,zmm16
+	add r9,r14
+	vpmaddwd zmm22,zmm22,zmm20
+	vpmovzxbw zmm26,YMMWORD ptr[r9+4*rbx]	;src+5*src_pitch+32(x1)
+	vpmovzxbw zmm14,YMMWORD ptr[rax+4*rbx]	;src+6*src_pitch
+	vpmaddwd zmm10,zmm10,zmm16
+	add rax,r14
+	vpmaddwd zmm23,zmm23,zmm20
+	vpmovzxbw zmm27,YMMWORD ptr[rax+4*rbx]	;src+6*src_pitch+32(x1)
+	vpmovzxbw zmm15,YMMWORD ptr[rdx+4*rbx]	;src+7*src_pitch
+	vpmaddwd zmm11,zmm11,zmm16
+	add rdx,r14
+	vpmaddwd zmm24,zmm24,zmm20
+	vpmovzxbw zmm28,YMMWORD ptr[rdx+4*rbx]	;src+7*src_pitch+32(x1)
+
+	vpmaddwd zmm12,zmm12,zmm16
+	vpmaddwd zmm13,zmm13,zmm16
+	vpmaddwd zmm14,zmm14,zmm16
+	vpmaddwd zmm15,zmm15,zmm16
+	vpmaddwd zmm25,zmm25,zmm20
+	vpmaddwd zmm26,zmm26,zmm20
+	vpmaddwd zmm27,zmm27,zmm20
+	vpmaddwd zmm28,zmm28,zmm20
+
+	vpaddd zmm8,zmm8,zmm21
+	vpaddd zmm9,zmm9,zmm22
+	vpaddd zmm10,zmm10,zmm23
+	vpaddd zmm11,zmm11,zmm24
+	vpaddd zmm12,zmm12,zmm25
+	vpaddd zmm13,zmm13,zmm26
+	vpaddd zmm14,zmm14,zmm27
+	vpaddd zmm15,zmm15,zmm28
+
+	vpaddd zmm0,zmm0,zmm8
+	vpaddd zmm1,zmm1,zmm9
+	vpaddd zmm2,zmm2,zmm10
+	vpaddd zmm3,zmm3,zmm11
+	vpaddd zmm4,zmm4,zmm12
+	vpaddd zmm5,zmm5,zmm13
+	vpaddd zmm6,zmm6,zmm14
+	vpaddd zmm7,zmm7,zmm15
+
+	add rdi,r15
+
+	add rsi,r14
+	add r9,r14
+	add rax,r14
+	add rdx,r14
+	add rdi,r15
+	dec ecx
+	jnz Resize_H_AVX512_Planar_8bits_loop_2
+	
+Resize_H_AVX512_Planar_8bits_loop_2_b:
+	test r12d,1
+	jz Resize_H_AVX512_Planar_8bits_loop_2_c
+
 	vmovdqa64 zmm16,ZMMWORD ptr[rdi]		;coeff
 
 	vpmovzxbw zmm8,YMMWORD ptr[rsi] 		;src
@@ -599,14 +677,7 @@ Resize_H_AVX512_Planar_8bits_loop_2:
 	vpaddd zmm6,zmm6,zmm14
 	vpaddd zmm7,zmm7,zmm15
 
-	add rsi,r14
-	add r9,r14
-	add rax,r14
-	add rdx,r14
-	add rdi,r15
-	dec ecx
-	jnz Resize_H_AVX512_Planar_8bits_loop_2
-
+Resize_H_AVX512_Planar_8bits_loop_2_c:
 	vextracti32x8 ymm8,zmm0,1
 	vextracti32x8 ymm9,zmm1,1
 	vextracti32x8 ymm10,zmm2,1
@@ -661,7 +732,7 @@ Resize_H_AVX512_Planar_8bits_loop_2:
 	vinserti128 ymm4,ymm4,xmm6,1
 
 	vphaddd ymm0,ymm0,ymm4
-	
+
 	vpaddd ymm0,ymm0,ymm19 ;rounder
 	vpsrad ymm0,ymm0,14 ;FPScale8bits = 14
 	
@@ -726,7 +797,56 @@ Resize_H_AVX512_Planar_8bits_1:
 	vpxord zmm2,zmm2,zmm2
 	vpxord zmm3,zmm3,zmm3
 
+	shr rcx,1
+	jz Resize_H_AVX512_Planar_8bits_loop_3_b
+
 Resize_H_AVX512_Planar_8bits_loop_3:
+	vmovdqa64 zmm16,ZMMWORD ptr[rdi]		;coeff
+	vmovdqa64 zmm20,ZMMWORD ptr[rdi+r15]	;coeff+32(x2)
+
+	vpmovzxbw zmm8,YMMWORD ptr[rsi] 		;src
+	vpmovzxbw zmm21,YMMWORD ptr[rsi+r14]	;src+32(x1)
+	vpmovzxbw zmm9,YMMWORD ptr[r9]			;src+src_pitch
+	vpmovzxbw zmm22,YMMWORD ptr[r9+r14]		;src+src_pitch+32(x1)
+
+	vpmovzxbw zmm10,YMMWORD ptr[rsi+2*rbx]	;src+2*src_pitch
+	vpmaddwd zmm8,zmm8,zmm16
+	add rsi,r14
+	vpmaddwd zmm21,zmm21,zmm20
+	vpmovzxbw zmm23,YMMWORD ptr[rsi+2*rbx]	;src+2*src_pitch+32(x1)
+	vpmovzxbw zmm11,YMMWORD ptr[r9+2*rbx]	;src+3*src_pitch
+	vpmaddwd zmm9,zmm9,zmm16
+	add r9,r14
+	vpmaddwd zmm22,zmm22,zmm20
+	vpmovzxbw zmm24,YMMWORD ptr[r9+2*rbx]	;src+3*src_pitch+32(x1)
+	
+	vpmaddwd zmm10,zmm10,zmm16
+	vpmaddwd zmm11,zmm11,zmm16
+	vpmaddwd zmm23,zmm23,zmm20
+	vpmaddwd zmm24,zmm24,zmm20
+
+	vpaddd zmm8,zmm8,zmm21
+	vpaddd zmm9,zmm9,zmm22
+	vpaddd zmm10,zmm10,zmm23
+	vpaddd zmm11,zmm11,zmm24
+
+	vpaddd zmm0,zmm0,zmm8
+	vpaddd zmm1,zmm1,zmm9
+	vpaddd zmm2,zmm2,zmm10
+	vpaddd zmm3,zmm3,zmm11
+
+	add rdi,r15
+
+	add rsi,r14
+	add r9,r14
+	add rdi,r15
+	dec ecx
+	jnz Resize_H_AVX512_Planar_8bits_loop_3
+
+Resize_H_AVX512_Planar_8bits_loop_3_b:
+	test r12d,1
+	jz short Resize_H_AVX512_Planar_8bits_loop_3_c
+
 	vmovdqa64 zmm16,ZMMWORD ptr[rdi]		;coeff
 
 	vpmovzxbw zmm8,YMMWORD ptr[rsi] 		;src
@@ -744,11 +864,7 @@ Resize_H_AVX512_Planar_8bits_loop_3:
 	vpaddd zmm2,zmm2,zmm10
 	vpaddd zmm3,zmm3,zmm11
 
-	add rsi,r14
-	add r9,r14
-	add rdi,r15
-	loop Resize_H_AVX512_Planar_8bits_loop_3
-
+Resize_H_AVX512_Planar_8bits_loop_3_c:
 	vextracti32x8 ymm8,zmm0,1
 	vextracti32x8 ymm9,zmm1,1
 	vextracti32x8 ymm10,zmm2,1
@@ -777,41 +893,37 @@ Resize_H_AVX512_Planar_8bits_loop_3:
 	vshufps xmm0,xmm0,xmm1,68
 	vshufps xmm2,xmm2,xmm3,68
 
-	vinserti128 ymm0,ymm0,xmm2,1
-
-	vphaddd ymm0,ymm0,ymm0
+	vphaddd xmm0,xmm0,xmm2
 	
-	vpaddd ymm0,ymm0,ymm19 ;rounder
-	vpsrad ymm0,ymm0,14 ;FPScale8bits = 14
+	vpaddd xmm0,xmm0,xmm19 ;rounder
+	vpsrad xmm0,xmm0,14 ;FPScale8bits = 14
 	
 	mov rdx,rbx
 	
-	vpackusdw ymm0,ymm0,ymm0
+	vpackusdw xmm0,xmm0,xmm0
 	
 	sal rdx,2
 	
-	vpackuswb ymm0,ymm0,ymm0
+	vpackuswb xmm0,xmm0,xmm0
 	
 	add r10,rdx
 	
-	vpmaxub ymm0,ymm0,ymm17
+	vpmaxub xmm0,xmm0,xmm17
 
 	mov rdx,dst_pitch
 
-	vpminub ymm0,ymm0,ymm18
-	
-	vextracti128 xmm1,ymm0,1
-	
+	vpminub xmm0,xmm0,xmm18
+
 	vpextrb eax,xmm0,0
 	mov byte ptr[r11],al
 	add r11,rdx
 	vpextrb eax,xmm0,1
 	mov byte ptr[r11],al
 	add r11,rdx
-	vpextrb eax,xmm1,0
+	vpextrb eax,xmm0,2
 	mov byte ptr[r11],al
 	add r11,rdx
-	vpextrb eax,xmm1,1
+	vpextrb eax,xmm0,3
 	mov byte ptr[r11],al
 	add r11,rdx
 
@@ -826,7 +938,41 @@ Resize_H_AVX512_Planar_8bits_2:
 	vpxord zmm0,zmm0,zmm0
 	vpxord zmm1,zmm1,zmm1
 
+	shr rcx,1
+	jz short Resize_H_AVX512_Planar_8bits_loop_4_b
+
 Resize_H_AVX512_Planar_8bits_loop_4:
+	vmovdqa64 zmm16,ZMMWORD ptr[rdi]	;coeff
+	vmovdqa64 zmm20,ZMMWORD ptr[rdi+r15];coeff+32(x2)
+
+	vpmovzxbw zmm8,YMMWORD ptr[rsi] 	;src
+	vpmovzxbw zmm21,YMMWORD ptr[rsi+r14];src+32(x1)
+
+	vpmovzxbw zmm9,YMMWORD ptr[rsi+rbx]	;src+src_pitch
+	vpmaddwd zmm8,zmm8,zmm16
+	add rsi,r14
+	vpmaddwd zmm21,zmm21,zmm20
+	vpmovzxbw zmm22,YMMWORD ptr[rsi+rbx];src+src_pitch+32(x1)
+
+	vpmaddwd zmm9,zmm9,zmm16
+	vpmaddwd zmm22,zmm22,zmm20
+
+	vpaddd zmm8,zmm8,zmm21
+	vpaddd zmm9,zmm9,zmm22
+
+	vpaddd zmm0,zmm0,zmm8
+	vpaddd zmm1,zmm1,zmm9
+
+	add rdi,r15
+
+	add rsi,r14
+	add rdi,r15
+	loop Resize_H_AVX512_Planar_8bits_loop_4
+
+Resize_H_AVX512_Planar_8bits_loop_4_b:
+	test r12d,1
+	jz short Resize_H_AVX512_Planar_8bits_loop_4_c
+
 	vmovdqa64 zmm16,ZMMWORD ptr[rdi]	;coeff
 
 	vpmovzxbw zmm8,YMMWORD ptr[rsi] 	;src
@@ -838,10 +984,7 @@ Resize_H_AVX512_Planar_8bits_loop_4:
 	vpaddd zmm0,zmm0,zmm8
 	vpaddd zmm1,zmm1,zmm9
 
-	add rsi,r14
-	add rdi,r15
-	loop Resize_H_AVX512_Planar_8bits_loop_4
-
+Resize_H_AVX512_Planar_8bits_loop_4_c:
 	vextracti32x8 ymm8,zmm0,1
 	vextracti32x8 ymm9,zmm1,1
 	
@@ -895,12 +1038,21 @@ Resize_H_AVX512_Planar_8bits_3:
 
 	vpxord zmm0,zmm0,zmm0
 
+	shr rcx,1
+	jz short Resize_H_AVX512_Planar_8bits_loop_5_b
+
 Resize_H_AVX512_Planar_8bits_loop_5:
-	vmovdqa64 zmm16,ZMMWORD ptr[rdi]	;coeff
-
 	vpmovzxbw zmm8,YMMWORD ptr[rsi]		;src
+	vpmovzxbw zmm21,YMMWORD ptr[rsi+r14];src+32(x1)
 
-	vpmaddwd zmm8,zmm8,zmm16
+	vpmaddwd zmm8,zmm8,ZMMWORD ptr[rdi]			;coeff
+	vpmaddwd zmm21,zmm21,ZMMWORD ptr[rdi+r15]	;coeff+32(x2)
+
+	add rsi,r14
+
+	vpaddd zmm8,zmm8,zmm21
+
+	add rdi,r15
 
 	vpaddd zmm0,zmm0,zmm8
 
@@ -908,6 +1060,17 @@ Resize_H_AVX512_Planar_8bits_loop_5:
 	add rdi,r15
 	loop Resize_H_AVX512_Planar_8bits_loop_5
 
+Resize_H_AVX512_Planar_8bits_loop_5_b:
+	test r12d,1
+	jz short Resize_H_AVX512_Planar_8bits_loop_5_c
+
+	vpmovzxbw zmm8,YMMWORD ptr[rsi]		;src
+
+	vpmaddwd zmm8,zmm8,ZMMWORD ptr[rdi]	;coeff
+
+	vpaddd zmm0,zmm0,zmm8
+
+Resize_H_AVX512_Planar_8bits_loop_5_c:
 	vextracti32x8 ymm8,zmm0,1
 	
 	vphaddd ymm0,ymm0,ymm8
@@ -1057,8 +1220,68 @@ Resize_H_AVX512_Planar_10to14bits_loop_1:
 	vpxord zmm5,zmm5,zmm5
 	vpxord zmm6,zmm6,zmm6
 	vpxord zmm7,zmm7,zmm7
+	
+	shr rcx,1
+	jz Resize_H_AVX512_Planar_10to14bits_loop_2b
 
 Resize_H_AVX512_Planar_10to14bits_loop_2:
+	vmovdqa64 zmm16,ZMMWORD ptr[rdi]			;coef
+	vmovdqa64 zmm20,ZMMWORD ptr[rdi+r14]		;coef+32(x2)
+
+	vpmaddwd zmm8,zmm16,ZMMWORD ptr[rsi] 		;src
+	vpmaddwd zmm21,zmm20,ZMMWORD ptr[rsi+r14]	;src+32(x2)
+	vpmaddwd zmm9,zmm16,ZMMWORD ptr[r9]			;src+src_pitch
+	vpmaddwd zmm22,zmm20,ZMMWORD ptr[r9+r14]	;src+src_pitch+32(x2)
+	vpmaddwd zmm10,zmm16,ZMMWORD ptr[rax]		;src+2*src_pitch
+	vpmaddwd zmm23,zmm20,ZMMWORD ptr[rax+r14]	;src+2*src_pitch+32(x2)
+	vpmaddwd zmm11,zmm16,ZMMWORD ptr[rdx]		;src+3*src_pitch
+	vpmaddwd zmm24,zmm20,ZMMWORD ptr[rdx+r14]	;src+3*src_pitch+32(x2)
+
+	vpmaddwd zmm12,zmm16,ZMMWORD ptr[rsi+4*rbx]	;src+4*src_pitch
+	vpaddd zmm8,zmm8,zmm21
+	add rsi,r14
+	vpaddd zmm9,zmm9,zmm22
+	vpmaddwd zmm25,zmm20,ZMMWORD ptr[rsi+4*rbx]	;src+4*src_pitch+32(x2)
+	vpmaddwd zmm13,zmm16,ZMMWORD ptr[r9+4*rbx]	;src+5*src_pitch
+	vpaddd zmm10,zmm10,zmm23
+	add r9,r14
+	vpaddd zmm11,zmm11,zmm24
+	vpmaddwd zmm26,zmm20,ZMMWORD ptr[r9+4*rbx]	;src+5*src_pitch+32(x2)
+	vpmaddwd zmm14,zmm16,ZMMWORD ptr[rax+4*rbx]	;src+6*src_pitch
+	vpaddd zmm12,zmm12,zmm25
+	add rax,r14
+	vpaddd zmm13,zmm13,zmm26
+	vpmaddwd zmm27,zmm20,ZMMWORD ptr[rax+4*rbx]	;src+6*src_pitch+32(x2)
+	vpmaddwd zmm15,zmm16,ZMMWORD ptr[rdx+4*rbx]	;src+7*src_pitch
+	vpaddd zmm0,zmm0,zmm8
+	add rdx,r14
+	vpaddd zmm1,zmm1,zmm9
+	vpmaddwd zmm28,zmm20,ZMMWORD ptr[rdx+4*rbx]	;src+7*src_pitch+32(x2)
+
+	vpaddd zmm14,zmm14,zmm27
+	vpaddd zmm15,zmm15,zmm28
+
+	vpaddd zmm2,zmm2,zmm10
+	vpaddd zmm3,zmm3,zmm11
+	vpaddd zmm4,zmm4,zmm12
+	vpaddd zmm5,zmm5,zmm13
+	vpaddd zmm6,zmm6,zmm14
+	vpaddd zmm7,zmm7,zmm15
+
+	add rdi,r14
+
+	add rsi,r14
+	add r9,r14
+	add rax,r14
+	add rdx,r14
+	add rdi,r14
+	dec ecx
+	jnz Resize_H_AVX512_Planar_10to14bits_loop_2
+
+Resize_H_AVX512_Planar_10to14bits_loop_2b:
+	test r12d,1
+	jz short Resize_H_AVX512_Planar_10to14bits_loop_2c
+
 	vmovdqa64 zmm16,ZMMWORD ptr[rdi]			;coef
 
 	vpmaddwd zmm8,zmm16,ZMMWORD ptr[rsi] 		;src
@@ -1079,13 +1302,7 @@ Resize_H_AVX512_Planar_10to14bits_loop_2:
 	vpaddd zmm6,zmm6,zmm14
 	vpaddd zmm7,zmm7,zmm15
 
-	add rsi,r14
-	add r9,r14
-	add rax,r14
-	add rdx,r14
-	add rdi,r14
-	loop Resize_H_AVX512_Planar_10to14bits_loop_2
-
+Resize_H_AVX512_Planar_10to14bits_loop_2c:
 	vextracti32x8 ymm8,zmm0,1
 	vextracti32x8 ymm9,zmm1,1
 	vextracti32x8 ymm10,zmm2,1
@@ -1201,7 +1418,45 @@ Resize_H_AVX512_Planar_10to14bits_1:
 	vpxord zmm2,zmm2,zmm2
 	vpxord zmm3,zmm3,zmm3
 
+	shr rcx,1
+	jz Resize_H_AVX512_Planar_10to14bits_loop_3b
+
 Resize_H_AVX512_Planar_10to14bits_loop_3:
+	vmovdqa64 zmm16,ZMMWORD ptr[rdi]			;coeff
+	vmovdqa64 zmm20,ZMMWORD ptr[rdi+r14]		;coeff+32(x2)
+
+	vpmaddwd zmm8,zmm16,ZMMWORD ptr[rsi]		;src
+	vpmaddwd zmm21,zmm20,ZMMWORD ptr[rsi+r14]	;src+32(x2)
+	vpmaddwd zmm9,zmm16,ZMMWORD ptr[r9]			;src+src_pitch
+	vpmaddwd zmm22,zmm20,ZMMWORD ptr[r9+r14]	;src+src_pitch+32(x2)
+
+	vpmaddwd zmm10,zmm16,ZMMWORD ptr[rsi+2*rbx]	;src+2*src_pitch
+	vpaddd zmm8,zmm8,zmm21
+	add rsi,r14
+	vpaddd zmm9,zmm9,zmm22
+	vpmaddwd zmm23,zmm20,ZMMWORD ptr[rsi+2*rbx]	;src+2*src_pitch+32(x2)
+	vpmaddwd zmm11,zmm16,ZMMWORD ptr[r9+2*rbx]	;src+3*src_pitch
+	vpaddd zmm0,zmm0,zmm8
+	add r9,r14
+	vpaddd zmm1,zmm1,zmm9
+	vpmaddwd zmm24,zmm20,ZMMWORD ptr[r9+2*rbx]	;src+3*src_pitch+32(x2)
+
+	vpaddd zmm10,zmm10,zmm23
+	vpaddd zmm11,zmm11,zmm24
+
+	vpaddd zmm2,zmm2,zmm10
+	vpaddd zmm3,zmm3,zmm11
+
+	add rsi,r14
+	add r9,r14
+	add rdi,r14
+	dec ecx
+	jnz Resize_H_AVX512_Planar_10to14bits_loop_3
+
+Resize_H_AVX512_Planar_10to14bits_loop_3b:
+	test r12d,1
+	jz short Resize_H_AVX512_Planar_10to14bits_loop_3c
+
 	vmovdqa64 zmm16,ZMMWORD ptr[rdi]			;coeff
 
 	vpmaddwd zmm8,zmm16,ZMMWORD ptr[rsi]		;src
@@ -1214,11 +1469,7 @@ Resize_H_AVX512_Planar_10to14bits_loop_3:
 	vpaddd zmm2,zmm2,zmm10
 	vpaddd zmm3,zmm3,zmm11
 
-	add rsi,r14
-	add r9,r14
-	add rdi,r14
-	loop Resize_H_AVX512_Planar_10to14bits_loop_3
-
+Resize_H_AVX512_Planar_10to14bits_loop_3c:
 	vextracti32x8 ymm8,zmm0,1
 	vextracti32x8 ymm9,zmm1,1
 	vextracti32x8 ymm10,zmm2,1
@@ -1247,26 +1498,22 @@ Resize_H_AVX512_Planar_10to14bits_loop_3:
 	vshufps xmm0,xmm0,xmm1,68
 	vshufps xmm2,xmm2,xmm3,68
 
-	vinserti128 ymm0,ymm0,xmm2,1
-
-	vphaddd ymm0,ymm0,ymm0
+	vphaddd xmm0,xmm0,xmm2
 	
-	vpaddd ymm0,ymm0,ymm19 ;rounder
-	vpsrad ymm0,ymm0,13 ;FPScale16bits = 13
+	vpaddd xmm0,xmm0,xmm19 ;rounder
+	vpsrad xmm0,xmm0,13 ;FPScale16bits = 13
 
 	mov rdx,rbx
 
-	vpackusdw ymm0,ymm0,ymm0
+	vpackusdw xmm0,xmm0,xmm0
 
 	sal rdx,2
 
-	vpmaxuw ymm0,ymm0,ymm17
+	vpmaxuw xmm0,xmm0,xmm17
 
 	add r10,rdx
 
-	vpminuw ymm0,ymm0,ymm18
-	
-	vextracti128 xmm1,ymm0,1
+	vpminuw xmm0,xmm0,xmm18
 	
 	vpextrw eax,xmm0,0
 	mov word ptr[r11],ax
@@ -1274,10 +1521,10 @@ Resize_H_AVX512_Planar_10to14bits_loop_3:
 	vpextrw eax,xmm0,1
 	mov word ptr[r11],ax
 	add r11,r15
-	vpextrw eax,xmm1,0
+	vpextrw eax,xmm0,2
 	mov word ptr[r11],ax
 	add r11,r15
-	vpextrw eax,xmm1,1
+	vpextrw eax,xmm0,3
 	mov word ptr[r11],ax
 	add r11,r15
 
@@ -1292,7 +1539,32 @@ Resize_H_AVX512_Planar_10to14bits_2:
 	vpxord zmm0,zmm0,zmm0
 	vpxord zmm1,zmm1,zmm1
 
+	shr rcx,1
+	jz short Resize_H_AVX512_Planar_10to14bits_loop_4b
+
 Resize_H_AVX512_Planar_10to14bits_loop_4:
+	vmovdqa64 zmm16,ZMMWORD ptr[rdi]			;coeff
+	vmovdqa64 zmm20,ZMMWORD ptr[rdi+r14]		;coeff+32(x2)
+
+	vpmaddwd zmm8,zmm16,ZMMWORD ptr[rsi] 		;src
+	vpmaddwd zmm21,zmm20,ZMMWORD ptr[rsi+r14]	;src+32(x2)
+	vpmaddwd zmm9,zmm16,ZMMWORD ptr[rsi+rbx]	;src+src_pitch
+	vpaddd zmm8,zmm8,zmm21
+	add rsi,r14
+	vpaddd zmm0,zmm0,zmm8
+	vpmaddwd zmm22,zmm20,ZMMWORD ptr[rsi+rbx]	;src+src_pitch+32(x2)
+	add rdi,r14
+	vpaddd zmm9,zmm9,zmm22
+	add rsi,r14
+	vpaddd zmm1,zmm1,zmm9
+
+	add rdi,r14
+	loop Resize_H_AVX512_Planar_10to14bits_loop_4
+
+Resize_H_AVX512_Planar_10to14bits_loop_4b:
+	test r12d,1
+	jz short Resize_H_AVX512_Planar_10to14bits_loop_4c
+
 	vmovdqa64 zmm16,ZMMWORD ptr[rdi]			;coeff
 
 	vpmaddwd zmm8,zmm16,ZMMWORD ptr[rsi] 		;src
@@ -1301,10 +1573,7 @@ Resize_H_AVX512_Planar_10to14bits_loop_4:
 	vpaddd zmm0,zmm0,zmm8
 	vpaddd zmm1,zmm1,zmm9
 
-	add rsi,r14
-	add rdi,r14
-	loop Resize_H_AVX512_Planar_10to14bits_loop_4
-
+Resize_H_AVX512_Planar_10to14bits_loop_4c:
 	vextracti32x8 ymm8,zmm0,1
 	vextracti32x8 ymm9,zmm1,1
 	
@@ -1354,10 +1623,21 @@ Resize_H_AVX512_Planar_10to14bits_3:
 
 	vpxord zmm0,zmm0,zmm0
 
+	shr rcx,1
+	jz short Resize_H_AVX512_Planar_10to14bits_loop_5b
+
 Resize_H_AVX512_Planar_10to14bits_loop_5:
 	vmovdqa64 zmm16,ZMMWORD ptr[rdi]		;coeff
+	vmovdqa64 zmm20,ZMMWORD ptr[rdi+r14]	;coeff+32(x2)
 
-	vpmaddwd zmm8,zmm16,ZMMWORD ptr[rsi] 	;src
+	vpmaddwd zmm8,zmm16,ZMMWORD ptr[rsi] 		;src
+	vpmaddwd zmm21,zmm20,ZMMWORD ptr[rsi+r14]	;src+32(x2)
+
+	add rsi,r14
+
+	vpaddd zmm8,zmm8,zmm21
+
+	add rdi,r14
 
 	vpaddd zmm0,zmm0,zmm8
 
@@ -1365,6 +1645,17 @@ Resize_H_AVX512_Planar_10to14bits_loop_5:
 	add rdi,r14
 	loop Resize_H_AVX512_Planar_10to14bits_loop_5
 
+Resize_H_AVX512_Planar_10to14bits_loop_5b:
+	test r12d,1
+	jz short Resize_H_AVX512_Planar_10to14bits_loop_5c
+
+	vmovdqa64 zmm16,ZMMWORD ptr[rdi]		;coeff
+
+	vpmaddwd zmm8,zmm16,ZMMWORD ptr[rsi] 	;src
+
+	vpaddd zmm0,zmm0,zmm8
+
+Resize_H_AVX512_Planar_10to14bits_loop_5c:
 	vextracti32x8 ymm8,zmm0,1
 	
 	vphaddd ymm0,ymm0,ymm8
@@ -1520,8 +1811,84 @@ Resize_H_AVX512_Planar_16bits_loop_1:
 	vpxord zmm5,zmm5,zmm5
 	vpxord zmm6,zmm6,zmm6
 	vpxord zmm7,zmm7,zmm7
+	
+	shr rcx,1
+	jz Resize_H_AVX512_Planar_16bits_loop_2b
 
 Resize_H_AVX512_Planar_16bits_loop_2:
+	vmovdqa64 zmm16,ZMMWORD ptr[rdi]		;coeff
+	vmovdqa64 zmm22,ZMMWORD ptr[rdi+r14]	;coeff+32(x2)
+
+	; shifttosigned + src
+	vpaddw zmm8,zmm20,ZMMWORD ptr[rsi] 			;src
+	vpaddw zmm23,zmm20,ZMMWORD ptr[rsi+r14]		;src+32(x2)
+	vpaddw zmm9,zmm20,ZMMWORD ptr[r9]			;src+src_pitch
+	vpaddw zmm24,zmm20,ZMMWORD ptr[r9+r14]		;src+src_pitch+32(x2)
+	vpaddw zmm10,zmm20,ZMMWORD ptr[rax]			;src+2*src_pitch
+	vpaddw zmm25,zmm20,ZMMWORD ptr[rax+r14]		;src+2*src_pitch+32(x2)
+	vpaddw zmm11,zmm20,ZMMWORD ptr[rdx]			;src+3*src_pitch
+	vpaddw zmm26,zmm20,ZMMWORD ptr[rdx+r14]		;src+3*src_pitch+32(x2)
+
+	vpaddw zmm12,zmm20,ZMMWORD ptr[rsi+4*rbx]	;src+4*src_pitch
+	vpmaddwd zmm8,zmm8,zmm16
+	add rsi,r14
+	vpmaddwd zmm23,zmm23,zmm22
+	vpaddw zmm27,zmm20,ZMMWORD ptr[rsi+4*rbx]	;src+4*src_pitch+32(x2)
+	vpaddw zmm13,zmm20,ZMMWORD ptr[r9+4*rbx]	;src+5*src_pitch
+	vpmaddwd zmm9,zmm9,zmm16
+	add r9,r14
+	vpmaddwd zmm24,zmm24,zmm22
+	vpaddw zmm28,zmm20,ZMMWORD ptr[r9+4*rbx]	;src+5*src_pitch+32(x2)
+	vpaddw zmm14,zmm20,ZMMWORD ptr[rax+4*rbx]	;src+6*src_pitch
+	vpmaddwd zmm10,zmm10,zmm16
+	add rax,r14
+	vpmaddwd zmm25,zmm25,zmm22
+	vpaddw zmm29,zmm20,ZMMWORD ptr[rax+4*rbx]	;src+6*src_pitch+32(x2)
+	vpaddw zmm15,zmm20,ZMMWORD ptr[rdx+4*rbx]	;src+7*src_pitch
+	vpmaddwd zmm11,zmm11,zmm16
+	add rdx,r14
+	vpmaddwd zmm26,zmm26,zmm22
+	vpaddw zmm30,zmm20,ZMMWORD ptr[rdx+4*rbx]	;src+7*src_pitch+32(x2)
+
+	vpmaddwd zmm12,zmm12,zmm16
+	vpmaddwd zmm13,zmm13,zmm16
+	vpmaddwd zmm14,zmm14,zmm16
+	vpmaddwd zmm15,zmm15,zmm16
+	vpmaddwd zmm27,zmm27,zmm22
+	vpmaddwd zmm28,zmm28,zmm22
+	vpmaddwd zmm29,zmm29,zmm22
+	vpmaddwd zmm30,zmm30,zmm22
+
+	vpaddd zmm8,zmm8,zmm23
+	vpaddd zmm9,zmm9,zmm24
+	vpaddd zmm10,zmm10,zmm25
+	vpaddd zmm11,zmm11,zmm26
+	vpaddd zmm12,zmm12,zmm27
+	vpaddd zmm13,zmm13,zmm28
+	vpaddd zmm14,zmm14,zmm29
+	vpaddd zmm15,zmm15,zmm30
+
+	vpaddd zmm0,zmm0,zmm8
+	vpaddd zmm1,zmm1,zmm9
+	vpaddd zmm2,zmm2,zmm10
+	vpaddd zmm3,zmm3,zmm11
+	vpaddd zmm4,zmm4,zmm12
+	vpaddd zmm5,zmm5,zmm13
+	vpaddd zmm6,zmm6,zmm14
+	vpaddd zmm7,zmm7,zmm15
+
+	add rsi,r14
+	add r9,r14
+	add rax,r14
+	add rdx,r14
+	add rdi,r14
+	dec ecx
+	jnz Resize_H_AVX512_Planar_16bits_loop_2
+
+Resize_H_AVX512_Planar_16bits_loop_2b:
+	test r12d,1
+	jz Resize_H_AVX512_Planar_16bits_loop_2c
+
 	vmovdqa64 zmm16,ZMMWORD ptr[rdi]			;coeff
 
 	; shifttosigned + src
@@ -1552,13 +1919,7 @@ Resize_H_AVX512_Planar_16bits_loop_2:
 	vpaddd zmm6,zmm6,zmm14
 	vpaddd zmm7,zmm7,zmm15
 
-	add rsi,r14
-	add r9,r14
-	add rax,r14
-	add rdx,r14
-	add rdi,r14
-	dec ecx
-	jnz Resize_H_AVX512_Planar_16bits_loop_2
+Resize_H_AVX512_Planar_16bits_loop_2c:
 
 	vextracti32x8 ymm8,zmm0,1
 	vextracti32x8 ymm9,zmm1,1
@@ -1671,24 +2032,68 @@ Resize_H_AVX512_Planar_16bits_1:
 	mov rsi,r10	;rsi=src
 	mov r9,r10
 	add r9,rbx 	;r9=src+src_pitch
-	mov rax,r9
-	add rax,rbx ;rax=src+2*pitch
-	mov rdx,rax
-	add rdx,rbx ;rdx=src+3*pitch
 
 	vpxord zmm0,zmm0,zmm0
 	vpxord zmm1,zmm1,zmm1
 	vpxord zmm2,zmm2,zmm2
 	vpxord zmm3,zmm3,zmm3
 
+	shr rcx,1
+	jz Resize_H_AVX512_Planar_16bits_loop_3b
+
 Resize_H_AVX512_Planar_16bits_loop_3:
+	vmovdqa64 zmm16,ZMMWORD ptr[rdi]	;coeff
+	vmovdqa64 zmm22,ZMMWORD ptr[rdi+r14];coeff+32(x2)
+
+	; shifttosigned + src
+	vpaddw zmm8,zmm20,ZMMWORD ptr[rsi] 			;src
+	vpaddw zmm23,zmm20,ZMMWORD ptr[rsi+r14]		;src+32(x2)
+	vpaddw zmm9,zmm20,ZMMWORD ptr[r9]			;src+src_pitch
+	vpaddw zmm24,zmm20,ZMMWORD ptr[r9+r14]		;src+src_pitch+32(x2)
+
+	vpaddw zmm10,zmm20,ZMMWORD ptr[rsi+2*rbx]	;src+2*src_pitch
+	vpmaddwd zmm8,zmm8,zmm16
+	add rsi,r14
+	vpmaddwd zmm23,zmm23,zmm22
+	vpaddw zmm25,zmm20,ZMMWORD ptr[rsi+2*rbx]	;src+2*src_pitch+32(x2)
+	vpaddw zmm11,zmm20,ZMMWORD ptr[r9+2*rbx]	;src+3*src_pitch
+	vpmaddwd zmm9,zmm9,zmm16
+	add r9,r14
+	vpmaddwd zmm24,zmm24,zmm22
+	vpaddw zmm26,zmm20,ZMMWORD ptr[r9+2*rbx]	;src+3*src_pitch+32(x2)
+
+	vpmaddwd zmm10,zmm10,zmm16
+	vpmaddwd zmm11,zmm11,zmm16
+	vpmaddwd zmm25,zmm25,zmm22
+	vpmaddwd zmm26,zmm26,zmm22
+
+	vpaddd zmm8,zmm8,zmm23
+	vpaddd zmm9,zmm9,zmm24
+	vpaddd zmm10,zmm10,zmm25
+	vpaddd zmm11,zmm11,zmm26
+
+	vpaddd zmm0,zmm0,zmm8
+	vpaddd zmm1,zmm1,zmm9
+	vpaddd zmm2,zmm2,zmm10
+	vpaddd zmm3,zmm3,zmm11
+
+	add rsi,r14
+	add r9,r14
+	add rdi,r14
+	dec ecx
+	jnz Resize_H_AVX512_Planar_16bits_loop_3
+
+Resize_H_AVX512_Planar_16bits_loop_3b:
+	test r12d,1
+	jz short Resize_H_AVX512_Planar_16bits_loop_3c
+
 	vmovdqa64 zmm16,ZMMWORD ptr[rdi]	;coeff
 
 	; shifttosigned + src
-	vpaddw zmm8,zmm20,ZMMWORD ptr[rsi] 	;src
-	vpaddw zmm9,zmm20,ZMMWORD ptr[r9]	;src+src_pitch
-	vpaddw zmm10,zmm20,ZMMWORD ptr[rax]	;src+2*src_pitch
-	vpaddw zmm11,zmm20,ZMMWORD ptr[rdx]	;src+3*src_pitch
+	vpaddw zmm8,zmm20,ZMMWORD ptr[rsi] 			;src
+	vpaddw zmm9,zmm20,ZMMWORD ptr[r9]			;src+src_pitch
+	vpaddw zmm10,zmm20,ZMMWORD ptr[rsi+2*rbx]	;src+2*src_pitch
+	vpaddw zmm11,zmm20,ZMMWORD ptr[r9+2*rbx]	;src+3*src_pitch
 
 	vpmaddwd zmm8,zmm8,zmm16
 	vpmaddwd zmm9,zmm9,zmm16
@@ -1700,13 +2105,7 @@ Resize_H_AVX512_Planar_16bits_loop_3:
 	vpaddd zmm2,zmm2,zmm10
 	vpaddd zmm3,zmm3,zmm11
 
-	add rsi,r14
-	add r9,r14
-	add rax,r14
-	add rdx,r14
-	add rdi,r14
-	loop Resize_H_AVX512_Planar_16bits_loop_3
-
+Resize_H_AVX512_Planar_16bits_loop_3c:
 	vextracti32x8 ymm8,zmm0,1
 	vextracti32x8 ymm9,zmm1,1
 	vextracti32x8 ymm10,zmm2,1
@@ -1735,28 +2134,24 @@ Resize_H_AVX512_Planar_16bits_loop_3:
 	vshufps xmm0,xmm0,xmm1,68
 	vshufps xmm2,xmm2,xmm3,68
 
-	vinserti128 ymm0,ymm0,xmm2,1
+	vphaddd xmm0,xmm0,xmm2
 
-	vphaddd ymm0,ymm0,ymm0
+	vpaddd xmm0,xmm0,xmm21 ;ShiftfromSigned
 
-	vpaddd ymm0,ymm0,ymm21 ;ShiftfromSigned
-
-	vpaddd ymm0,ymm0,ymm19 ;rounder
-	vpsrad ymm0,ymm0,13 ;FPScale16bits = 13
+	vpaddd xmm0,xmm0,xmm19 ;rounder
+	vpsrad xmm0,xmm0,13 ;FPScale16bits = 13
 
 	mov rdx,rbx
 
-	vpackusdw ymm0,ymm0,ymm0
+	vpackusdw xmm0,xmm0,xmm0
 
 	sal rdx,2
 
-	vpmaxuw ymm0,ymm0,ymm17
+	vpmaxuw xmm0,xmm0,xmm17
 
 	add r10,rdx
 
-	vpminuw ymm0,ymm0,ymm18
-
-	vextracti128 xmm1,ymm0,1
+	vpminuw xmm0,xmm0,xmm18
 
 	vpextrw eax,xmm0,0
 	mov word ptr[r11],ax
@@ -1764,10 +2159,10 @@ Resize_H_AVX512_Planar_16bits_loop_3:
 	vpextrw eax,xmm0,1
 	mov word ptr[r11],ax
 	add r11,r15
-	vpextrw eax,xmm1,0
+	vpextrw eax,xmm0,2
 	mov word ptr[r11],ax
 	add r11,r15
-	vpextrw eax,xmm1,1
+	vpextrw eax,xmm0,3
 	mov word ptr[r11],ax
 	add r11,r15
 
@@ -1778,18 +2173,50 @@ Resize_H_AVX512_Planar_16bits_2:
 	mov rcx,r12 ;kernel_size_64
 	mov rdi,r8 	;rdi=coeff
 	mov rsi,r10	;rsi=src
-	mov r9,r10
-	add r9,rbx 	;r9=src+src_pitch
 
 	vpxord zmm0,zmm0,zmm0
 	vpxord zmm1,zmm1,zmm1
 
+	shr rcx,1
+	jz short Resize_H_AVX512_Planar_16bits_loop_4b
+
 Resize_H_AVX512_Planar_16bits_loop_4:
+	vmovdqa64 zmm16,ZMMWORD ptr[rdi]	;coeff
+	vmovdqa64 zmm22,ZMMWORD ptr[rdi+r14];coeff+32(x2)
+
+	; shifttosigned + src
+	vpaddw zmm8,zmm20,ZMMWORD ptr[rsi]		;src
+	vpaddw zmm23,zmm20,ZMMWORD ptr[rsi+r14]	;src+32(x2)
+	vpaddw zmm9,zmm20,ZMMWORD ptr[rsi+rbx]	;src+src_pitch
+	vpmaddwd zmm8,zmm8,zmm16
+	add rsi,r14
+	vpmaddwd zmm23,zmm23,zmm22
+	vpaddw zmm24,zmm20,ZMMWORD ptr[rsi+rbx]	;src+src_pitch+32(x2)
+
+	vpmaddwd zmm9,zmm9,zmm16
+	vpmaddwd zmm24,zmm24,zmm22
+
+	vpaddd zmm8,zmm8,zmm23
+	vpaddd zmm9,zmm9,zmm24
+
+	vpaddd zmm0,zmm0,zmm8
+	vpaddd zmm1,zmm1,zmm9
+
+	add rdi,r14
+
+	add rsi,r14
+	add rdi,r14
+	loop Resize_H_AVX512_Planar_16bits_loop_4
+
+Resize_H_AVX512_Planar_16bits_loop_4b:
+	test r12d,1
+	jz short Resize_H_AVX512_Planar_16bits_loop_4c
+
 	vmovdqa64 zmm16,ZMMWORD ptr[rdi]	;coeff
 
 	; shifttosigned + src
-	vpaddw zmm8,zmm20,ZMMWORD ptr[rsi]	;src
-	vpaddw zmm9,zmm20,ZMMWORD ptr[r9]	;src+src_pitch
+	vpaddw zmm8,zmm20,ZMMWORD ptr[rsi]		;src
+	vpaddw zmm9,zmm20,ZMMWORD ptr[rsi+rbx]	;src+src_pitch
 
 	vpmaddwd zmm8,zmm8,zmm16
 	vpmaddwd zmm9,zmm9,zmm16
@@ -1797,11 +2224,7 @@ Resize_H_AVX512_Planar_16bits_loop_4:
 	vpaddd zmm0,zmm0,zmm8
 	vpaddd zmm1,zmm1,zmm9
 
-	add rsi,r14
-	add r9,r14
-	add rdi,r14
-	loop Resize_H_AVX512_Planar_16bits_loop_4
-
+Resize_H_AVX512_Planar_16bits_loop_4c:
 	vextracti32x8 ymm8,zmm0,1
 	vextracti32x8 ymm9,zmm1,1
 	
@@ -1853,7 +2276,36 @@ Resize_H_AVX512_Planar_16bits_3:
 
 	vpxord zmm0,zmm0,zmm0
 
+	shr rcx,1
+	jz short Resize_H_AVX512_Planar_16bits_loop_5b
+
 Resize_H_AVX512_Planar_16bits_loop_5:
+	vmovdqa64 zmm16,ZMMWORD ptr[rdi]	;coeff
+	vmovdqa64 zmm22,ZMMWORD ptr[rdi+r14];coeff+32(x2)
+
+	; shifttosigned + src
+	vpaddw zmm8,zmm20,ZMMWORD ptr[rsi] 		;src
+	vpaddw zmm23,zmm20,ZMMWORD ptr[rsi+r14]	;src+32(x2)
+
+	vpmaddwd zmm8,zmm8,zmm16
+	vpmaddwd zmm23,zmm23,zmm22
+
+	add rsi,r14
+
+	vpaddd zmm8,zmm8,zmm23
+
+	add rdi,r14
+
+	vpaddd zmm0,zmm0,zmm8
+
+	add rsi,r14
+	add rdi,r14
+	loop Resize_H_AVX512_Planar_16bits_loop_5
+
+Resize_H_AVX512_Planar_16bits_loop_5b:
+	test r12d,1
+	jz short Resize_H_AVX512_Planar_16bits_loop_5c
+
 	vmovdqa64 zmm16,ZMMWORD ptr[rdi]	;coeff
 
 	; shifttosigned + src
@@ -1863,10 +2315,7 @@ Resize_H_AVX512_Planar_16bits_loop_5:
 
 	vpaddd zmm0,zmm0,zmm8
 
-	add rsi,r14
-	add rdi,r14
-	loop Resize_H_AVX512_Planar_16bits_loop_5
-
+Resize_H_AVX512_Planar_16bits_loop_5c:
 	vextracti32x8 ymm8,zmm0,1
 	
 	vphaddd ymm0,ymm0,ymm8
@@ -1954,8 +2403,8 @@ sizeh equ dword ptr[rbp+64]
 	.pushreg r14
 	push r15
 	.pushreg r15
-	sub rsp,120
-	.allocstack 120
+	sub rsp,136
+	.allocstack 136
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -1970,6 +2419,8 @@ sizeh equ dword ptr[rbp+64]
 	.savexmm128 xmm11,80
 	vmovdqa XMMWORD ptr[rsp+96],xmm12
 	.savexmm128 xmm12,96
+	vmovdqa XMMWORD ptr[rsp+112],xmm13
+	.savexmm128 xmm13,112
 	.endprolog
 	
 	mov r10,rcx ;r10=src
@@ -2003,8 +2454,50 @@ Resize_H_AVX512_Planar_32bits_loop_1:
 	vxorps zmm5,zmm5,zmm5
 	vxorps zmm6,zmm6,zmm6
 	vxorps zmm7,zmm7,zmm7
+	
+	shr rcx,1
+	jz Resize_H_AVX512_Planar_32bits_loop_2b
 
 Resize_H_AVX512_Planar_32bits_loop_2:
+	vmovaps zmm12,ZMMWORD ptr[rdi]					;coef
+	vmovaps zmm13,ZMMWORD ptr[rdi+r14]				;coef+16(x4)
+
+	vfmadd231ps zmm0,zmm12,ZMMWORD ptr[rsi] 		;src
+	vfmadd231ps zmm0,zmm13,ZMMWORD ptr[rsi+r14]		;src+16(x4)
+	vfmadd231ps zmm1,zmm12,ZMMWORD ptr[r9]			;src+src_pitch
+	vfmadd231ps zmm1,zmm13,ZMMWORD ptr[r9+r14]		;src+src_pitch+16(x4)
+	vfmadd231ps zmm2,zmm12,ZMMWORD ptr[rax]			;src+2*src_pitch
+	vfmadd231ps zmm2,zmm13,ZMMWORD ptr[rax+r14]		;src+2*src_pitch+16(x4)
+	vfmadd231ps zmm3,zmm12,ZMMWORD ptr[rdx]			;src+3*src_pitch
+	vfmadd231ps zmm3,zmm13,ZMMWORD ptr[rdx+r14]		;src+3*src_pitch+16(x4)
+
+	vfmadd231ps zmm4,zmm12,ZMMWORD ptr[rsi+4*rbx]	;src+4*src_pitch
+	add rsi,r14
+	vfmadd231ps zmm4,zmm13,ZMMWORD ptr[rsi+4*rbx]	;src+4*src_pitch+16(x4)
+	vfmadd231ps zmm5,zmm12,ZMMWORD ptr[r9+4*rbx]	;src+5*src_pitch
+	add r9,r14
+	vfmadd231ps zmm5,zmm13,ZMMWORD ptr[r9+4*rbx]	;src+5*src_pitch+16(x4)
+	vfmadd231ps zmm6,zmm12,ZMMWORD ptr[rax+4*rbx]	;src+6*src_pitch
+	add rax,r14
+	vfmadd231ps zmm6,zmm13,ZMMWORD ptr[rax+4*rbx]	;src+6*src_pitch+16(x4)
+	vfmadd231ps zmm7,zmm12,ZMMWORD ptr[rdx+4*rbx]	;src+7*src_pitch
+	add rdx,r14
+	vfmadd231ps zmm7,zmm13,ZMMWORD ptr[rdx+4*rbx]	;src+7*src_pitch+16(x4)
+
+	add rdi,r14
+
+	add rsi,r14
+	add r9,r14
+	add rax,r14
+	add rdx,r14
+	add rdi,r14
+	dec ecx
+	jnz Resize_H_AVX512_Planar_32bits_loop_2
+
+Resize_H_AVX512_Planar_32bits_loop_2b:
+	test r12d,1
+	jz short Resize_H_AVX512_Planar_32bits_loop_2c
+
 	vmovaps zmm12,ZMMWORD ptr[rdi]					;coef
 
 	vfmadd231ps zmm0,zmm12,ZMMWORD ptr[rsi] 		;src
@@ -2016,13 +2509,7 @@ Resize_H_AVX512_Planar_32bits_loop_2:
 	vfmadd231ps zmm6,zmm12,ZMMWORD ptr[rax+4*rbx]	;src+6*src_pitch
 	vfmadd231ps zmm7,zmm12,ZMMWORD ptr[rdx+4*rbx]	;src+7*src_pitch
 
-	add rsi,r14
-	add r9,r14
-	add rax,r14
-	add rdx,r14
-	add rdi,r14
-	loop Resize_H_AVX512_Planar_32bits_loop_2
-
+Resize_H_AVX512_Planar_32bits_loop_2c:
 	vextractf32x8 ymm8,zmm0,1
 	vextractf32x8 ymm9,zmm1,1
 	vextractf32x8 ymm10,zmm2,1
@@ -2071,16 +2558,13 @@ Resize_H_AVX512_Planar_32bits_loop_2:
 	vshufps xmm4,xmm4,xmm5,68
 	vshufps xmm6,xmm6,xmm7,68
 
-	vinsertf128 ymm0,ymm0,xmm2,1
-	vinsertf128 ymm4,ymm4,xmm6,1
-
 	mov rdx,rbx
 
-	vhaddps ymm0,ymm0,ymm4
+	vhaddps xmm0,xmm0,xmm2
 
 	sal rdx,3
 
-	vextractf128 xmm1,ymm0,1
+	vhaddps xmm4,xmm4,xmm6
 
 	add r10,rdx
 
@@ -2090,22 +2574,22 @@ Resize_H_AVX512_Planar_32bits_loop_2:
 	vpextrd eax,xmm0,1
 	mov dword ptr[r11],eax
 	add r11,r15
-	vpextrd eax,xmm1,0
-	mov dword ptr[r11],eax
-	add r11,r15
-	vpextrd eax,xmm1,1
-	mov dword ptr[r11],eax
-	add r11,r15
 	vpextrd eax,xmm0,2
 	mov dword ptr[r11],eax
 	add r11,r15
 	vpextrd eax,xmm0,3
 	mov dword ptr[r11],eax
 	add r11,r15
-	vpextrd eax,xmm1,2
+	vpextrd eax,xmm4,0
 	mov dword ptr[r11],eax
 	add r11,r15
-	vpextrd eax,xmm1,3
+	vpextrd eax,xmm4,1
+	mov dword ptr[r11],eax
+	add r11,r15
+	vpextrd eax,xmm4,2
+	mov dword ptr[r11],eax
+	add r11,r15
+	vpextrd eax,xmm4,3
 	mov dword ptr[r11],eax
 	add r11,r15
 	
@@ -2127,7 +2611,36 @@ Resize_H_AVX512_Planar_32bits_1:
 	vxorps zmm2,zmm2,zmm2
 	vxorps zmm3,zmm3,zmm3
 
+	shr rcx,1
+	jz short Resize_H_AVX512_Planar_32bits_loop_3b
+
 Resize_H_AVX512_Planar_32bits_loop_3:
+	vmovaps zmm12,ZMMWORD ptr[rdi]					;coeff
+	vmovaps zmm13,ZMMWORD ptr[rdi+r14]				;coeff
+
+	vfmadd231ps zmm0,zmm12,ZMMWORD ptr[rsi]			;src
+	vfmadd231ps zmm0,zmm13,ZMMWORD ptr[rsi+r14]		;src+16(x4)
+	vfmadd231ps zmm1,zmm12,ZMMWORD ptr[r9]			;src+src_pitch
+	vfmadd231ps zmm1,zmm13,ZMMWORD ptr[r9+r14]		;src+src_pitch+16(x4)
+
+	vfmadd231ps zmm2,zmm12,ZMMWORD ptr[rsi+2*rbx]	;src+2*src_pitch
+	add rsi,r14
+	vfmadd231ps zmm2,zmm13,ZMMWORD ptr[rsi+2*rbx]	;src+2*src_pitch+16(x4)
+	vfmadd231ps zmm3,zmm12,ZMMWORD ptr[r9+2*rbx]	;src+3*src_pitch
+	add r9,r14
+	vfmadd231ps zmm3,zmm13,ZMMWORD ptr[r9+2*rbx]	;src+3*src_pitch+16(x4)
+
+	add rdi,r14
+
+	add rsi,r14
+	add r9,r14
+	add rdi,r14
+	loop Resize_H_AVX512_Planar_32bits_loop_3
+
+Resize_H_AVX512_Planar_32bits_loop_3b:
+	test r12d,1
+	jz short Resize_H_AVX512_Planar_32bits_loop_3c
+
 	vmovaps zmm12,ZMMWORD ptr[rdi]					;coeff
 
 	vfmadd231ps zmm0,zmm12,ZMMWORD ptr[rsi]			;src
@@ -2135,11 +2648,7 @@ Resize_H_AVX512_Planar_32bits_loop_3:
 	vfmadd231ps zmm2,zmm12,ZMMWORD ptr[rsi+2*rbx]	;src+2*src_pitch
 	vfmadd231ps zmm3,zmm12,ZMMWORD ptr[r9+2*rbx]	;src+3*src_pitch
 
-	add rsi,r14
-	add r9,r14
-	add rdi,r14
-	loop Resize_H_AVX512_Planar_32bits_loop_3
-
+Resize_H_AVX512_Planar_32bits_loop_3c:
 	vextractf32x8 ymm8,zmm0,1
 	vextractf32x8 ymm9,zmm1,1
 	vextractf32x8 ymm10,zmm2,1
@@ -2170,15 +2679,11 @@ Resize_H_AVX512_Planar_32bits_loop_3:
 
 	mov rdx,rbx
 
-	vinsertf128 ymm0,ymm0,xmm2,1
+	vhaddps xmm0,xmm0,xmm2
 
 	sal rdx,2
 
-	vhaddps ymm0,ymm0,ymm0
-
 	add r10,rdx
-
-	vextracti128 xmm1,ymm0,1
 	
 	vpextrd eax,xmm0,0
 	mov dword ptr[r11],eax
@@ -2186,10 +2691,10 @@ Resize_H_AVX512_Planar_32bits_loop_3:
 	vpextrd eax,xmm0,1
 	mov dword ptr[r11],eax
 	add r11,r15
-	vpextrd eax,xmm1,0
+	vpextrd eax,xmm0,2
 	mov dword ptr[r11],eax
 	add r11,r15
-	vpextrd eax,xmm1,1
+	vpextrd eax,xmm0,3
 	mov dword ptr[r11],eax
 	add r11,r15
 
@@ -2204,16 +2709,34 @@ Resize_H_AVX512_Planar_32bits_2:
 	vxorps zmm0,zmm0,zmm0
 	vxorps zmm1,zmm1,zmm1
 
+	shr rcx,1
+	jz short Resize_H_AVX512_Planar_32bits_loop_4b
+
 Resize_H_AVX512_Planar_32bits_loop_4:
 	vmovaps zmm12,ZMMWORD ptr[rdi]				;coeff
+	vmovaps zmm13,ZMMWORD ptr[rdi+r14]			;coeff+16(x4)
 
 	vfmadd231ps zmm0,zmm12,ZMMWORD ptr[rsi] 	;src
+	vfmadd231ps zmm0,zmm13,ZMMWORD ptr[rsi+r14]	;src+16(x4)
 	vfmadd231ps zmm1,zmm12,ZMMWORD ptr[rsi+rbx]	;src+src_pitch
+	add rsi,r14
+	add rdi,r14
+	vfmadd231ps zmm1,zmm13,ZMMWORD ptr[rsi+rbx]	;src+src_pitch+16(x4)
 
 	add rsi,r14
 	add rdi,r14
 	loop Resize_H_AVX512_Planar_32bits_loop_4
 
+Resize_H_AVX512_Planar_32bits_loop_4b:
+	test r12d,1
+	jz short Resize_H_AVX512_Planar_32bits_loop_4c
+
+	vmovaps zmm12,ZMMWORD ptr[rdi]				;coeff
+
+	vfmadd231ps zmm0,zmm12,ZMMWORD ptr[rsi] 	;src
+	vfmadd231ps zmm1,zmm12,ZMMWORD ptr[rsi+rbx]	;src+src_pitch
+
+Resize_H_AVX512_Planar_32bits_loop_4c:
 	vextractf32x8 ymm8,zmm0,1
 	vextractf32x8 ymm9,zmm1,1
 	
@@ -2255,15 +2778,31 @@ Resize_H_AVX512_Planar_32bits_3:
 
 	vxorps zmm0,zmm0,zmm0
 
-Resize_H_AVX512_Planar_32bits_loop_5:
-	vmovaps zmm12,ZMMWORD ptr[rdi]			;coeff
+	shr rcx,1
+	jz short Resize_H_AVX512_Planar_32bits_loop_5b
 
-	vfmadd231ps zmm0,zmm12,ZMMWORD ptr[rsi]	;src
+Resize_H_AVX512_Planar_32bits_loop_5:
+	vmovaps zmm12,ZMMWORD ptr[rdi]		;coeff
+	vmovaps zmm13,ZMMWORD ptr[rdi+r14]	;coeff+16(x4)
+
+	vfmadd231ps zmm0,zmm12,ZMMWORD ptr[rsi]		;src
+	add rsi,r14
+	add rdi,r14
+	vfmadd231ps zmm0,zmm13,ZMMWORD ptr[rsi]	;src+16(x4)
 
 	add rsi,r14
 	add rdi,r14
 	loop Resize_H_AVX512_Planar_32bits_loop_5
 
+Resize_H_AVX512_Planar_32bits_loop_5b:
+	test r12d,1
+	jz short Resize_H_AVX512_Planar_32bits_loop_5c
+
+	vmovaps zmm12,ZMMWORD ptr[rdi]			;coeff
+
+	vfmadd231ps zmm0,zmm12,ZMMWORD ptr[rsi]	;src
+
+Resize_H_AVX512_Planar_32bits_loop_5c:
 	vextractf32x8 ymm8,zmm0,1
 
 	vhaddps ymm0,ymm0,ymm8
@@ -2280,6 +2819,7 @@ Resize_H_AVX512_Planar_32bits_loop_5:
 	mov dword ptr[r11],eax
 
 Resize_H_AVX512_Planar_32bits_end:
+	vmovdqa xmm13,XMMWORD ptr[rsp+112]
 	vmovdqa xmm12,XMMWORD ptr[rsp+96]
 	vmovdqa xmm11,XMMWORD ptr[rsp+80]
 	vmovdqa xmm10,XMMWORD ptr[rsp+64]
@@ -2287,7 +2827,7 @@ Resize_H_AVX512_Planar_32bits_end:
 	vmovdqa xmm8,XMMWORD ptr[rsp+32]
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]
-	add rsp,120
+	add rsp,136
 		
 	vzeroupper
 
