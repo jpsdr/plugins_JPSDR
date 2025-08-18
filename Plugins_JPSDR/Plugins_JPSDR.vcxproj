@@ -172,9 +172,7 @@
     <ClCompile Include="PlanarFrame.cpp" />
     <ClCompile Include="plugins_JPSDR.cpp" />
     <ClCompile Include="resample.cpp" />
-    <ClCompile Include="ResampleMT_AVX.cpp" />
-    <ClCompile Include="ResampleMT_AVX2.cpp" />
-    <ClCompile Include="ResampleMT_AVX512.cpp" />
+    <ClCompile Include="resample_avx2.cpp" />
     <ClCompile Include="resample_functions.cpp" />
     <ClCompile Include="resample_sse.cpp" />
     <ClCompile Include="ThreadPool.cpp" />
@@ -190,9 +188,7 @@
     <ClInclude Include="nnedi3.h" />
     <ClInclude Include="PlanarFrame.h" />
     <ClInclude Include="resample.h" />
-    <ClInclude Include="ResampleMT_AVX.h" />
-    <ClInclude Include="ResampleMT_AVX2.h" />
-    <ClInclude Include="ResampleMT_AVX512.h" />
+    <ClInclude Include="resample_avx2.h" />
     <ClInclude Include="resample_functions.h" />
     <ClInclude Include="resample_sse.h" />
     <ClInclude Include="resource.h" />
@@ -453,62 +449,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </CustomBuild>
-    <MASM Include="ResampleMT_AVX2_x64.asm">
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</GenerateDebugInformation>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </MASM>
-    <MASM Include="ResampleMT_AVX2_x86.asm">
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</GenerateDebugInformation>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </MASM>
-    <MASM Include="ResampleMT_AVX512_x64.asm">
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</GenerateDebugInformation>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </MASM>
-    <MASM Include="ResampleMT_AVX512_x86.asm">
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</GenerateDebugInformation>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </MASM>
-    <MASM Include="ResampleMT_AVX_x64.asm">
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</GenerateDebugInformation>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </MASM>
-    <MASM Include="ResampleMT_AVX_x86.asm">
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateDebugInformation>
-      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</GenerateDebugInformation>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </MASM>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="plugins_JPSDR.rc" />

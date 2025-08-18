@@ -41,7 +41,6 @@
 #include <type_traits>
 
 #include "./resample_sse.h"
-#include "./ResampleMT_AVX.h"
 
 // VS 2015
 #if _MSC_VER >= 1900
@@ -53,17 +52,8 @@
   #define JPSDR_CONSTEXPR
 #endif
 
-// VS 2019 v16.3
-#if _MSC_VER >= 1923
-#define AVX512_BUILD_POSSIBLE
-#endif
-
 #ifdef AVX2_BUILD_POSSIBLE
-#include "./ResampleMT_AVX2.h"
-#endif
-
-#ifdef AVX512_BUILD_POSSIBLE
-#include "./ResampleMT_AVX512.h"
+#include "./resample_avx2.h"
 #endif
 
 extern ThreadPoolInterface *poolInterface;
@@ -569,6 +559,7 @@ __forceinline static void resize_v_create_pitch_table(int* table, int pitch, int
  ********* Horizontal Resizer** ********
  ***************************************/
 
+
 static void resize_h_c_planar_u8(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
 {
 	int filter_size = program->filter_size;
@@ -851,22 +842,15 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
   isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
   mode_YUY2 = vi.IsYUY2();
-  
-  const int CPUF = env->GetCPUFlags();
 
-  Enable_MMX = (CPUF & CPUF_MMX)!=0;
-  Enable_SSE2 = (CPUF & CPUF_SSE2)!=0;
-  Enable_SSSE3 = (CPUF & CPUF_SSSE3)!=0;
-  Enable_SSE4_1 = ((CPUF & CPUF_SSE4_1)!=0) & Enable_SSSE3;
-  Enable_AVX = (CPUF & CPUF_AVX)!=0;
+  Enable_MMX = (env->GetCPUFlags() & CPUF_MMX)!=0;
+  Enable_SSE2 = (env->GetCPUFlags() & CPUF_SSE2)!=0;
+  Enable_SSE3 = (env->GetCPUFlags() & CPUF_SSE3)!=0;
+  Enable_SSSE3 = (env->GetCPUFlags() & CPUF_SSSE3)!=0;
+  Enable_SSE4_1 = (env->GetCPUFlags() & CPUF_SSE4_1)!=0;
   Enable_AVX2 = false;
-  Enable_AVX512 = false;
 #ifdef AVX2_BUILD_POSSIBLE
-  Enable_AVX2 = avsp && ((CPUF & CPUF_AVX2)!=0) && ((CPUF & CPUF_FMA3)!=0);
-#endif
-#ifdef AVX512_BUILD_POSSIBLE
-  Enable_AVX512 = avsp && ((CPUF & CPUF_AVX512F)!=0) && ((CPUF & CPUF_AVX512DQ)!=0)
-	&& ((CPUF & CPUF_AVX512BW)!=0) && ((CPUF & CPUF_AVX512VL)!=0);
+  Enable_AVX2 = avsp && ((env->GetCPUFlags() & CPUF_AVX2)!=0);
 #endif
 
   double center_pos_h_luma;
@@ -1441,66 +1425,45 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* program, IScriptEnvironment* env)
 {
 	int simd_coeff_count_padding = 8;
-	
-	if (Enable_AVX512 | Enable_AVX2)
+
+	if (Enable_SSSE3)
 	{
-		if (pixelsize == 1 || pixelsize == 2) simd_coeff_count_padding = 32;
-		else simd_coeff_count_padding = 16;
-	}
-	else
+		// both 8 and 16 bit SSSE3 and AVX2 horizontal resizer benefits from 16 pixels/cycle
+		// float is also using 32 bytes, but as 32/sizeof(float) = 8, then don't need 16
+		if (pixelsize == 1 || pixelsize == 2) simd_coeff_count_padding = 16;
+   }
+
+	resize_prepare_coeffs(program, env, simd_coeff_count_padding);
+
+	if (pixelsize==1)
 	{
 		if (Enable_SSSE3)
 		{
-			// both 8 and 16 bit SSSE3 and AVX2 horizontal resizer benefits from 16 pixels/cycle
-			// float is also using 32 bytes, but as 32/sizeof(float) = 8, then don't need 16
-			if (pixelsize == 1 || pixelsize == 2) simd_coeff_count_padding = 16;
-		}
-	}
-
-	resize_prepare_coeffs(program, env, simd_coeff_count_padding);
-	
-	if (pixelsize==1)
-	{
-#ifdef AVX512_BUILD_POSSIBLE				
-		if (Enable_AVX512) return Resize_H_AVX512_8bits;
-		else
-#endif			
-		{
-			if (Enable_SSSE3)
-			{
 #ifdef AVX2_BUILD_POSSIBLE				
-				if (Enable_AVX2) return Resize_H_AVX2_8bits;
-				else
+			if (Enable_AVX2) return resizer_h_avx2_generic_uint8_t;
+			else
 #endif			
-				{
-					if (Enable_AVX) return Resize_H_AVX_8bits;
-					else return resizer_h_ssse3_generic_uint8_16<uint8_t, true>;
-				}
+			{
+				return resizer_h_ssse3_generic_uint8_16<uint8_t, true>;
 			}
-			else return resize_h_c_planar_u8;
 		}
+		else return resize_h_c_planar_u8;
 	}
 	else if (pixelsize==2)
 	{ 
 		if (Enable_SSSE3)
 		{
-#ifdef AVX512_BUILD_POSSIBLE				
-			if (Enable_AVX512) return Resize_H_AVX512_16bits;
-			else
-#endif			
-			{
 #ifdef AVX2_BUILD_POSSIBLE				
-				if (Enable_AVX2) return Resize_H_AVX2_16bits;
-				else
+			if (Enable_AVX2)
+			{
+				if(bits_per_pixel<16) return resizer_h_avx2_generic_uint16_t<true>;
+				else return resizer_h_avx2_generic_uint16_t<false>;
+			}
+			else
 #endif
-				{
-					if (Enable_AVX) return Resize_H_AVX_16bits;
-					else
-					{
-						if (bits_per_pixel<16) return resizer_h_ssse3_generic_uint8_16<uint16_t, true>;
-						else return resizer_h_ssse3_generic_uint8_16<uint16_t, false>;
-					}
-				}
+			{
+				if (bits_per_pixel<16) return resizer_h_ssse3_generic_uint8_16<uint16_t, true>;
+				else return resizer_h_ssse3_generic_uint8_16<uint16_t, false>;
 			}
 		}
 		else
@@ -1513,20 +1476,11 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 	{ //if (pixelsize == 4)
 		if (Enable_SSSE3)
 		{
-#ifdef AVX512_BUILD_POSSIBLE				
-			if (Enable_AVX512) return Resize_H_AVX512_32bits;
-			else
-#endif			
-			{
 #ifdef AVX2_BUILD_POSSIBLE
-				if (Enable_AVX2) return Resize_H_AVX2_32bits;
-				else					
+			if (Enable_AVX2) return resizer_h_avx2_generic_float;
+			else
 #endif		
-				{
-					if (Enable_AVX) return Resize_H_AVX_32bits;
-					else return resizer_h_ssse3_generic_float;  // SSSE3
-				}
-			}
+			return resizer_h_ssse3_generic_float;  // SSSE3
 		}
 		else return resize_h_c_planar_f;
 	}
@@ -1575,21 +1529,14 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	mode_YUY2 = vi.IsYUY2();
 
-  const int CPUF = env->GetCPUFlags();
-  
-  Enable_MMX = (CPUF & CPUF_MMX)!=0;
-  Enable_SSE2 = (CPUF & CPUF_SSE2)!=0;
-  Enable_SSSE3 = (CPUF & CPUF_SSSE3)!=0;
-  Enable_SSE4_1 = ((CPUF & CPUF_SSE4_1)!=0) & Enable_SSSE3;
-  Enable_AVX = (CPUF & CPUF_AVX)!=0;
+  Enable_MMX = (env->GetCPUFlags() & CPUF_MMX)!=0;
+  Enable_SSE2 = (env->GetCPUFlags() & CPUF_SSE2)!=0;
+  Enable_SSE3 = (env->GetCPUFlags() & CPUF_SSE3)!=0;
+  Enable_SSSE3 = (env->GetCPUFlags() & CPUF_SSSE3)!=0;
+  Enable_SSE4_1 = (env->GetCPUFlags() & CPUF_SSE4_1)!=0;
   Enable_AVX2 = false;
-  Enable_AVX512 = false;
 #ifdef AVX2_BUILD_POSSIBLE
-  Enable_AVX2 = avsp && ((CPUF & CPUF_AVX2)!=0) && ((CPUF & CPUF_FMA3)!=0);
-#endif
-#ifdef AVX512_BUILD_POSSIBLE
-  Enable_AVX512 = avsp && ((CPUF & CPUF_AVX512F)!=0) && ((CPUF & CPUF_AVX512DQ)!=0)
-	&& ((CPUF & CPUF_AVX512BW)!=0) && ((CPUF & CPUF_AVX512VL)!=0);
+  Enable_AVX2 = avsp && ((env->GetCPUFlags() & CPUF_AVX2)!=0);
 #endif
 
   double center_pos_v_luma;
@@ -2350,19 +2297,12 @@ ResamplerV FilteredResizeV::GetResampler(bool aligned, ResamplingProgram* progra
     {
       if (aligned && Enable_SSE2)
 	  {
-#ifdef AVX512_BUILD_POSSIBLE
-		  if (Enable_AVX512) return Resize_V_AVX512_8bits;
+#ifdef AVX2_BUILD_POSSIBLE
+		  if (Enable_AVX2) return resize_v_avx2_planar_uint8_t;
 		  else
 #endif
 		  {
-#ifdef AVX2_BUILD_POSSIBLE
-		    if (Enable_AVX2) return Resize_V_AVX2_8bits;
-		    else
-#endif
-		    {
-				if (Enable_AVX) return Resize_V_AVX_8bits;
-			    else return resize_v_sse2_planar;
-		    }
+			  return resize_v_sse2_planar;
 		  }
       }
 #ifdef X86_32
@@ -2377,23 +2317,17 @@ ResamplerV FilteredResizeV::GetResampler(bool aligned, ResamplingProgram* progra
 	{
       if (aligned && Enable_SSE2)
 	  {
-#ifdef AVX512_BUILD_POSSIBLE		
-		if (Enable_AVX512) return Resize_V_AVX512_16bits;
+#ifdef AVX2_BUILD_POSSIBLE		
+		if (Enable_AVX2)
+		{
+			if (bits_per_pixel<16) return resize_v_avx2_planar_uint16_t<true>;
+			else return resize_v_avx2_planar_uint16_t<false>;
+		}
 		else
 #endif			
 		{
-#ifdef AVX2_BUILD_POSSIBLE		
-			if (Enable_AVX2) return Resize_V_AVX2_16bits;
-			else
-#endif			
-			{
-				if (Enable_AVX) return Resize_V_AVX_16bits;
-				else
-				{
-					if (bits_per_pixel<16) return resize_v_sse2_planar_uint16_t<true>;
-					else return resize_v_sse2_planar_uint16_t<false>;
-				}
-			}
+			if (bits_per_pixel<16) return resize_v_sse2_planar_uint16_t<true>;
+			else return resize_v_sse2_planar_uint16_t<false>;
 		}
 	  }
 	  else
@@ -2406,20 +2340,11 @@ ResamplerV FilteredResizeV::GetResampler(bool aligned, ResamplingProgram* progra
 	{ // if (pixelsize== 4) 
       if (aligned && Enable_SSE2)
 	  {
-#ifdef AVX512_BUILD_POSSIBLE			
-		if (Enable_AVX512) return Resize_V_AVX512_32bits;
+#ifdef AVX2_BUILD_POSSIBLE			
+		if (Enable_AVX2) return resize_v_avx2_planar_float;
 		else
 #endif			
-		{
-#ifdef AVX2_BUILD_POSSIBLE			
-			if (Enable_AVX2) return Resize_V_AVX2_32bits;
-			else
-#endif			
-			{
-				if (Enable_AVX) return Resize_V_AVX_32bits;
-				else return resize_v_sse2_planar_float;
-			}
-		}
+		return resize_v_sse2_planar_float;
 	  }
 	  else return resize_v_c_planar_f;
     }
@@ -3301,7 +3226,7 @@ AVSValue __cdecl FilteredResizeMT::Create_BicubicResize(AVSValue args, void*, IS
 
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),force,args[Offset_Arg].AsInt(0),
 	  args[Offset_Arg+1].AsBool(true),args[Offset_Arg+2].AsBool(true),args[Offset_Arg+3].AsBool(false),args[Offset_Arg+4].AsBool(false),
-	  args[Offset_Arg+5].AsInt(0),args[Offset_Arg+6].AsInt(1),false,0,0,args[Offset_Arg+7].AsInt(6),&args[3],&f,
+	  args[Offset_Arg+5].AsInt(0),args[Offset_Arg+6].AsInt(1),false,0,0,args[Offset_Arg+7].AsInt(6),&args[5],&f,
 	  preserve_center,placement_name,forced_chroma_placement,env);
 }
 
@@ -3488,7 +3413,7 @@ AVSValue __cdecl FilteredResizeMT::Create_UserDefined2Resize(AVSValue args, void
 
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),force,args[Offset_Arg].AsInt(0),
 	  args[Offset_Arg+1].AsBool(true),args[Offset_Arg+2].AsBool(true),args[Offset_Arg+3].AsBool(false),args[Offset_Arg+4].AsBool(false),
-	  args[Offset_Arg+5].AsInt(0),args[Offset_Arg+6].AsInt(1),false,0,0,args[Offset_Arg+7].AsInt(6),&args[3],&f,
+	  args[Offset_Arg+5].AsInt(0),args[Offset_Arg+6].AsInt(1),false,0,0,args[Offset_Arg+7].AsInt(6),&args[6],&f,
 	  preserve_center,placement_name,forced_chroma_placement,env);
 }
 
@@ -3524,7 +3449,7 @@ AVSValue __cdecl FilteredResizeMT::Create_DeBicubicResize(AVSValue args, void*, 
 
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),force,args[Offset_Arg].AsInt(0),
 	  args[Offset_Arg+1].AsBool(true),args[Offset_Arg+2].AsBool(true),args[Offset_Arg+3].AsBool(false),args[Offset_Arg+4].AsBool(false),
-	  args[Offset_Arg+5].AsInt(0),args[Offset_Arg+6].AsInt(1),true,args[Offset_Arg+7].AsInt(0),args[Offset_Arg+8].AsInt(0),args[Offset_Arg+9].AsInt(6),&args[3],&f,
+	  args[Offset_Arg+5].AsInt(0),args[Offset_Arg+6].AsInt(1),true,args[Offset_Arg+7].AsInt(0),args[Offset_Arg+8].AsInt(0),args[Offset_Arg+9].AsInt(6),&args[5],&f,
 	  preserve_center,placement_name,forced_chroma_placement,env);
 }
 
@@ -3711,6 +3636,6 @@ AVSValue __cdecl FilteredResizeMT::Create_DeUserDefined2Resize(AVSValue args, vo
 
   return CreateResize(args[0].AsClip(),args[1].AsInt(),args[2].AsInt(),force,args[Offset_Arg].AsInt(0),
 	  args[Offset_Arg+1].AsBool(true),args[Offset_Arg+2].AsBool(true),args[Offset_Arg+3].AsBool(false),args[Offset_Arg+4].AsBool(false),
-	  args[Offset_Arg+5].AsInt(0),args[Offset_Arg+6].AsInt(1),true,args[Offset_Arg+7].AsInt(0),args[Offset_Arg+8].AsInt(0),args[Offset_Arg+9].AsInt(6),&args[3],&f,
+	  args[Offset_Arg+5].AsInt(0),args[Offset_Arg+6].AsInt(1),true,args[Offset_Arg+7].AsInt(0),args[Offset_Arg+8].AsInt(0),args[Offset_Arg+9].AsInt(6),&args[6],&f,
 	  preserve_center,placement_name,forced_chroma_placement,env);
 }

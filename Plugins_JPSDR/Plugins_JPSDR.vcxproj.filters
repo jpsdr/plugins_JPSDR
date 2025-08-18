@@ -57,13 +57,7 @@
     <ClCompile Include="resample_sse.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
-    <ClCompile Include="ResampleMT_AVX512.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
-    <ClCompile Include="ResampleMT_AVX2.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
-    <ClCompile Include="ResampleMT_AVX.cpp">
+    <ClCompile Include="resample_avx2.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
   </ItemGroup>
@@ -113,13 +107,7 @@
     <ClInclude Include="resample_sse.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
-    <ClInclude Include="ResampleMT_AVX512.h">
-      <Filter>Fichiers d%27en-tête</Filter>
-    </ClInclude>
-    <ClInclude Include="ResampleMT_AVX2.h">
-      <Filter>Fichiers d%27en-tête</Filter>
-    </ClInclude>
-    <ClInclude Include="ResampleMT_AVX.h">
+    <ClInclude Include="resample_avx2.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
   </ItemGroup>
@@ -182,24 +170,6 @@
       <Filter>Fichiers asm</Filter>
     </MASM>
     <MASM Include="nnedi3_asm.asm">
-      <Filter>Fichiers asm</Filter>
-    </MASM>
-    <MASM Include="ResampleMT_AVX512_x64.asm">
-      <Filter>Fichiers asm</Filter>
-    </MASM>
-    <MASM Include="ResampleMT_AVX512_x86.asm">
-      <Filter>Fichiers asm</Filter>
-    </MASM>
-    <MASM Include="ResampleMT_AVX2_x86.asm">
-      <Filter>Fichiers asm</Filter>
-    </MASM>
-    <MASM Include="ResampleMT_AVX2_x64.asm">
-      <Filter>Fichiers asm</Filter>
-    </MASM>
-    <MASM Include="ResampleMT_AVX_x86.asm">
-      <Filter>Fichiers asm</Filter>
-    </MASM>
-    <MASM Include="ResampleMT_AVX_x64.asm">
       <Filter>Fichiers asm</Filter>
     </MASM>
   </ItemGroup>
