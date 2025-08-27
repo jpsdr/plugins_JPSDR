@@ -45,6 +45,7 @@
 #define _mm256_set_m128(v0, v1) _mm256_insertf128_ps(_mm256_castps128_ps256(v1), (v0), 1)
 #endif
 
+
 //-------- AVX2 Horizontals
 
 // Dual line processing (speed gain): 2x16 pixels of two consecutive offset entries.
@@ -60,7 +61,7 @@
 
 template<typename pixel_t, bool lessthan16bit, int filtersizealigned16>
 #if defined(CLANG)
-__attribute__((__target__("fma")))
+__attribute__((__target__("avx2,fma")))
 #endif
 __forceinline static void process_two_16pixels_h_uint8_16_core(const pixel_t* __restrict src, int begin1, int begin2, int i, const short* __restrict current_coeff, int filter_size, __m256i& result1, __m256i& result2,
   __m256i& shifttosigned) {
@@ -93,7 +94,7 @@ __forceinline static void process_two_16pixels_h_uint8_16_core(const pixel_t* __
 // filtersizealigned16: special: 1..4. Generic: -1
 template<bool safe_aligned_mode, typename pixel_t, bool lessthan16bit, int filtersizealigned16>
 #if defined(CLANG)
-__attribute__((__target__("fma")))
+__attribute__((__target__("avx2,fma")))
 #endif
 __forceinline static void process_two_pixels_h_uint8_16(const pixel_t* __restrict src_ptr, int begin1, int begin2, const short* __restrict current_coeff, int filter_size, __m256i& result1, __m256i& result2, int kernel_size,
   __m256i& shifttosigned) {
@@ -244,7 +245,8 @@ __forceinline static void process_two_pixels_h_uint8_16(const pixel_t* __restric
 // filtersizealigned16: special: 1..4. Generic: -1
 template<bool is_safe, typename pixel_t, bool lessthan16bit, int filtersizealigned16>
 #if defined(CLANG)
-__attribute__((__target__("fma")))
+__attribute__((__target__("avx2,fma")))
+//__attribute__((__target__("fma")))
 #endif
 __forceinline static void process_eight_pixels_h_uint8_16(const pixel_t* src, int x, const short* current_coeff_base, int filter_size,
   __m256i& rounder256, __m256i& shifttosigned, __m128i& clamp_limit_min, __m128i& clamp_limit_max,
@@ -336,7 +338,7 @@ __forceinline static void process_eight_pixels_h_uint8_16(const pixel_t* src, in
 // filtersizealigned16: special: 1..4. Generic: -1
 template<typename pixel_t, bool lessthan16bit, int filtersizealigned16>
 #if defined(CLANG)
-__attribute__((__target__("fma")))
+__attribute__((__target__("avx2,fma")))
 #endif
 static void internal_resizer_h_avx2_generic_uint8_16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2)
 {
@@ -651,7 +653,7 @@ void resizer_h_avx2_generic_float(BYTE* dst8, const BYTE* src8, int dst_pitch, i
 //-------- 256 bit Verticals
 
 #if defined(CLANG)
-__attribute__((__target__("fma")))
+__attribute__((__target__("avx2")))
 #endif
 void resize_v_avx2_planar_uint8_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2)
 {
@@ -783,7 +785,7 @@ void resize_v_avx2_planar_uint8_t(BYTE* dst8, const BYTE* src8, int dst_pitch, i
 
 template<bool lessthan16bit>
 #if defined(CLANG)
-__attribute__((__target__("fma")))
+__attribute__((__target__("avx2")))
 #endif
 void resize_v_avx2_planar_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2)
 {
