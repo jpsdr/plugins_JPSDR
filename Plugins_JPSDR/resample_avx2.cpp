@@ -32,7 +32,8 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#if _MSC_VER >= 1900
+// VS 2013
+#if _MSC_VER >= 1800
 
 #include <immintrin.h>
 #include "./resample_functions.h"

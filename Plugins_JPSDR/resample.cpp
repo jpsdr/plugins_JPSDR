@@ -42,13 +42,17 @@
 
 #include "./resample_sse.h"
 
-// VS 2015
-#if _MSC_VER >= 1900
-  #define JPSDR_RESTRICT __restrict
+#define JPSDR_RESTRICT __restrict
+
+// VS 2013
+#if _MSC_VER >= 1800
+#define AVX2_BUILD_POSSIBLE
+#endif
+
+// VS 2017 v15.3
+#if _MSC_VER >= 1911
   #define JPSDR_CONSTEXPR constexpr
-  #define AVX2_BUILD_POSSIBLE
 #else
-  #define JPSDR_RESTRICT
   #define JPSDR_CONSTEXPR
 #endif
 
