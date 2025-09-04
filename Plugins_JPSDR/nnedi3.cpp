@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.67 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.68 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -148,9 +148,9 @@ extern "C" void computeNetwork0new_AVX(const float *datai,const float *weights,u
 
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
-#define myfree(ptr) if (ptr!=NULL) { free(ptr); ptr=NULL;}
-#define myalignedfree(ptr) if (ptr!=NULL) { _aligned_free(ptr); ptr=NULL;}
-#define mydelete(ptr) if (ptr!=NULL) { delete ptr; ptr=NULL;}
+#define myfree(ptr) if (ptr!=nullptr) { free(ptr); ptr=nullptr;}
+#define myalignedfree(ptr) if (ptr!=nullptr) { _aligned_free(ptr); ptr=nullptr;}
+#define mydelete(ptr) if (ptr!=nullptr) { delete ptr; ptr=nullptr;}
 
 extern ThreadPoolInterface *poolInterface;
 
@@ -310,16 +310,16 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 	StaticThreadpoolF=StaticThreadpool;
 
-	srcPF=NULL;
-	dstPF=NULL;
-	weights0=NULL;
+	srcPF=nullptr;
+	dstPF=nullptr;
+	weights0=nullptr;
 	for (uint8_t i=0; i<2; i++)
-		weights1[i]=NULL;
+		weights1[i]=nullptr;
 	for (uint8_t i=0; i<PLANE_MAX; i++)
-		lcount[i]=NULL;
+		lcount[i]=nullptr;
 
 	for (uint8_t i=0; i<PLANE_MAX; i++)
-		NNPixels[i]=NULL;
+		NNPixels[i]=nullptr;
 	for (uint8_t i=0; i<MAX_MT_THREADS; i++)
 	{
 		MT_Thread[i].pClass=this;
@@ -327,9 +327,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		MT_Thread[i].thread_Id=(uint8_t)i;
 		MT_Thread[i].pFunc=StaticThreadpoolF;
 
-		pssInfo[i].input=NULL;
-		pssInfo[i].temp=NULL;
-		pssInfo[i].val_min_max=NULL;
+		pssInfo[i].input=nullptr;
+		pssInfo[i].temp=nullptr;
+		pssInfo[i].val_min_max=nullptr;
 	}
 	UserId=0;
 
@@ -337,7 +337,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	else threads_number=threads;
 
 	srcPF = new PlanarFrame();
-	if (srcPF==NULL)
+	if (srcPF==nullptr)
 	{
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		env->ThrowError("nnedi3: Error while creating srcPF!");
@@ -404,7 +404,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if (!isAlphaChannel) A = false;
 	
 	dstPF = new PlanarFrame(vi);
-	if (dstPF==NULL)
+	if (dstPF==nullptr)
 	{
 		FreeData();
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -492,7 +492,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	SizeAllocDim0 = max(dims0,dims0new)*sizeof(float);
 	SizeAllocDim0 = ((SizeAllocDim0+63)>>6)<<6;
 	weights0 = (float *)_aligned_malloc(SizeAllocDim0,64);
-	if (weights0==NULL)
+	if (weights0==nullptr)
 	{
 		FreeData();
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -504,7 +504,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	for (uint8_t i=0; i<2; i++)
 	{
 		weights1[i] = (float *)_aligned_malloc(SizeAllocDim1,64);
-		if (weights1[i]==NULL)
+		if (weights1[i]==nullptr)
 		{
 			FreeData();
 			if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -515,7 +515,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	for (uint8_t i=0; i<PlaneMax; i++)
 	{
 		lcount[i] = (int *)_aligned_malloc(dstPF->GetHeight(i)*sizeof(int),64);
-		if (lcount[i]==NULL)
+		if (lcount[i]==nullptr)
 		{
 			FreeData();
 			if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -525,7 +525,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	char nbuf[512];
 	GetModuleFileName((HINSTANCE)&__ImageBase,nbuf,512);
 	HMODULE hmod = GetModuleHandle(nbuf);
-	if (hmod==NULL)
+	if (hmod==nullptr)
 	{
 		FreeData();
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -535,7 +535,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	HGLOBAL hglob = LoadResource(hmod,hrsrc);
 	LPVOID lplock = LockResource(hglob);
 	DWORD dwSize = SizeofResource(hmod,hrsrc);
-	if ((hmod==NULL) || (hrsrc==NULL) || (hglob==NULL) || (lplock==NULL) || (dwSize!=(dims0+dims0new*3+dims1tsize*2)*sizeof(float)))
+	if ((hmod==nullptr) || (hrsrc==nullptr) || (hglob==nullptr) || (lplock==nullptr) || (dwSize!=(dims0+dims0new*3+dims1tsize*2)*sizeof(float)))
 	{
 		FreeData();
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -693,7 +693,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			{
 				int16_t *rs = (int16_t*)malloc(dims0*sizeof(float));
 
-				if (rs==NULL)
+				if (rs==nullptr)
 				{
 					FreeData();
 					if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -767,7 +767,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				float *wf = weights0;
 				float *rf = (float*)malloc(dims0*sizeof(float));
 
-				if (rf==NULL)
+				if (rf==nullptr)
 				{
 					FreeData();
 					if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -827,7 +827,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		const int asize = xdiaTable[nsize]*ydiaTable[nsize];
 		const int boff = nnst2*asize;
 		double *mean = (double *)calloc(asize+1+nnst2,sizeof(double));
-		if (mean==NULL)
+		if (mean==nullptr)
 		{
 			FreeData();
 			if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -910,7 +910,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			if ((opt>1) && (bits_per_pixel<=14)) // shuffle weight order for asm
 			{
 				int16_t *rs = (int16_t *)malloc(nnst2*asize*sizeof(int16_t));
-				if (rs==NULL)
+				if (rs==nullptr)
 				{
 					free(mean);
 					FreeData();
@@ -1066,7 +1066,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		NNPixels[i]=(uint8_t *)_aligned_malloc(NNPixels_Size[i],64);
 	for (uint8_t i=0; i<PlaneMax; i++)
 	{
-		if (NNPixels[i]==NULL)
+		if (NNPixels[i]==nullptr)
 		{
 			FreeData();
 			if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -1081,7 +1081,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		pssInfo[i].input = (float *)_aligned_malloc(512*sizeof(float),64);
 		pssInfo[i].temp = (float *)_aligned_malloc(512*sizeof(float),64);
 		pssInfo[i].val_min_max=(uint16_t *)_aligned_malloc(64*sizeof(uint16_t),64);
-		if ((pssInfo[i].input==NULL) || (pssInfo[i].temp==NULL) || (pssInfo[i].val_min_max==NULL))
+		if ((pssInfo[i].input==nullptr) || (pssInfo[i].temp==nullptr) || (pssInfo[i].val_min_max==nullptr))
 		{
 			FreeData();
 			if (threads>1) poolInterface->DeAllocateAllThreads(true);

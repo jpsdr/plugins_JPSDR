@@ -25,13 +25,10 @@
 #include "./avisynth.h"
 #include "./ThreadPoolInterface.h"
 
-#define AUTOYUY2_VERSION "AutoYUY2 4.1.11 JPSDR"
+#define AUTOYUY2_VERSION "AutoYUY2 4.1.12 JPSDR"
 // Inspired from Neuron2 filter
 
 #define Interlaced_Tab_Size 3
-
-#define myfree(ptr) if (ptr!=NULL) { free(ptr); ptr=NULL;}
-
 
 typedef struct _MT_Data_Info_AutoYUY2
 {
@@ -81,5 +78,3 @@ private:
 
 	void FreeData(void);
 };
-
-

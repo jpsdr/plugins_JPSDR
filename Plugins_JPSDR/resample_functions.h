@@ -44,7 +44,7 @@
 #include "./MatrixClass.h"
 #include "./avs/alignment.h"
 
-#define myalignedfree(ptr) if (ptr!=NULL) { _aligned_free(ptr); ptr=NULL;}
+#define myalignedfree(ptr) if (ptr!=nullptr) { _aligned_free(ptr); ptr=nullptr;}
 
 // Original value: 65536
 // 2 bits sacrificed because of 16 bit signed MMX multiplication
@@ -92,7 +92,7 @@ struct ResamplingProgram
 
   ResamplingProgram(int filter_size, int source_size, int target_size, double crop_start, double crop_size, int bits_per_pixel, IScriptEnvironment* env)
     : Env(env), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size), filter_size(filter_size), filter_size_real(filter_size),
-    bits_per_pixel(bits_per_pixel), pixel_coefficient(NULL), pixel_coefficient_float(NULL)
+    bits_per_pixel(bits_per_pixel), pixel_coefficient(nullptr), pixel_coefficient_float(nullptr)
   {
 	StatusOk = true;
     overread_possible = false;
@@ -110,8 +110,8 @@ struct ResamplingProgram
 	else
 		pixel_coefficient_float = (float*) _aligned_malloc(sizeof(float)*target_size*filter_size, 64);
 
-    if (((bits_per_pixel<32) && (pixel_coefficient==NULL)) || 
-		((bits_per_pixel==32) && (pixel_coefficient_float==NULL)))
+    if (((bits_per_pixel<32) && (pixel_coefficient==nullptr)) || 
+		((bits_per_pixel==32) && (pixel_coefficient_float==nullptr)))
 	{
 	  myalignedfree(pixel_coefficient_float);
 	  myalignedfree(pixel_coefficient);

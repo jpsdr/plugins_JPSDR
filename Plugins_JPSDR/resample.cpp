@@ -34,9 +34,9 @@
 
 #include "./resample.h"
 
-#define myfree(ptr) if (ptr!=NULL) { free(ptr); ptr=NULL;}
-#define mydelete(ptr) if (ptr!=NULL) { delete ptr; ptr=NULL;}
-#define mydelete2(ptr) if (ptr!=NULL) { delete[] ptr; ptr=NULL;}
+#define myfree(ptr) if (ptr!=nullptr) { free(ptr); ptr=nullptr;}
+#define mydelete(ptr) if (ptr!=nullptr) { delete ptr; ptr=nullptr;}
+#define mydelete2(ptr) if (ptr!=nullptr) { delete[] ptr; ptr=nullptr;}
 
 #include <type_traits>
 
@@ -833,8 +833,8 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 	uint8_t _threads,bool _sleep,int range_mode,bool desample,int accuracy,bool negativePrefetch,
 	bool _avsp,bool preserve_center,ChromaLocation_e chroma_placement,ResamplingFunction* func,IScriptEnvironment* env )
   : GenericVideoFilter(_child),
-  resampling_program_luma(NULL), resampling_program_chroma(NULL),
-  filter_storage_luma(NULL), filter_storage_chroma(NULL),threads(_threads),sleep(_sleep),
+  resampling_program_luma(nullptr), resampling_program_chroma(nullptr),
+  filter_storage_luma(nullptr), filter_storage_chroma(nullptr),threads(_threads),sleep(_sleep),
   avsp(_avsp)
 {
   src_height = vi.height;
@@ -929,7 +929,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 	  SizeH=dst_width;
   }
   
-  if (resampling_program_luma==NULL)
+  if (resampling_program_luma==nullptr)
   {
 	  FreeData();
 	  if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -981,7 +981,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 		  env);
 	}
 
-	if (resampling_program_chroma==NULL)
+	if (resampling_program_chroma==nullptr)
 	{
 		FreeData();
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -1299,18 +1299,18 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 
 	const int src_pitch_2 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? src->GetPitch(PLANAR_U) : (isRGBPfamily) ? src->GetPitch(PLANAR_B) : 0;
 	const int dst_pitch_2 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? dst->GetPitch(PLANAR_U) : (isRGBPfamily) ? dst->GetPitch(PLANAR_B) : 0;
-	const BYTE *srcp_2 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? src->GetReadPtr(PLANAR_U) : (isRGBPfamily) ? src->GetReadPtr(PLANAR_B) : NULL;
-	BYTE *dstp_2 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? dst->GetWritePtr(PLANAR_U) : (isRGBPfamily) ? dst->GetWritePtr(PLANAR_B) : NULL;
+	const BYTE *srcp_2 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? src->GetReadPtr(PLANAR_U) : (isRGBPfamily) ? src->GetReadPtr(PLANAR_B) : nullptr;
+	BYTE *dstp_2 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? dst->GetWritePtr(PLANAR_U) : (isRGBPfamily) ? dst->GetWritePtr(PLANAR_B) : nullptr;
 
 	const int src_pitch_3 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? src->GetPitch(PLANAR_V) : (isRGBPfamily) ? src->GetPitch(PLANAR_R) : 0;
 	const int dst_pitch_3 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? dst->GetPitch(PLANAR_V) : (isRGBPfamily) ? dst->GetPitch(PLANAR_R) : 0;
-	const BYTE *srcp_3 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? src->GetReadPtr(PLANAR_V) : (isRGBPfamily) ? src->GetReadPtr(PLANAR_R) : NULL;
-	BYTE *dstp_3 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? dst->GetWritePtr(PLANAR_V) : (isRGBPfamily) ? dst->GetWritePtr(PLANAR_R) : NULL;
+	const BYTE *srcp_3 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? src->GetReadPtr(PLANAR_V) : (isRGBPfamily) ? src->GetReadPtr(PLANAR_R) : nullptr;
+	BYTE *dstp_3 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? dst->GetWritePtr(PLANAR_V) : (isRGBPfamily) ? dst->GetWritePtr(PLANAR_R) : nullptr;
 	
 	const int src_pitch_4 = (isAlphaChannel) ? src->GetPitch(PLANAR_A) : 0;
 	const int dst_pitch_4 = (isAlphaChannel) ? dst->GetPitch(PLANAR_A) : 0;
-	const BYTE *srcp_4 = (isAlphaChannel) ? src->GetReadPtr(PLANAR_A) : NULL;
-	BYTE *dstp_4 = (isAlphaChannel) ? dst->GetWritePtr(PLANAR_A) : NULL;
+	const BYTE *srcp_4 = (isAlphaChannel) ? src->GetReadPtr(PLANAR_A) : nullptr;
+	BYTE *dstp_4 = (isAlphaChannel) ? dst->GetWritePtr(PLANAR_A) : nullptr;
 
 	Public_MT_Data_Thread MT_ThreadGF[MAX_MT_THREADS];
 	MT_Data_Info_ResampleMT MT_DataGF[MAX_MT_THREADS];
@@ -1517,11 +1517,11 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 	uint8_t _threads,bool _sleep,int range_mode,bool desample,int accuracy,int ChromaS,uint8_t ShiftC, bool negativePrefetch,
 	bool _avsp, bool preserve_center, ChromaLocation_e chroma_placement, bool ResizeH, ResamplingFunction* func, IScriptEnvironment* env )
   : GenericVideoFilter(_child),
-    resampling_program_luma(NULL), resampling_program_chroma(NULL),
-    src_pitch_table_luma(NULL), src_pitch_table_chromaU(NULL), src_pitch_table_chromaV(NULL),
+    resampling_program_luma(nullptr), resampling_program_chroma(nullptr),
+    src_pitch_table_luma(nullptr), src_pitch_table_chromaU(nullptr), src_pitch_table_chromaV(nullptr),
     src_pitch_luma(-1), src_pitch_chromaU(-1), src_pitch_chromaV(-1),
-    filter_storage_luma_aligned(NULL), filter_storage_luma_unaligned(NULL),
-    filter_storage_chroma_aligned(NULL), filter_storage_chroma_unaligned(NULL),
+    filter_storage_luma_aligned(nullptr), filter_storage_luma_unaligned(nullptr),
+    filter_storage_chroma_aligned(nullptr), filter_storage_chroma_unaligned(nullptr),
 	sleep(_sleep),threads(_threads),avsp(_avsp)
 {
 	int16_t i;
@@ -1613,7 +1613,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 	  SizeV=target_height;
   }
 
-  if (resampling_program_luma==NULL)
+  if (resampling_program_luma==nullptr)
   {
 	  FreeData();
 	  if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -1630,7 +1630,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   }
 
   src_pitch_table_luma = (int *)_aligned_malloc(sizeof(int) * vi.height, 64);
-  if (src_pitch_table_luma==NULL)
+  if (src_pitch_table_luma==nullptr)
   {
 	  FreeData();
 	  if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -1672,7 +1672,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 									  center_pos_v_chroma, center_pos_v_chroma, // for resizing it's the same for source and dest
 						              env);
 	}
-	if (resampling_program_chroma==NULL)
+	if (resampling_program_chroma==nullptr)
 	{
 		FreeData();
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -1682,7 +1682,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 
 	src_pitch_table_chromaU = (int *)_aligned_malloc(sizeof(int) * (vi.height >> shift_h), 64);
 	src_pitch_table_chromaV = (int *)_aligned_malloc(sizeof(int) * (vi.height >> shift_h), 64);
-	if ((src_pitch_table_chromaU==NULL) || (src_pitch_table_chromaV==NULL))
+	if ((src_pitch_table_chromaU==nullptr) || (src_pitch_table_chromaV==nullptr))
 	{
 		FreeData();
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
@@ -2062,18 +2062,18 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 
 	const int src_pitch_2 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? src->GetPitch(PLANAR_U) : (isRGBPfamily) ? src->GetPitch(PLANAR_B) : 0;
 	const int dst_pitch_2 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? dst->GetPitch(PLANAR_U) : (isRGBPfamily) ? dst->GetPitch(PLANAR_B) : 0;
-	const BYTE *srcp_2 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? src->GetReadPtr(PLANAR_U) : (isRGBPfamily) ? src->GetReadPtr(PLANAR_B) : NULL;
-	BYTE *dstp_2 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? dst->GetWritePtr(PLANAR_U) : (isRGBPfamily) ? dst->GetWritePtr(PLANAR_B) : NULL;
+	const BYTE *srcp_2 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? src->GetReadPtr(PLANAR_U) : (isRGBPfamily) ? src->GetReadPtr(PLANAR_B) : nullptr;
+	BYTE *dstp_2 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? dst->GetWritePtr(PLANAR_U) : (isRGBPfamily) ? dst->GetWritePtr(PLANAR_B) : nullptr;
 
 	const int src_pitch_3 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? src->GetPitch(PLANAR_V) : (isRGBPfamily) ? src->GetPitch(PLANAR_R) : 0;
 	const int dst_pitch_3 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? dst->GetPitch(PLANAR_V) : (isRGBPfamily) ? dst->GetPitch(PLANAR_R) : 0;
-	const BYTE *srcp_3 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? src->GetReadPtr(PLANAR_V) : (isRGBPfamily) ? src->GetReadPtr(PLANAR_R) : NULL;
-	BYTE *dstp_3 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? dst->GetWritePtr(PLANAR_V) : (isRGBPfamily) ? dst->GetWritePtr(PLANAR_R) : NULL;
+	const BYTE *srcp_3 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? src->GetReadPtr(PLANAR_V) : (isRGBPfamily) ? src->GetReadPtr(PLANAR_R) : nullptr;
+	BYTE *dstp_3 = (!grey && vi.IsPlanar() && !isRGBPfamily) ? dst->GetWritePtr(PLANAR_V) : (isRGBPfamily) ? dst->GetWritePtr(PLANAR_R) : nullptr;
 	
 	const int src_pitch_4 = (isAlphaChannel) ? src->GetPitch(PLANAR_A) : 0;
 	const int dst_pitch_4 = (isAlphaChannel) ? dst->GetPitch(PLANAR_A) : 0;
-	const BYTE *srcp_4 = (isAlphaChannel) ? src->GetReadPtr(PLANAR_A) : NULL;
-	BYTE *dstp_4 = (isAlphaChannel) ? dst->GetWritePtr(PLANAR_A) : NULL;  
+	const BYTE *srcp_4 = (isAlphaChannel) ? src->GetReadPtr(PLANAR_A) : nullptr;
+	BYTE *dstp_4 = (isAlphaChannel) ? dst->GetWritePtr(PLANAR_A) : nullptr;  
 
 	Public_MT_Data_Thread MT_ThreadGF[MAX_MT_THREADS];
 	MT_Data_Info_ResampleMT MT_DataGF[MAX_MT_THREADS];

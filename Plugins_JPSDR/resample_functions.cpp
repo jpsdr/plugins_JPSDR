@@ -39,7 +39,6 @@
 #include "./resample_functions.h"
 #include "./avs/minmax.h"
 
-
 /*******************************************
    ***************************************
    **  Helper classes for resample.cpp  **
@@ -398,8 +397,8 @@ void resize_prepare_coeffs(ResamplingProgram* p, IScriptEnvironment* env, int fi
   int target_size_aligned = AlignNumber(p->target_size, ALIGN_RESIZER_TARGET_SIZE);
 
   // Common variables for both float and integer paths
-  void* new_coeff = NULL;
-  void* src_coeff = NULL;
+  void* new_coeff = nullptr;
+  void* src_coeff = nullptr;
   size_t element_size = 0;
 
   // allocate for a larger target_size area and nullify the coeffs.
@@ -409,7 +408,7 @@ void resize_prepare_coeffs(ResamplingProgram* p, IScriptEnvironment* env, int fi
     element_size = sizeof(float);
     src_coeff = p->pixel_coefficient_float;
     new_coeff = (void *)_aligned_malloc(element_size*target_size_aligned*filter_size_aligned, 64);
-    if (new_coeff==NULL)
+    if (new_coeff==nullptr)
 	{
 	  myalignedfree(new_coeff);
       env->ThrowError("Could not reserve memory in a resampler.");
@@ -421,7 +420,7 @@ void resize_prepare_coeffs(ResamplingProgram* p, IScriptEnvironment* env, int fi
     element_size = sizeof(short);
     src_coeff = p->pixel_coefficient;
     new_coeff = (void *)_aligned_malloc(element_size*target_size_aligned*filter_size_aligned, 64);
-    if (new_coeff==NULL)
+    if (new_coeff==nullptr)
 	{
 	  myalignedfree(new_coeff);
       env->ThrowError("Could not reserve memory in a resampler.");
@@ -732,7 +731,7 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
   if (!program->StatusOk)
   {
 	  delete program;
-	  return NULL;
+	  return nullptr;
   }
 
   // Initial position calculation
@@ -891,7 +890,7 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
   if (B.InverseSafe()!=0)
   {
 	  SizeOut=-1;
-	  return(NULL);
+	  return(nullptr);
   }
   C.Product_AtB(B,A);
 
@@ -966,7 +965,7 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
   if (!program->StatusOk)
   {
 	  delete program;
-	  return NULL;
+	  return nullptr;
   }
 
   if (SizeS0<SizeS) SizeM=SizeS0;

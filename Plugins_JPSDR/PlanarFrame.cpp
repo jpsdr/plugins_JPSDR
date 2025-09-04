@@ -25,7 +25,7 @@
 #include <stdint.h>
 #include <intrin.h>
 
-#define myalignedfree(ptr) if (ptr!=NULL) { _aligned_free(ptr); ptr=NULL;}
+#define myalignedfree(ptr) if (ptr!=nullptr) { _aligned_free(ptr); ptr=nullptr;}
 
 extern "C" void convYUY2to422_MMX(const uint8_t *src,uint8_t *py,uint8_t *pu,uint8_t *pv,int pitch1,int pitch2Y,int pitch2UV,
 	int width,int height);
@@ -153,7 +153,7 @@ PlanarFrame::PlanarFrame(void)
 	ypitch = uvpitch = 0;
 	ywidth = uvwidth = 0;
 	yheight = uvheight = 0;
-	planar_1 = planar_2 = planar_3 = planar_4 = NULL;
+	planar_1 = planar_2 = planar_3 = planar_4 = nullptr;
 	useSIMD = true;
 	useAVX = true;
 	cpu = CPUCheckForExtensions();
@@ -170,7 +170,7 @@ PlanarFrame::PlanarFrame(VideoInfo &viInfo)
 	ypitch = uvpitch = 0;
 	ywidth = uvwidth = 0;
 	yheight = uvheight = 0;
-	planar_1 = planar_2 = planar_3 = planar_4 = NULL;
+	planar_1 = planar_2 = planar_3 = planar_4 = nullptr;
 	useSIMD = true;
 	useAVX = true;
 	cpu = CPUCheckForExtensions();
@@ -267,18 +267,18 @@ bool PlanarFrame::allocSpace(VideoInfo &viInfo)
 		}
 	}
 	planar_1 = (uint8_t *)_aligned_malloc((size_t)ypitch*(size_t)yheight,MIN_ALIGNMENT);
-	if (planar_1 == NULL) return(false);
+	if (planar_1 == nullptr) return(false);
 	if ((uvpitch!=0) && (uvheight!=0))
 	{
 		planar_2 = (uint8_t *)_aligned_malloc((size_t)uvpitch*(size_t)uvheight,MIN_ALIGNMENT);
-		if (planar_2 == NULL) return(false);
+		if (planar_2 == nullptr) return(false);
 		planar_3 = (uint8_t *)_aligned_malloc((size_t)uvpitch*(size_t)uvheight,MIN_ALIGNMENT);
-		if (planar_3 == NULL) return(false);
+		if (planar_3 == nullptr) return(false);
 		
 		if (isAlphaChannel)
 		{
 			planar_4 = (uint8_t *)_aligned_malloc((size_t)ypitch*(size_t)yheight,MIN_ALIGNMENT);
-			if (planar_4 == NULL) return(false);
+			if (planar_4 == nullptr) return(false);
 		}
 	}
 	alloc_ok=true;
@@ -320,18 +320,18 @@ bool PlanarFrame::allocSpace(int specs[4],bool rgbplanar,bool alphaplanar,uint8_
 	bits_per_pixel=_bits_per_pixel;
 	
 	planar_1 = (uint8_t *)_aligned_malloc((size_t)ypitch*(size_t)yheight,MIN_ALIGNMENT);
-	if (planar_1 == NULL) return(false);
+	if (planar_1 == nullptr) return(false);
 	if ((uvpitch!=0) && (uvheight!=0))
 	{
 		planar_2 = (uint8_t *)_aligned_malloc((size_t)uvpitch*(size_t)uvheight,MIN_ALIGNMENT);
-		if (planar_2 == NULL) return(false);
+		if (planar_2 == nullptr) return(false);
 		planar_3 = (uint8_t *)_aligned_malloc((size_t)uvpitch*(size_t)uvheight,MIN_ALIGNMENT);
-		if (planar_3 == NULL) return(false);
+		if (planar_3 == nullptr) return(false);
 		
 		if (isAlphaChannel)
 		{
 			planar_4 = (uint8_t *)_aligned_malloc((size_t)ypitch*(size_t)yheight,MIN_ALIGNMENT);
-			if (planar_4 == NULL) return(false);
+			if (planar_4 == nullptr) return(false);
 		}
 	}
 	
@@ -455,7 +455,7 @@ uint8_t* PlanarFrame::GetPtr(uint8_t plane)
 		case 1 : return planar_2; break;
 		case 2 : return planar_3; break;
 		case 3 : return planar_4; break;
-		default : return NULL; break;
+		default : return nullptr; break;
 	}
 }
 
@@ -527,7 +527,7 @@ bool PlanarFrame::copyInternalFrom(PVideoFrame &frame,VideoInfo &viInfo)
 	_isRGBPfamily = viInfo.IsPlanarRGB() || viInfo.IsPlanarRGBA();
 	_isAlphaChannel = viInfo.IsYUVA() || viInfo.IsPlanarRGBA();
 	
-	if ((planar_1==NULL) || (!_grey && ((planar_2==NULL) || (planar_3==NULL))) || (_isAlphaChannel && (planar_4==NULL))) return(false);
+	if ((planar_1==nullptr) || (!_grey && ((planar_2==nullptr) || (planar_3==nullptr))) || (_isAlphaChannel && (planar_4==nullptr))) return(false);
 
 	if (!_grey && viInfo.IsPlanar())
 	{
@@ -584,7 +584,7 @@ bool PlanarFrame::copyInternalFrom(PVideoFrame &frame,VideoInfo &viInfo)
 
 bool PlanarFrame::copyInternalFrom(PlanarFrame &frame)
 {
-	if ((planar_1==NULL) || ((frame.uvpitch!=0) && ((planar_2==NULL) || (planar_3==NULL))) || (frame.isAlphaChannel && (planar_4==NULL))) return(false);
+	if ((planar_1==nullptr) || ((frame.uvpitch!=0) && ((planar_2==nullptr) || (planar_3==nullptr))) || (frame.isAlphaChannel && (planar_4==nullptr))) return(false);
 
 	BitBlt(planar_1,ypitch,frame.planar_1,frame.ypitch,(int)frame.pixelsize*frame.ywidth,frame.yheight);
 	if (frame.uvpitch!=0)
@@ -599,7 +599,7 @@ bool PlanarFrame::copyInternalFrom(PlanarFrame &frame)
 
 bool PlanarFrame::copyInternalTo(PVideoFrame &frame,VideoInfo &viInfo)
 {
-	if ((planar_1==NULL) || (!grey && ((planar_2==NULL) || (planar_3==NULL))) || (isAlphaChannel && (planar_4==NULL))) return(false);
+	if ((planar_1==nullptr) || (!grey && ((planar_2==nullptr) || (planar_3==nullptr))) || (isAlphaChannel && (planar_4==nullptr))) return(false);
 
 	if (!grey && viInfo.IsPlanar())
 	{
@@ -644,7 +644,7 @@ bool PlanarFrame::copyInternalTo(PVideoFrame &frame,VideoInfo &viInfo)
 
 bool PlanarFrame::copyInternalTo(PlanarFrame &frame)
 {
-	if ((planar_1==NULL) || ((uvpitch!=0) && ((planar_2==NULL) || (planar_3==NULL))) || (isAlphaChannel && (planar_4==NULL))) return(false);
+	if ((planar_1==nullptr) || ((uvpitch!=0) && ((planar_2==nullptr) || (planar_3==nullptr))) || (isAlphaChannel && (planar_4==nullptr))) return(false);
 
 	BitBlt(frame.planar_1,frame.ypitch,planar_1,ypitch,(int)pixelsize*ywidth,yheight);
 	if (uvpitch!=0)
@@ -664,19 +664,19 @@ bool PlanarFrame::copyInternalPlaneTo(PlanarFrame &frame,uint8_t plane)
 	switch(plane)
 	{
 		case 0 :
-			if (planar_1!=NULL) BitBlt(frame.planar_1,frame.ypitch,planar_1,ypitch,(int)pixelsize*ywidth,yheight);
+			if (planar_1!=nullptr) BitBlt(frame.planar_1,frame.ypitch,planar_1,ypitch,(int)pixelsize*ywidth,yheight);
 			else out=false;
 			break;
 		case 1 :
-			if (planar_2!=NULL) BitBlt(frame.planar_2,frame.uvpitch,planar_2,uvpitch,(int)pixelsize*uvwidth,uvheight);
+			if (planar_2!=nullptr) BitBlt(frame.planar_2,frame.uvpitch,planar_2,uvpitch,(int)pixelsize*uvwidth,uvheight);
 			else out=false;
 			break;
 		case 2 :
-			if (planar_3!=NULL) BitBlt(frame.planar_3,frame.uvpitch,planar_3,uvpitch,(int)pixelsize*uvwidth,uvheight);
+			if (planar_3!=nullptr) BitBlt(frame.planar_3,frame.uvpitch,planar_3,uvpitch,(int)pixelsize*uvwidth,uvheight);
 			else out=false;
 			break;
 		case 3 :
-			if (planar_4!=NULL) BitBlt(frame.planar_4,frame.ypitch,planar_4,ypitch,(int)pixelsize*ywidth,yheight);
+			if (planar_4!=nullptr) BitBlt(frame.planar_4,frame.ypitch,planar_4,ypitch,(int)pixelsize*ywidth,yheight);
 			else out=false;
 			break;
 		default : out=false; break;

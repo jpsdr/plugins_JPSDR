@@ -41,7 +41,7 @@
 #include "./resample_functions.h"
 #include "./ThreadPoolInterface.h"
 
-#define RESAMPLE_MT_VERSION "ResampleMT 2.9.0 JPSDR"
+#define RESAMPLE_MT_VERSION "ResampleMT 2.9.1 JPSDR"
 
 typedef enum ChromaLocation_e
 {
