@@ -74,9 +74,11 @@ static bool getChromaLocation(const char* chromaloc_name, IScriptEnvironment* en
 
 	if (strcoll(chromaloc_name,"left")==0) index=AVS_CHROMA_LEFT;
 	if (strcoll(chromaloc_name,"center")==0) index=AVS_CHROMA_CENTER;
-	if (strcoll(chromaloc_name,"top_left")==0) index=AVS_CHROMA_TOP_LEFT;
+	if ((strcoll(chromaloc_name,"top_left")==0) || 
+		(strcoll(chromaloc_name,"topleft")==0)) index=AVS_CHROMA_TOP_LEFT;
 	if (strcoll(chromaloc_name,"top")==0) index=AVS_CHROMA_TOP; // not used in Avisynth
-	if (strcoll(chromaloc_name,"bottom_left")==0) index=AVS_CHROMA_BOTTOM_LEFT; // not used in Avisynth
+	if ((strcoll(chromaloc_name,"bottom_left")==0) ||
+		(strcoll(chromaloc_name,"bottomleft")==0)) index=AVS_CHROMA_BOTTOM_LEFT; // not used in Avisynth
 	if (strcoll(chromaloc_name,"bottom")==0) index=AVS_CHROMA_BOTTOM; // not used in Avisynth
 	if (strcoll(chromaloc_name,"dv")==0) index=AVS_CHROMA_DV; // Special to Avisynth
 	// compatibility
@@ -1817,7 +1819,9 @@ uint8_t FilteredResizeV::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 		h_y+=_dh;
 	}
 
-	max=(max_src<max_dst) ? max_src:max_dst;
+	// max=(max_src<max_dst) ? max_src:max_dst;
+	// Split is made on dst size
+	max = max_dst;
 
 	if (max==1)
 	{
