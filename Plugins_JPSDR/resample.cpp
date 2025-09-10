@@ -65,26 +65,26 @@ extern ThreadPoolInterface *poolInterface;
 static bool is_paramstring_empty_or_auto(const char* param)
 {
 	if (param==nullptr) return true;
-	return (strcoll(param,"auto")==0); // true is match
+	return (_stricmp(param,"auto")==0); // true is match
 }
 
 static bool getChromaLocation(const char* chromaloc_name, IScriptEnvironment* env, ChromaLocation_e& _ChromaLocation)
 {
 	ChromaLocation_e index=AVS_CHROMA_UNUSED;
 
-	if (strcoll(chromaloc_name,"left")==0) index=AVS_CHROMA_LEFT;
-	if (strcoll(chromaloc_name,"center")==0) index=AVS_CHROMA_CENTER;
-	if ((strcoll(chromaloc_name,"top_left")==0) || 
-		(strcoll(chromaloc_name,"topleft")==0)) index=AVS_CHROMA_TOP_LEFT;
-	if (strcoll(chromaloc_name,"top")==0) index=AVS_CHROMA_TOP; // not used in Avisynth
-	if ((strcoll(chromaloc_name,"bottom_left")==0) ||
-		(strcoll(chromaloc_name,"bottomleft")==0)) index=AVS_CHROMA_BOTTOM_LEFT; // not used in Avisynth
-	if (strcoll(chromaloc_name,"bottom")==0) index=AVS_CHROMA_BOTTOM; // not used in Avisynth
-	if (strcoll(chromaloc_name,"dv")==0) index=AVS_CHROMA_DV; // Special to Avisynth
+	if (_stricmp(chromaloc_name,"left")==0) index=AVS_CHROMA_LEFT;
+	if (_stricmp(chromaloc_name,"center")==0) index=AVS_CHROMA_CENTER;
+	if ((_stricmp(chromaloc_name,"top_left")==0) || 
+		(_stricmp(chromaloc_name,"topleft")==0)) index=AVS_CHROMA_TOP_LEFT;
+	if (_stricmp(chromaloc_name,"top")==0) index=AVS_CHROMA_TOP; // not used in Avisynth
+	if ((_stricmp(chromaloc_name,"bottom_left")==0) ||
+		(_stricmp(chromaloc_name,"bottomleft")==0)) index=AVS_CHROMA_BOTTOM_LEFT; // not used in Avisynth
+	if (_stricmp(chromaloc_name,"bottom")==0) index=AVS_CHROMA_BOTTOM; // not used in Avisynth
+	if (_stricmp(chromaloc_name,"dv")==0) index=AVS_CHROMA_DV; // Special to Avisynth
 	// compatibility
-	if (strcoll(chromaloc_name,"mpeg1")==0) index=AVS_CHROMA_CENTER;
-	if (strcoll(chromaloc_name,"mpeg2")==0) index=AVS_CHROMA_LEFT;
-	if (strcoll(chromaloc_name,"jpeg")==0) index=AVS_CHROMA_CENTER;
+	if (_stricmp(chromaloc_name,"mpeg1")==0) index=AVS_CHROMA_CENTER;
+	if (_stricmp(chromaloc_name,"mpeg2")==0) index=AVS_CHROMA_LEFT;
+	if (_stricmp(chromaloc_name,"jpeg")==0) index=AVS_CHROMA_CENTER;
 
 	if (index!=AVS_CHROMA_UNUSED)
 	{
