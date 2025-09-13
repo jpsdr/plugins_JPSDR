@@ -37,6 +37,9 @@
 #include "JincResizeMT.h"
 
 template <typename T>
+#if defined(CLANG)
+__attribute__((__target__("sse4.1")))
+#endif
 void resize_plane_sse41_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
 	const float Val_Min[], const float Val_Max[])
 {
