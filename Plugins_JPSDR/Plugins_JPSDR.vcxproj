@@ -167,6 +167,7 @@
     <ClCompile Include="AutoYUY2.cpp" />
     <ClCompile Include="aWarpSharp.cpp" />
     <ClCompile Include="HDRTools.cpp" />
+    <ClCompile Include="JincResizeMT.cpp" />
     <ClCompile Include="MatrixClass.cpp" />
     <ClCompile Include="nnedi3.cpp" />
     <ClCompile Include="PlanarFrame.cpp" />
@@ -175,6 +176,9 @@
     <ClCompile Include="resample_avx2.cpp" />
     <ClCompile Include="resample_functions.cpp" />
     <ClCompile Include="resample_sse.cpp" />
+    <ClCompile Include="resize_plane_avx2.cpp" />
+    <ClCompile Include="resize_plane_avx512.cpp" />
+    <ClCompile Include="resize_plane_sse41.cpp" />
     <ClCompile Include="ThreadPool.cpp" />
     <ClCompile Include="ThreadPoolInterface.cpp" />
     <ClCompile Include="TransferFunctions.cpp" />
@@ -184,6 +188,7 @@
     <ClInclude Include="avisynth.h" />
     <ClInclude Include="aWarpSharp.h" />
     <ClInclude Include="HDRTools.h" />
+    <ClInclude Include="JincResizeMT.h" />
     <ClInclude Include="MatrixClass.h" />
     <ClInclude Include="nnedi3.h" />
     <ClInclude Include="PlanarFrame.h" />
@@ -191,6 +196,9 @@
     <ClInclude Include="resample_avx2.h" />
     <ClInclude Include="resample_functions.h" />
     <ClInclude Include="resample_sse.h" />
+    <ClInclude Include="resize_plane_avx2.h" />
+    <ClInclude Include="resize_plane_avx512.h" />
+    <ClInclude Include="resize_plane_sse41.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="ThreadPoolDef.h" />

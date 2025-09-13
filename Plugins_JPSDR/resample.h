@@ -41,9 +41,12 @@
 #include "./resample_functions.h"
 #include "./ThreadPoolInterface.h"
 
-#define RESAMPLE_MT_VERSION "ResampleMT 2.9.5 JPSDR"
+#define RESAMPLE_MT_VERSION "ResampleMT 2.9.6 JPSDR"
 
-typedef enum ChromaLocation_e
+
+#ifndef __CHROMALOCATION__
+#define __CHROMALOCATION__
+typedef enum _ChromaLocation_e
 {
   AVS_CHROMA_UNUSED = -1,
   AVS_CHROMA_LEFT = 0,
@@ -54,6 +57,7 @@ typedef enum ChromaLocation_e
   AVS_CHROMA_BOTTOM = 5,
   AVS_CHROMA_DV = 6 // Special to Avisynth
 } ChromaLocation_e;
+#endif
 
 // Resizer function pointer
 typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2);

@@ -3,6 +3,7 @@
 #include "./nnedi3.h"
 #include "./aWarpSharp.h"
 #include "./HDRTools.h"
+#include "./JincResizeMT.h"
 
 ThreadPoolInterface *poolInterface;
 
@@ -11,7 +12,7 @@ bool aWarpSharp_Enable_SSE2,aWarpSharp_Enable_SSE41,aWarpSharp_Enable_AVX;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 3.9.5"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 4.0.0"
 
 
 /*
@@ -4208,6 +4209,211 @@ AVSValue __cdecl Create_ConvertRGB_ACES_HDRtoSDR(AVSValue args, void* user_data,
 
 
 /*
+==================================================
+                JincResizeMT
+==================================================
+*/
+
+AVSValue __cdecl Create_JincResize(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+    const VideoInfo& vi = args[0].AsClip()->GetVideoInfo();
+
+	const int threads = args[12].AsInt(0);
+	const bool LogicalCores = args[17].AsBool(true);
+	const bool MaxPhysCores = args[18].AsBool(true);
+	const bool SetAffinity = args[19].AsBool(false);
+	const bool sleep = args[20].AsBool(false);
+	int prefetch = args[21].AsInt(0);
+	int thread_level = args[22].AsInt(6);
+
+	const bool negativePrefetch = (prefetch < 0) ? true : false;
+	prefetch = abs(prefetch);
+
+	if ((threads < 0) || (threads > MAX_MT_THREADS))
+		env->ThrowError("JincResizeMT: [threads] must be between 0 and %ld.", MAX_MT_THREADS);
+	if (prefetch == 0) prefetch = 1;
+	if (prefetch > MAX_THREAD_POOL)
+		env->ThrowError("JincResizeMT: [prefetch] can't be higher than %d.", MAX_THREAD_POOL);
+	if ((thread_level < 1) || (thread_level > 7))
+		env->ThrowError("JincResizeMT: [ThreadLevel] must be between 1 and 7.");
+
+	uint8_t threads_number = 1;
+
+	if (threads != 1)
+	{
+		const ThreadLevelName TabLevel[8] = { NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel };
+
+		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("JincResizeMT: Unable to create ThreadPool!");
+
+		threads_number = poolInterface->GetThreadNumber(threads, LogicalCores);
+
+		if (threads_number == 0) env->ThrowError("JincResizeMT: Error with the TheadPool while getting CPU info!");
+
+		if (threads_number > 1)
+		{
+			if (prefetch > 1)
+			{
+				if (SetAffinity && (prefetch <= poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta = (float)poolInterface->GetPhysicalCoreNumber() / (float)prefetch, Offset = 0.0f;
+
+					for (uint8_t i = 0; i < prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number, (uint8_t)ceil(Offset), 0, MaxPhysCores,
+							true, true, TabLevel[thread_level], i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("JincResizeMT: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset += delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number, 0, 0, MaxPhysCores, false, true, TabLevel[thread_level], -1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("JincResizeMT: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number, 0, 0, MaxPhysCores, SetAffinity, true, TabLevel[thread_level], -1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("JincResizeMT: Error with the TheadPool while allocating threadpool!");
+				}
+			}
+		}
+	}
+
+	return new JincResizeMT(
+		args[0].AsClip(),
+		args[1].AsInt(),  // target_width
+		args[2].AsInt(), // target_height
+		args[3].AsFloat(0.0f), // src_left
+		args[4].AsFloat(0.0f), // src_top
+		args[5].AsFloat(static_cast<float>(vi.width)), // src_width
+		args[6].AsFloat(static_cast<float>(vi.height)), // src_height
+		args[7].AsInt(256), // quant_x
+		args[8].AsInt(256), // quant_y
+		args[9].AsInt(3), // tap
+		args[10].AsFloat(1.0f), // blur
+		args[11].AsString("auto"), // cplace
+		threads_number, // threads
+		args[13].AsInt(-1), // opt
+		args[14].AsInt(0), // initial_capacity
+		args[14].Defined(), // initial_capacity is defined
+		args[15].AsFloat(1.5f), // initial_factor
+		args[16].AsInt(1), // range
+		sleep,
+		negativePrefetch,
+        env);
+}
+
+template <int taps>
+AVSValue __cdecl Create_JincResizeTaps(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+	const VideoInfo& vi = args[0].AsClip()->GetVideoInfo();
+
+	const int threads = args[10].AsInt(0);
+	const bool LogicalCores = args[12].AsBool(true);
+	const bool MaxPhysCores = args[13].AsBool(true);
+	const bool SetAffinity = args[14].AsBool(false);
+	const bool sleep = args[15].AsBool(false);
+	int prefetch = args[16].AsInt(0);
+	int thread_level = args[17].AsInt(6);
+
+	const bool negativePrefetch = (prefetch < 0) ? true : false;
+	prefetch = abs(prefetch);
+
+	if ((threads < 0) || (threads > MAX_MT_THREADS))
+		env->ThrowError("JincResizeMT: [threads] must be between 0 and %ld.", MAX_MT_THREADS);
+	if (prefetch == 0) prefetch = 1;
+	if (prefetch > MAX_THREAD_POOL)
+		env->ThrowError("JincResizeMT: [prefetch] can't be higher than %d.", MAX_THREAD_POOL);
+	if ((thread_level < 1) || (thread_level > 7))
+		env->ThrowError("JincResizeMT: [ThreadLevel] must be between 1 and 7.");
+
+	uint8_t threads_number = 1;
+
+	if (threads != 1)
+	{
+		const ThreadLevelName TabLevel[8] = { NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel };
+
+		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("JincResizeMT: Unable to create ThreadPool!");
+
+		threads_number = poolInterface->GetThreadNumber(threads, LogicalCores);
+
+		if (threads_number == 0) env->ThrowError("JincResizeMT: Error with the TheadPool while getting CPU info!");
+
+		if (threads_number > 1)
+		{
+			if (prefetch > 1)
+			{
+				if (SetAffinity && (prefetch <= poolInterface->GetPhysicalCoreNumber()))
+				{
+					float delta = (float)poolInterface->GetPhysicalCoreNumber() / (float)prefetch, Offset = 0.0f;
+
+					for (uint8_t i = 0; i < prefetch; i++)
+					{
+						if (!poolInterface->AllocateThreads(threads_number, (uint8_t)ceil(Offset), 0, MaxPhysCores,
+							true, true, TabLevel[thread_level], i))
+						{
+							poolInterface->DeAllocateAllThreads(true);
+							env->ThrowError("JincResizeMT: Error with the TheadPool while allocating threadpool!");
+						}
+						Offset += delta;
+					}
+				}
+				else
+				{
+					if (!poolInterface->AllocateThreads(threads_number, 0, 0, MaxPhysCores, false, true, TabLevel[thread_level], -1))
+					{
+						poolInterface->DeAllocateAllThreads(true);
+						env->ThrowError("JincResizeMT: Error with the TheadPool while allocating threadpool!");
+					}
+				}
+			}
+			else
+			{
+				if (!poolInterface->AllocateThreads(threads_number, 0, 0, MaxPhysCores, SetAffinity, true, TabLevel[thread_level], -1))
+				{
+					poolInterface->DeAllocateAllThreads(true);
+					env->ThrowError("JincResizeMT: Error with the TheadPool while allocating threadpool!");
+				}
+			}
+		}
+	}
+
+	return new JincResizeMT(
+		args[0].AsClip(),
+		args[1].AsInt(), // target_width
+		args[2].AsInt(), // target_height
+		args[3].AsFloat(0.0f), // src_left
+		args[4].AsFloat(0.0f), // src_top
+		args[5].AsFloat(static_cast<float>(vi.width)), // src_width
+		args[6].AsFloat(static_cast<float>(vi.height)), // src_height
+		args[7].AsInt(256), // quant_x
+		args[8].AsInt(256), // quant_y
+		taps, // tap
+		1.0, // blur
+		args[9].AsString("auto"), // cplace
+		threads_number, // threads
+		-1, // opt
+		0, // initial_capacity
+		false, // initial_capacity is defined
+		1.5, // initial_factor
+		1, // range
+		sleep,
+		negativePrefetch,
+		env);
+}
+
+/*
 ====================================================
               PLUGIN INIT
 ====================================================
@@ -4419,6 +4625,24 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 		"[exposure_R]f[exposure_G]f[exposure_B]f[fastmode]b" \
 		"[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i",
 		Create_ConvertRGB_ACES_HDRtoSDR, 0);
+
+  // JincResizeMT
+
+    env->AddFunction("JincResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[quant_x]i[quant_y]i[tap]i[blur]f" \
+		"[cplace]s[threads]i[opt]i[initial_capacity]i[initial_factor]f" \
+		"[range]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_JincResize, 0);
+	env->AddFunction("Jinc36ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[quant_x]i[quant_y]i" \
+		"[cplace]s[threads]i" \
+		"[range]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_JincResizeTaps<3>, 0);
+	env->AddFunction("Jinc64ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[quant_x]i[quant_y]i" \
+		"[cplace]s[threads]i" \
+		"[range]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_JincResizeTaps<4>, 0);
+	env->AddFunction("Jinc144ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[quant_x]i[quant_y]i" \
+		"[cplace]s[threads]i" \
+		"[range]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_JincResizeTaps<6>, 0);
+	env->AddFunction("Jinc256ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[quant_x]i[quant_y]i" \
+		"[cplace]s[threads]i" \
+		"[range]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_JincResizeTaps<8>, 0);
 
 	return PLUGINS_JPSDR_VERSION;	
 }
