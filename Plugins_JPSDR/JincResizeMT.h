@@ -68,6 +68,13 @@ typedef enum _ChromaLocation_e
 } ChromaLocation_e;
 #endif
 
+typedef enum _WEIGHTING_TYPE
+{
+	SP_WT_NONE, // no weighting, pure (jinc) kernel, like SincResize for 1D
+	SP_WT_JINC, // Jinc first lobe to first zero weighting, initial for JincResize AVS plugin (aka EWA_Lanczos), like LanczosResize for 1D (weighting by first lobe of the base kernel function)
+	SP_WT_TRD2, // Trapecoidal weigthing with linear fade to zero at the second half of filter size, like in SincLin2Resize, expected a bit sharper of 1 and still not having edge issues of 0
+} WEIGHTING_TYPE;
+
 typedef struct _MT_Data_Info_JincResizeMT
 {
 	const BYTE *src[4];
@@ -108,7 +115,7 @@ class Lut
 public:
     Lut();
 	virtual ~Lut();
-	bool InitLut(int lutsize, double radius, double blur);
+	bool InitLut(int lutsize, double radius, double blur, WEIGHTING_TYPE wt);
     float GetFactor(int index);
 
     double* lut;
@@ -130,6 +137,8 @@ class JincResizeMT : public GenericVideoFilter
     float ValMin[4],ValMax[4];
 
 	ChromaLocation_e chroma_placement;
+	WEIGHTING_TYPE weighting_type;
+	bool bUseLUTkernel;
 
 	JincResizeMT_Process process_frame_1x, process_frame_2x, process_frame_3x, process_frame_4x;
 
@@ -149,8 +158,8 @@ class JincResizeMT : public GenericVideoFilter
 
 public:
 	JincResizeMT(PClip _child, int target_width, int target_height, double crop_left, double crop_top, double crop_width, double crop_height,
-		int quant_x, int quant_y, int tap, double blur, const char *_cplace, uint8_t _threads, int opt, int initial_capacity, bool initial_capacity_def,
-		double initial_factor, int range, bool _sleep, bool negativePrefetch,IScriptEnvironment* env);
+		int quant_x, int quant_y, int tap, double blur, const char *_cplace, uint8_t _threads, int opt, int initial_capacity, bool initial_capacity_def, double initial_factor, int _weighting_type, bool _bUseLUTkernel,
+		int range, bool _sleep, bool negativePrefetch,IScriptEnvironment* env);
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
     virtual ~JincResizeMT();
 	int __stdcall SetCacheHints(int cachehints, int frame_range);

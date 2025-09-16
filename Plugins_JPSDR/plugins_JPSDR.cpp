@@ -4219,12 +4219,12 @@ AVSValue __cdecl Create_JincResize(AVSValue args, void* user_data, IScriptEnviro
     const VideoInfo& vi = args[0].AsClip()->GetVideoInfo();
 
 	const int threads = args[12].AsInt(0);
-	const bool LogicalCores = args[17].AsBool(true);
-	const bool MaxPhysCores = args[18].AsBool(true);
-	const bool SetAffinity = args[19].AsBool(false);
-	const bool sleep = args[20].AsBool(false);
-	int prefetch = args[21].AsInt(0);
-	int thread_level = args[22].AsInt(6);
+	const bool LogicalCores = args[19].AsBool(true);
+	const bool MaxPhysCores = args[20].AsBool(true);
+	const bool SetAffinity = args[21].AsBool(false);
+	const bool sleep = args[22].AsBool(false);
+	int prefetch = args[23].AsInt(0);
+	int thread_level = args[24].AsInt(6);
 
 	const bool negativePrefetch = (prefetch < 0) ? true : false;
 	prefetch = abs(prefetch);
@@ -4307,7 +4307,9 @@ AVSValue __cdecl Create_JincResize(AVSValue args, void* user_data, IScriptEnviro
 		args[14].AsInt(0), // initial_capacity
 		args[14].Defined(), // initial_capacity is defined
 		args[15].AsFloat(1.5f), // initial_factor
-		args[16].AsInt(1), // range
+		args[16].AsInt(1), // wt
+		args[17].AsBool(true), // lutkernel		
+		args[18].AsInt(1), // range
 		sleep,
 		negativePrefetch,
         env);
@@ -4319,12 +4321,12 @@ AVSValue __cdecl Create_JincResizeTaps(AVSValue args, void* user_data, IScriptEn
 	const VideoInfo& vi = args[0].AsClip()->GetVideoInfo();
 
 	const int threads = args[10].AsInt(0);
-	const bool LogicalCores = args[12].AsBool(true);
-	const bool MaxPhysCores = args[13].AsBool(true);
-	const bool SetAffinity = args[14].AsBool(false);
-	const bool sleep = args[15].AsBool(false);
-	int prefetch = args[16].AsInt(0);
-	int thread_level = args[17].AsInt(6);
+	const bool LogicalCores = args[14].AsBool(true);
+	const bool MaxPhysCores = args[15].AsBool(true);
+	const bool SetAffinity = args[16].AsBool(false);
+	const bool sleep = args[17].AsBool(false);
+	int prefetch = args[18].AsInt(0);
+	int thread_level = args[19].AsInt(6);
 
 	const bool negativePrefetch = (prefetch < 0) ? true : false;
 	prefetch = abs(prefetch);
@@ -4407,7 +4409,9 @@ AVSValue __cdecl Create_JincResizeTaps(AVSValue args, void* user_data, IScriptEn
 		0, // initial_capacity
 		false, // initial_capacity is defined
 		1.5, // initial_factor
-		1, // range
+		args[11].AsInt(1), // wt
+		args[12].AsBool(true), // lutkernel		
+		args[13].AsInt(1), // range
 		sleep,
 		negativePrefetch,
 		env);
@@ -4629,19 +4633,19 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
   // JincResizeMT
 
     env->AddFunction("JincResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[quant_x]i[quant_y]i[tap]i[blur]f" \
-		"[cplace]s[threads]i[opt]i[initial_capacity]i[initial_factor]f" \
+		"[cplace]s[threads]i[opt]i[initial_capacity]i[initial_factor]f[wt]i[lutkernel]b" \
 		"[range]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_JincResize, 0);
 	env->AddFunction("Jinc36ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[quant_x]i[quant_y]i" \
-		"[cplace]s[threads]i" \
+		"[cplace]s[threads]i[wt]i[lutkernel]b" \
 		"[range]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_JincResizeTaps<3>, 0);
 	env->AddFunction("Jinc64ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[quant_x]i[quant_y]i" \
-		"[cplace]s[threads]i" \
+		"[cplace]s[threads]i[wt]i[lutkernel]b" \
 		"[range]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_JincResizeTaps<4>, 0);
 	env->AddFunction("Jinc144ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[quant_x]i[quant_y]i" \
-		"[cplace]s[threads]i" \
+		"[cplace]s[threads]i[wt]i[lutkernel]b" \
 		"[range]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_JincResizeTaps<6>, 0);
 	env->AddFunction("Jinc256ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[quant_x]i[quant_y]i" \
-		"[cplace]s[threads]i" \
+		"[cplace]s[threads]i[wt]i[lutkernel]b" \
 		"[range]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_JincResizeTaps<8>, 0);
 
 	return PLUGINS_JPSDR_VERSION;	
