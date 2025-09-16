@@ -1228,20 +1228,22 @@ JincResizeMT::JincResizeMT(PClip _child, int target_width, int target_height, do
     if (blur < 0.0 || blur > 10.0)
         env->ThrowError("JincResizeMT: blur must be between 0.0..10.0.");
 
-	// Detection of AVX512 doesn't exist on AVS 2.6, so can't be checked.
-	// Just can check at least AVX2, if there is not even AVX2, there is not AVX512.
+	// Detection of AVX512 & AVX2 doesn't exist on AVS 2.6, so can't be checked.
+	// Just can check at least AVX, if there is not even AVX, there is not AVX512 or AVX2.
 	if (has_at_least_v8)
 	{
 		if ((!(env->GetCPUFlags() & CPUF_AVX512F)) && (opt == 3))
 			env->ThrowError("JincResizeMT: opt=3 requires AVX-512F.");
+		if ((!(env->GetCPUFlags() & CPUF_AVX2)) && (opt == 2))
+			env->ThrowError("JincResizeMT: opt=2 requires AVX2.");
 	}
 	else
 	{
-		if ((!(env->GetCPUFlags() & CPUF_AVX2)) && (opt == 3))
-			env->ThrowError("JincResizeMT: opt=3 requires AVX-512F, there is not even AVX2.");
+		if ((!(env->GetCPUFlags() & CPUF_AVX)) && (opt == 3))
+			env->ThrowError("JincResizeMT: opt=3 requires AVX-512F, there is not even AVX.");
+		if ((!(env->GetCPUFlags() & CPUF_AVX)) && (opt == 2))
+			env->ThrowError("JincResizeMT: opt=2 requires AVX2, there is not even AVX.");
 	}
-	if ((!(env->GetCPUFlags() & CPUF_AVX2)) && (opt == 2))
-        env->ThrowError("JincResizeMT: opt=2 requires AVX2.");
     if ((!(env->GetCPUFlags() & CPUF_SSE4_1)) && (opt == 1))
         env->ThrowError("JincResizeMT: opt=1 requires SSE4.1.");
 
@@ -1303,9 +1305,9 @@ JincResizeMT::JincResizeMT(PClip _child, int target_width, int target_height, do
 	avx512 = (opt == 3);
 #endif
 #ifdef AVX2_BUILD_POSSIBLE
-	avx2 = ((!!(env->GetCPUFlags() & CPUF_AVX2)) && (opt < 0)) || (opt == 2);
+	avx2 = ((!!(env->GetCPUFlags() & CPUF_AVX2)) && (opt < 0)) || (opt == 2) || avx512;
 #endif
-	sse41 = ((!!(env->GetCPUFlags() & CPUF_SSE4_1)) && (opt < 0)) || (opt == 1);
+	sse41 = ((!!(env->GetCPUFlags() & CPUF_SSE4_1)) && (opt < 0)) || (opt == 1) || avx2 || avx512;
 
 	const int mod_align = (avx512) ? 16 : (avx2) ? 8 : (sse41) ? 4 : 0;
 
