@@ -57,9 +57,6 @@ const int FPScale16 = 1 << FPScale16bits; // fixed point scaler for 10-16 bit SI
 const int ALIGN_RESIZER_TARGET_SIZE = 8;
 const int ALIGN_FLOAT_RESIZER_COEFF_SIZE = 8; // simd friendly
 
-// 09-14-2002 - Vlad59 - Lanczos3Resize - Constant added
-#define M_PI 3.14159265358979323846
-
 struct ResamplingProgram
 {
   IScriptEnvironment *Env;

@@ -39,6 +39,13 @@
 #include "./resample_functions.h"
 #include "./avs/minmax.h"
 
+#define EPS_SINC 1e-6
+
+// 09-14-2002 - Vlad59 - Lanczos3Resize - Constant added
+#ifndef M_PI // GCC seems to have it
+static const double M_PI = 3.14159265358979323846;
+#endif
+
 /*******************************************
    ***************************************
    **  Helper classes for resample.cpp  **
@@ -99,14 +106,18 @@ LanczosFilter::LanczosFilter(int _taps)
 
 double LanczosFilter::sinc(double value)
 {
-  if (value > 0.000001)
+  value *= M_PI;
+
+  if (fabs(value) > EPS_SINC)
   {
-    value *= M_PI;
-    return sin(value) / value;
+    return(sin(value)/value);
   }
   else
   {
-    return 1.0;
+	const double a=-1.0/6.0, b=1.0/120.0;
+	value *=value;
+
+    return((value*b+a)*value+1.0);
   }
 }
 
@@ -116,7 +127,7 @@ double LanczosFilter::f(double value)
 
   if (value < taps)
   {
-    return (sinc(value) * sinc(value / taps));
+    return(sinc(value)*sinc(value/taps));
   }
   else
   {
@@ -141,19 +152,23 @@ double BlackmanFilter::f(double value)
 
   if (value < taps)
   {
-    if (value > 0.000001)
+    value *= M_PI;
+
+    if (value > EPS_SINC)
 	{
-      value *= M_PI;
-      return (sin(value) / value) * (0.42 + 0.5*cos(value*rtaps) + 0.08*cos(2*value*rtaps));
+      return((sin(value)/value)*(0.42+0.5*cos(value*rtaps)+0.08*cos(2*value*rtaps)));
     }
 	else
 	{
-      return 1.0;
+		const double a=-1.0/6.0, b=1.0/120.0;
+		const double value2=value*value;
+
+		return(((value2*b+a)*value2+1.0)*(0.42+0.5*cos(value*rtaps)+0.08*cos(2*value*rtaps)));
     }
   }
   else
   {
-    return 0.0;
+    return(0.0);
   }
 }
 
@@ -281,7 +296,7 @@ if (value<(M_PI/2)) return pow(cos(value),1.8);
 else
 {
 	if (value<M_PI) return -(cos(value)*cos(value))/(0.9*value);
-	else return 0;
+	else return 0.0;
 }
 }
 
@@ -297,14 +312,19 @@ SincFilter::SincFilter(int _taps)
 
 double SincFilter::f(double value)
 {
-   value = fabs(value);
+  value *= M_PI;
 
-  if (value > 0.000001)
+  if (fabs(value) > EPS_SINC)
   {
-    value *= M_PI;
-    return sin(value)/value;
+    return(sin(value)/value);
   }
-  else return 1.0;
+  else
+  {
+	const double a=-1.0/6.0, b=1.0/120.0;
+	value *=value;
+
+	return((value*b+a)*value+1.0);
+  }
 }
 
 
@@ -319,12 +339,19 @@ SincLin2Filter::SincLin2Filter(int _taps)
 
 double SincLin2Filter::sinc(double value)
 {
-	if (value > 0.000001)
+	value *= M_PI;
+
+	if (fabs(value) > EPS_SINC)
 	{
-		value *= M_PI;
-		return sin(value)/value;
+		return(sin(value)/value);
 	}
-	else return 1.0;
+	else
+	{
+		const double a=-1.0/6.0, b=1.0/120.0;
+		value *=value;
+
+		return((value*b+a)*value+1.0);
+	}
 }
 
 double SincLin2Filter::f(double value)
@@ -353,13 +380,19 @@ UserDefined2Filter::UserDefined2Filter(double _b, double _c, double _s)
 
 double UserDefined2Filter::sinc(double value)
 {
- 
-    if (fabs(value)>0.000001)
+    value *= M_PI;
+
+    if (fabs(value)>EPS_SINC)
     {
-        value *= M_PI;
-        return sin(value)/value;
+        return(sin(value)/value);
     }
-    else return 1.0;
+    else
+	{
+		const double a=-1.0/6.0, b=1.0/120.0;
+		value *=value;
+
+		return((value*b+a)*value+1.0);
+	}
 }
 
 double UserDefined2Filter::f(double x)
