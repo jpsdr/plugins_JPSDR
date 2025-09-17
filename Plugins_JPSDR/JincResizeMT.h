@@ -75,6 +75,12 @@ typedef enum _WEIGHTING_TYPE
 	SP_WT_TRD2, // Trapecoidal weigthing with linear fade to zero at the second half of filter size, like in SincLin2Resize, expected a bit sharper of 1 and still not having edge issues of 0
 } WEIGHTING_TYPE;
 
+typedef enum _SP_KERNEL_TYPE
+{
+	SP_JINCSINGLE, // single jinc kernel somehow optionally weighted (for upsample)
+	SP_JINCSUM, // weighted sum of jincs in 2D space (for downsample)
+} SP_KERNEL_TYPE;
+
 typedef struct _MT_Data_Info_JincResizeMT
 {
 	const BYTE *src[4];
@@ -140,6 +146,14 @@ class JincResizeMT : public GenericVideoFilter
 	WEIGHTING_TYPE weighting_type;
 	bool bUseLUTkernel;
 
+	// SP_JINCSUM (UserDefined4ResizeSP)
+	SP_KERNEL_TYPE kernel_type;
+	float k10;
+	float k20;
+	float k11;
+	float k21;
+	float support;
+
 	JincResizeMT_Process process_frame_1x, process_frame_2x, process_frame_3x, process_frame_4x;
 
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
@@ -159,6 +173,7 @@ class JincResizeMT : public GenericVideoFilter
 public:
 	JincResizeMT(PClip _child, int target_width, int target_height, double crop_left, double crop_top, double crop_width, double crop_height,
 		int quant_x, int quant_y, int tap, double blur, const char *_cplace, uint8_t _threads, int opt, int initial_capacity, bool initial_capacity_def, double initial_factor, int _weighting_type, bool _bUseLUTkernel,
+		SP_KERNEL_TYPE _sp_kernel_type, float _k10, float _k20, float _k11, float _k21, float _support,
 		int range, bool _sleep, bool negativePrefetch,IScriptEnvironment* env);
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
     virtual ~JincResizeMT();

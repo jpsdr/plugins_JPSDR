@@ -285,7 +285,7 @@ static double jinc_sqr_boost_l(double x2)
     const auto sx = sin(xp);
     const auto cx = cos(xp);
 
-    return (sqrt(xp / M_PI) * 2.0 / y2) * (evaluate_rational(bPC, bQC, y2p, 7) * (sx - cx) + (8.0 / xp) * evaluate_rational(bPS, bQS, y2p, 7) * (sx + cx));
+    return ((sqrt(xp/M_PI)*2.0/y2)*(evaluate_rational(bPC,bQC,y2p,7)*(sx-cx)+(8.0/xp)*evaluate_rational(bPS,bQS,y2p,7)*(sx+cx)));
 }
 
 #ifndef C17_ENABLE
@@ -436,7 +436,7 @@ float Lut::GetFactor(int index)
 }
 
 
-double GetFactor2D(double dx, double dy, double radius, double blur, WEIGHTING_TYPE wt)
+static double GetFactor2D(double dx, double dy, double radius, double blur, WEIGHTING_TYPE wt)
 {
 	const auto arg2 = dx*dx + dy*dy;
 	auto arg = sqrt(arg2);
@@ -464,6 +464,63 @@ double GetFactor2D(double dx, double dy, double radius, double blur, WEIGHTING_T
 	}
 }
 
+
+// Here is our simple jinc_pi(x), not 2.0x because of auto-normalizing of kernel for convolution in resampling program generator, but M_PI scaled argument
+inline static double jinc_pi(double arg)
+{
+	const auto x = M_PI * arg;
+#ifdef C17_ENABLE
+	return std::cyl_bessel_j(1, x) / x;
+#else
+	return bessel_j1(x) / x;
+#endif
+}
+
+// jinc function value from x,y origin to dx, dy coordinate from origin 
+inline static double jpdi(double dx, double dy, int x, int y)
+{
+	double dist = sqrt((x-dx)*(x-dx)+(y-dy)*(y-dy));
+	return jinc_pi(dist);
+}
+
+
+/*
+2D kernel of sum of jincs of max size 5x5 with trimmed out corner samples (XX), so 21 jincs in sum total
+kernel samples placement in 2D full numbering (x,y)
+where k(+0,+0) = 1.0 - center sample of kernel
+XX       k(-1,+2) k(+0,+2) k(+1,+2) XX
+k(-2,+1) k(-1,+1) k(+0,+1) k(+1,+1) k(+2,+1)
+k(-2,+0) k(-1,+0) k(+0,+0) k(+1,+0) k(+2,+0)
+k(-2,-1) k(-1,-1) k(+0,-1) k(+1,-1) k(+2,-1)
+XX       k(-1,-2) k(+0,-2) k(+1,-2) XX
+
+copy of k10, k20, k11, k21 by symmethry:
+XX       k21      k20      k21      XX
+k21      k11      k10      k11      k21
+k20      k10      1.0      k10      k20
+k21      k11      k10      k11      k21
+XX       k21      k20      k21      XX
+*/
+static double GetFactor2D_JINCSUM_21(double dx, double dy, float k10, float k20, float k11, float k21, double radius_sq)
+{
+	double dist_sq = dx*dx+dy*dy;
+
+	if (dist_sq > radius_sq) return(0.0); // make kernel round, may be option to be square in the future
+
+	auto sum = 0.0;
+// 1st row
+	sum += jpdi(dx,dy,-1,+2)*k21+jpdi(dx,dy,+0,+2)*k20+jpdi(dx,dy,+1,+2)*k21;
+// 2nd row
+	sum += jpdi(dx,dy,-2,+1)*k21+jpdi(dx,dy,-1,+1)*k11+jpdi(dx,dy,+0,+1)*k10+jpdi(dx,dy,+1,+1)*k11+jpdi(dx,dy,+2,+1)*k21;
+// 3rd row
+	sum += jpdi(dx,dy,-2,+0)*k20+jpdi(dx,dy,-1,+0)*k10+jpdi(dx,dy,+0,+0)*1.0+jpdi(dx,dy,+1,+0)*k10+jpdi(dx,dy,+2,+0)*k20;
+// 4th row
+	sum += jpdi(dx,dy,-2,-1)*k21+jpdi(dx,dy,-1,-1)*k11+jpdi(dx,dy,+0,-1)*k10+jpdi(dx,dy,+1,-1)*k11+jpdi(dx,dy,+2,-1)*k21;
+// 5th row
+	sum += jpdi(dx,dy,-1,-2)*k21+jpdi(dx,dy,+0,-2)*k20+jpdi(dx,dy,+1,-2)*k21;
+
+	return sum;
+}
 
 //static const double DOUBLE_ROUND_MAGIC_NUMBER = 6755399441055744.0;
 
@@ -524,6 +581,11 @@ struct generate_coeff_params
 	bool bUseLUTkernel;
 	double blur;
 	WEIGHTING_TYPE weighting_type;
+	SP_KERNEL_TYPE kernel_type;
+	float k10;
+	float k20;
+	float k11;
+	float k21;
 };
 
 #ifndef C17_ENABLE
@@ -545,6 +607,12 @@ static bool generate_coeff_table_c(const generate_coeff_params &params)
     int dst_height = params.dst_height;
     double radius = params.radius;
 	int mod_align = params.mod_align;
+
+	const float k10 = params.k10;
+	const float k20 = params.k20;
+	const float k11 = params.k11;
+	const float k21 = params.k21;
+	SP_KERNEL_TYPE kernel_type = params.kernel_type;
 
     const double filter_step_x = min(static_cast<double>(dst_width) / params.crop_width, 1.0);
     const double filter_step_y = min(static_cast<double>(dst_height) / params.crop_height, 1.0);
@@ -685,15 +753,24 @@ static bool generate_coeff_table_c(const generate_coeff_params &params)
                         const double dy = (clamp(is_border ? ypos : quantized_ypos,0.0f,static_cast<float>(src_height-1))-window_y)*filter_step_y;
 
 						float factor;
-
-						if (params.bUseLUTkernel)
+						
+						switch(kernel_type)
 						{
-							//int index = static_cast<int>(llround((samples-1)*(dx*dx+dy*dy)/radius2 + DOUBLE_ROUND_MAGIC_NUMBER));
-							int index = static_cast<int>(llround((samples-1)*(dx*dx+dy*dy)/radius2));
-							factor = func->GetFactor(index);
+							case SP_JINCSINGLE :
+								if (params.bUseLUTkernel)
+								{
+									//int index = static_cast<int>(llround((samples-1)*(dx*dx+dy*dy)/radius2 + DOUBLE_ROUND_MAGIC_NUMBER));
+									int index = static_cast<int>(llround((samples-1)*(dx*dx+dy*dy)/radius2));
+									factor = func->GetFactor(index);
+								}
+								else
+									factor = (float)GetFactor2D(dx,dy,radius,params.blur,params.weighting_type);
+								break;
+							case SP_JINCSUM :
+								factor = (float)GetFactor2D_JINCSUM_21(dx,dy,k10,k20,k11,k21,radius2);
+								break;
+							default : factor = 0.0; break;
 						}
-						else
-							factor = (float)GetFactor2D(dx,dy,radius,params.blur,params.weighting_type);
 
                         tmp_array[curr_factor_ptr + static_cast<int64_t>(lx)] = factor;
                         divider += factor;
@@ -1236,11 +1313,13 @@ void JincResizeMT::FreeData(void)
 
 JincResizeMT::JincResizeMT(PClip _child, int target_width, int target_height, double crop_left, double crop_top, double crop_width, double crop_height,
 	int quant_x, int quant_y, int tap, double blur, const char *_cplace, uint8_t _threads, int opt, int initial_capacity, bool initial_capacity_def,
-	double initial_factor, int _weighting_type, bool _bUseLUTkernel,
+	double initial_factor, int _weighting_type, bool _bUseLUTkernel, SP_KERNEL_TYPE _sp_kernel_type,
+	float _k10, float _k20, float _k11, float _k21, float _support,
 	int range, bool _sleep, bool negativePrefetch, IScriptEnvironment* env)
     : GenericVideoFilter(_child), init_lut(nullptr),has_at_least_v8(false), has_at_least_v11(false),
 	avx512(false), avx2(false), sse41(false), subsampled(false), threads (_threads), sleep(_sleep),
-	bUseLUTkernel(_bUseLUTkernel)
+	bUseLUTkernel(_bUseLUTkernel),kernel_type(_sp_kernel_type), k10(_k10), k20(_k20), k11(_k11), k21(_k21),
+	support(_support)
 {
 	UserId = 0;
 
@@ -1270,8 +1349,11 @@ JincResizeMT::JincResizeMT(PClip _child, int target_width, int target_height, do
     if (!vi.IsPlanar())
         env->ThrowError("JincResizeMT: clip must be in planar format.");
 
-    if ((tap < 1) || (tap > 16))
-        env->ThrowError("JincResizeMT: tap must be between 1..16.");
+    if (kernel_type == SP_JINCSINGLE)
+	{
+		if ((tap < 1) || (tap > 16))
+			env->ThrowError("JincResizeMT: tap must be between 1..16.");
+	}
 
     if ((quant_x < 1) || (quant_x > 256))
         env->ThrowError("JincResizeMT: quant_x must be between 1..256.");
@@ -1356,7 +1438,20 @@ JincResizeMT::JincResizeMT(PClip _child, int target_width, int target_height, do
 			env->ThrowError("JincResizeMT: cplace must be MPEG2, MPEG1, topleft/top_left, auto or empty.");
 	}
 
-	const double radius = jinc_zeros[tap - 1];
+	double radius;
+	
+	switch(kernel_type)
+	{
+		case SP_JINCSINGLE :
+			radius = jinc_zeros[tap-1];
+			break;
+		case SP_JINCSUM :
+			radius = support;
+			break;
+		default : radius = 1.0; break; // some non-zero value
+	}
+		
+	
 	const int samples = LUT_SIZE_VALUE;  // should be a multiple of 4
 
 	switch((uint8_t)_weighting_type)
@@ -1418,7 +1513,12 @@ JincResizeMT::JincResizeMT(PClip _child, int target_width, int target_height, do
 		mod_align,
 		bUseLUTkernel,
 		blur,
-		weighting_type
+		weighting_type,
+		kernel_type,
+		k10,
+		k20,
+		k11,
+		k21
     };
 
 	if (!generate_coeff_table_c(params))
@@ -1462,7 +1562,12 @@ JincResizeMT::JincResizeMT(PClip _child, int target_width, int target_height, do
 			mod_align,
 			bUseLUTkernel,
 			blur,
-			weighting_type
+			weighting_type,
+			kernel_type,
+			k10,
+			k20,
+			k11,
+			k21
         };
 		if (!generate_coeff_table_c(params1))
 		{
@@ -1876,7 +1981,7 @@ PVideoFrame __stdcall JincResizeMT::GetFrame(int n, IScriptEnvironment* env)
 				process_frame_1x(MT_DataGF, true, out[0], ValMin, ValMax);
 				process_frame_2x(MT_DataGF, false, out[1], ValMin, ValMax);
 				break;
-			case 5: // YUVA subsampled]
+			case 5: // YUVA subsampled
 				process_frame_2x(MT_DataGF, true, out[0], ValMin, ValMax);
 				process_frame_2x(MT_DataGF, false, out[1], ValMin, ValMax);
 				break;
