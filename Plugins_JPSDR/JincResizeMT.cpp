@@ -67,26 +67,26 @@ extern ThreadPoolInterface *poolInterface;
 static bool is_paramstring_empty_or_auto(const char *param)
 {
 	if (param == nullptr) return true;
-	return (_stricmp(param, "auto") == 0); // true is match
+	return (_stricmp(param,"auto") == 0); // true is match
 }
 
 static bool getChromaLocation(const char *chromaloc_name, IScriptEnvironment *env, ChromaLocation_e &_ChromaLocation)
 {
 	ChromaLocation_e index = AVS_CHROMA_UNUSED;
 
-	if (_stricmp(chromaloc_name, "left") == 0) index = AVS_CHROMA_LEFT;
-	if (_stricmp(chromaloc_name, "center") == 0) index = AVS_CHROMA_CENTER;
-	if ((_stricmp(chromaloc_name, "top_left") == 0) || (_stricmp(chromaloc_name, "topleft") == 0))
+	if (_stricmp(chromaloc_name,"left") == 0) index = AVS_CHROMA_LEFT;
+	if (_stricmp(chromaloc_name,"center") == 0) index = AVS_CHROMA_CENTER;
+	if ((_stricmp(chromaloc_name,"top_left") == 0) || (_stricmp(chromaloc_name,"topleft") == 0))
 		index = AVS_CHROMA_TOP_LEFT;
-	if (_stricmp(chromaloc_name, "top") == 0) index = AVS_CHROMA_TOP; // not used in Avisynth
-	if ((_stricmp(chromaloc_name, "bottom_left") == 0) || (_stricmp(chromaloc_name, "bottomleft") == 0))
+	if (_stricmp(chromaloc_name,"top") == 0) index = AVS_CHROMA_TOP; // not used in Avisynth
+	if ((_stricmp(chromaloc_name,"bottom_left") == 0) || (_stricmp(chromaloc_name,"bottomleft") == 0))
 		index = AVS_CHROMA_BOTTOM_LEFT; // not used in Avisynth
-	if (_stricmp(chromaloc_name, "bottom") == 0) index = AVS_CHROMA_BOTTOM; // not used in Avisynth
-	if (_stricmp(chromaloc_name, "dv") == 0) index = AVS_CHROMA_DV; // Special to Avisynth
+	if (_stricmp(chromaloc_name,"bottom") == 0) index = AVS_CHROMA_BOTTOM; // not used in Avisynth
+	if (_stricmp(chromaloc_name,"dv") == 0) index = AVS_CHROMA_DV; // Special to Avisynth
 	// compatibility
-	if (_stricmp(chromaloc_name, "mpeg1") == 0) index = AVS_CHROMA_CENTER;
-	if (_stricmp(chromaloc_name, "mpeg2") == 0) index = AVS_CHROMA_LEFT;
-	if (_stricmp(chromaloc_name, "jpeg") == 0) index = AVS_CHROMA_CENTER;
+	if (_stricmp(chromaloc_name,"mpeg1") == 0) index = AVS_CHROMA_CENTER;
+	if (_stricmp(chromaloc_name,"mpeg2") == 0) index = AVS_CHROMA_LEFT;
+	if (_stricmp(chromaloc_name,"jpeg") == 0) index = AVS_CHROMA_CENTER;
 
 	if (index != AVS_CHROMA_UNUSED)
 	{
@@ -130,12 +130,14 @@ static AVS_FORCEINLINE unsigned portable_clz(size_t x)
 }
 
 
+#define EPS_JINC_PI 1e-6
+
 #ifndef M_PI // GCC seems to have it
-static double M_PI = 3.14159265358979323846;
+static const double M_PI = 3.14159265358979323846;
 #endif
 
 // Taylor series coefficients of 2*BesselJ1(pi*x)/(pi*x) as (x^2) -> 0
-static double jinc_taylor_series[31] =
+static const double jinc_taylor_series[31] =
 {
     1.0,
     -1.23370055013616982735431137,
@@ -170,7 +172,7 @@ static double jinc_taylor_series[31] =
     2.68232117541264485328658605e-55
 };
 
-static double jinc_zeros[16] =
+static const double jinc_zeros[16] =
 {
     1.2196698912665045,
     2.2331305943815286,
@@ -190,7 +192,7 @@ static double jinc_zeros[16] =
     16.247661874700962
 };
 
-double JINC_ZERO_SQR = jinc_zeros[0] * jinc_zeros[0];
+static const double JINC_ZERO_SQR = jinc_zeros[0]*jinc_zeros[0];
 
 //  Modified from boost package math/tools/`rational.hpp`
 //
@@ -198,14 +200,15 @@ double JINC_ZERO_SQR = jinc_zeros[0] * jinc_zeros[0];
 //  Use, modification and distribution are subject to the
 //  Boost Software License, Version 1.0. (See accompanying file
 //  LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-static double evaluate_rational(const double* num, const double* denom, double z, int count)
+static double evaluate_rational(const double *num, const double *denom, double z, int count)
 {
-    double s1, s2;
-    if (z <= 1.0)
+    double s1,s2;
+
+    if (std::fabs(z) <= 1.0)
     {
-        s1 = num[count - 1];
-        s2 = denom[count - 1];
-        for (auto i = count - 2; i >= 0; --i)
+        s1 = num[count-1];
+        s2 = denom[count-1];
+        for (int i=count-2; i>=0; --i)
         {
             s1 *= z;
             s2 *= z;
@@ -215,10 +218,10 @@ static double evaluate_rational(const double* num, const double* denom, double z
     }
     else
     {
-        z = 1.0f / z;
+        z = 1.0/z;
         s1 = num[0];
         s2 = denom[0];
-        for (auto i = 1; i < count; ++i)
+        for (int i=1; i<count; ++i)
         {
             s1 *= z;
             s2 *= z;
@@ -227,7 +230,7 @@ static double evaluate_rational(const double* num, const double* denom, double z
         }
     }
 
-    return s1 / s2;
+    return(s1/s2);
 }
 
 //  Modified from boost package `BesselJ1.hpp`
@@ -238,7 +241,7 @@ static double evaluate_rational(const double* num, const double* denom, double z
 //  LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 static double jinc_sqr_boost_l(double x2)
 {
-    double bPC[7] =
+    const double bPC[7] =
     {
         -4.4357578167941278571e+06,
         -9.9422465050776411957e+06,
@@ -248,7 +251,7 @@ static double jinc_sqr_boost_l(double x2)
         -1.6116166443246101165e+03,
         0.0
     };
-    double bQC[7] =
+    const double bQC[7] =
     {
         -4.4357578167941278568e+06,
         -9.9341243899345856590e+06,
@@ -258,7 +261,7 @@ static double jinc_sqr_boost_l(double x2)
         -1.4550094401904961825e+03,
         1.0
     };
-    double bPS[7] =
+    const double bPS[7] =
     {
         3.3220913409857223519e+04,
         8.5145160675335701966e+04,
@@ -268,7 +271,7 @@ static double jinc_sqr_boost_l(double x2)
         3.5265133846636032186e+01,
         0.0
     };
-    double bQS[7] =
+    const double bQS[7] =
     {
         7.0871281941028743574e+05,
         1.8194580422439972989e+06,
@@ -279,11 +282,11 @@ static double jinc_sqr_boost_l(double x2)
         1.0
     };
 
-    const auto y2 = M_PI * M_PI * x2;
-    const auto xp = sqrt(y2);
-    const auto y2p = 64.0 / y2;
-    const auto sx = sin(xp);
-    const auto cx = cos(xp);
+    const double y2 = M_PI*M_PI*x2;
+    const double xp = sqrt(y2);
+    const double y2p = 64.0/y2;
+    const double sx = sin(xp);
+    const double cx = cos(xp);
 
     return ((sqrt(xp/M_PI)*2.0/y2)*(evaluate_rational(bPC,bQC,y2p,7)*(sx-cx)+(8.0/xp)*evaluate_rational(bPS,bQS,y2p,7)*(sx+cx)));
 }
@@ -295,16 +298,16 @@ static double bessel_j1(double x)
     const double EPS = 1e-15;
 	double TabD[MAX_TERMS];
 
-    double term = x / 2.0; // first value m=0
+    double term = x/2.0; // first value m=0
 
 	TabD[0] = term;
 
-    double x2 = (x * x) / 4.0;
+    double x2 = (x*x)/4.0;
 
     unsigned long m=1;
 	while ((std::fabs(term) >= EPS) && (m<MAX_TERMS))
 	{
-		term *= -x2 / (m * (m + 1)); // recurrence
+		term *= -x2/(m*(m+1)); // recurrence
 		TabD[m++] = term;
 	}
 
@@ -321,54 +324,63 @@ static double bessel_j1(double x)
 // jinc(sqrt(x2))
 static double jinc_sqr(double x2)
 {
-    if (x2 < 1.49)        // the 1-tap radius
+    if (x2<1.49)        // the 1-tap radius
     {
         double res = 0.0;
-        for (auto j = 16; j > 0; --j)
-            res = res * x2 + jinc_taylor_series[j - 1];
-        return res;
+
+        for (int j=16; j>0; --j)
+            res = res*x2+jinc_taylor_series[j-1];
+
+        return(res);
     }
-    else if (x2 < 4.97)   // the 2-tap radius
+    else if (x2<4.97)   // the 2-tap radius
     {
         double res = 0.0;
-        for (auto j = 21; j > 0; --j)
-            res = res * x2 + jinc_taylor_series[j - 1];
-        return res;
+
+        for (int j=21; j>0; --j)
+            res = res*x2+jinc_taylor_series[j-1];
+
+        return(res);
     }
-    else if (x2 < 10.49)  // the 3-tap radius
+    else if (x2<10.49)  // the 3-tap radius
     {
         double res = 0.0;
-        for (auto j = 26; j > 0; --j)
-            res = res * x2 + jinc_taylor_series[j - 1];
-        return res;
+
+        for (int j=26; j>0; --j)
+            res = res*x2+jinc_taylor_series[j-1];
+
+        return(res);
     }
-    else if (x2 < 17.99)  // the 4-tap radius
+    else if (x2<17.99)  // the 4-tap radius
     {
         double res = 0.0;
-        for (auto j = 31; j > 0; --j)
-            res = res * x2 + jinc_taylor_series[j - 1];
-        return res;
+
+        for (int j=31; j>0; --j)
+            res = res*x2+jinc_taylor_series[j-1];
+
+        return(res);
     }
-    else if (x2 < 52.57)  // the 5~7-tap radius
+    else if (x2<52.57)  // the 5~7-tap radius
     {
-        const auto x = M_PI * sqrt(x2);
+        const double x = M_PI*sqrt(x2);
 #ifdef C17_ENABLE
-        return 2.0 * std::cyl_bessel_j(1, x) / x;
+        return(2.0*std::cyl_bessel_j(1,x)/x);
 #else
-		return 2.0 * bessel_j1(x)/x;
+		return(2.0*bessel_j1(x)/x);
 #endif
     }
-    else if (x2 < 68.07)  // the 8-tap radius // Modify from pull request #4
+    else if (x2<68.07)  // the 8-tap radius // Modify from pull request #4
     {
-        return jinc_sqr_boost_l(x2);
+        return(jinc_sqr_boost_l(x2));
     }
     else                  // the 9~16-tap radius
     {
-        const auto x = M_PI * sqrt(x2);
+        const double x = M_PI*sqrt(x2);
+
 #ifdef C17_ENABLE
-        return 2.0 * std::cyl_bessel_j(1, x) / x;
+        return(2.0*std::cyl_bessel_j(1,x)/x);
 #else
-		return 2.0 * bessel_j1(x)/x;
+		return(2.0*bessel_j1(x)/x);
 #endif
     }
 }
@@ -376,13 +388,13 @@ static double jinc_sqr(double x2)
 
 static double sample_sqr(double (*filter)(double), double x2, double blur2, double radius2)
 {
-    if (blur2 > 0.0)
+    if (blur2>0.0)
         x2 /= blur2;
 
-    if (x2 < radius2)
-        return filter(x2);
+    if (x2<radius2)
+        return(filter(x2));
 
-    return 0.0;
+    return(0.0);
 }
 
 
@@ -400,26 +412,26 @@ bool Lut::InitLut(int lutsize, double radius, double blur, WEIGHTING_TYPE wt)
 {
 	if ((lut == nullptr) || (lutsize > lut_size)) return (false);
 
-	const auto radius2 = radius * radius;
-    const auto blur2 = blur * blur;
+	const double radius2 = radius * radius;
+    const double blur2 = blur * blur;
 
-    for (auto i = 0; i < lutsize; ++i)
+    for (int i=0; i<lutsize; ++i)
     {
-        const auto t2 = i / (lutsize - 1.0);
+        const double t2 = ((double)i)/(double)(lutsize-1);
 		
 		switch(wt)
 		{
 			case SP_WT_NONE :
-				lut[i] = sample_sqr(jinc_sqr, radius2 * t2, blur2, radius2);
+				lut[i] = sample_sqr(jinc_sqr,radius2*t2,blur2,radius2);
 				break;
 			case SP_WT_JINC :
-				lut[i] = sample_sqr(jinc_sqr, radius2 * t2, blur2, radius2) * sample_sqr(jinc_sqr, JINC_ZERO_SQR * t2, 1.0, radius2);
+				lut[i] = sample_sqr(jinc_sqr,radius2*t2,blur2,radius2)*sample_sqr(jinc_sqr,JINC_ZERO_SQR*t2,1.0,radius2);
 				break;
 			case SP_WT_TRD2 :
-				if (i < (lutsize / 2))
-					lut[i] = sample_sqr(jinc_sqr, radius2 * t2, blur2, radius2);
+				if (i<(lutsize/2))
+					lut[i] = sample_sqr(jinc_sqr,radius2*t2,blur2,radius2);
 				else
-					lut[i] = sample_sqr(jinc_sqr, radius2 * t2, blur2, radius2) * ((2.0 - (2.0 * t2 )));
+					lut[i] = sample_sqr(jinc_sqr,radius2*t2,blur2,radius2)*((2.0-(2.0*t2)));
 				break;
 			default : return(false); break;
 		}
@@ -438,13 +450,13 @@ float Lut::GetFactor(int index)
 
 static double GetFactor2D(double dx, double dy, double radius, double blur, WEIGHTING_TYPE wt)
 {
-	const auto arg2 = dx*dx + dy*dy;
-	auto arg = sqrt(arg2);
+	const double arg2 = dx*dx+dy*dy;
+	double arg = sqrt(arg2);
 
 	if (arg > radius) arg = radius; // limit for safety ?
 
-	const auto blur2 = blur * blur;
-	const auto radius2 = radius * radius;
+	const double blur2 = blur*blur;
+	const double radius2 = radius*radius;
 
 	switch(wt)
 	{
@@ -468,12 +480,23 @@ static double GetFactor2D(double dx, double dy, double radius, double blur, WEIG
 // Here is our simple jinc_pi(x), not 2.0x because of auto-normalizing of kernel for convolution in resampling program generator, but M_PI scaled argument
 inline static double jinc_pi(double arg)
 {
-	const auto x = M_PI * arg;
+	arg *= M_PI;
+	
+	if (std::fabs(arg)<EPS_JINC_PI)
+	{
+		const double a=-1.0/16.0, b=1.0/384.0;
+
+		arg *=arg;		
+		return((arg*b+a)*arg+0.5);
+	}
+	else
+	{
 #ifdef C17_ENABLE
-	return std::cyl_bessel_j(1, x) / x;
+		return(std::cyl_bessel_j(1,arg)/arg);
 #else
-	return bessel_j1(x) / x;
+		return(bessel_j1(arg)/arg);
 #endif
+	}
 }
 
 // jinc function value from x,y origin to dx, dy coordinate from origin 
@@ -503,9 +526,9 @@ XX       k21      k20      k21      XX
 */
 static double GetFactor2D_JINCSUM_21(double dx, double dy, float k10, float k20, float k11, float k21, double radius_sq)
 {
-	double dist_sq = dx*dx+dy*dy;
+	const double dist_sq = dx*dx+dy*dy;
 
-	if (dist_sq > radius_sq) return(0.0); // make kernel round, may be option to be square in the future
+	if (dist_sq>radius_sq) return(0.0); // make kernel round, may be option to be square in the future
 
 	auto sum = 0.0;
 // 1st row
@@ -529,7 +552,7 @@ static bool init_coeff_table(EWAPixelCoeff *out, int quantize_x, int quantize_y,
 {
     out->filter_size = filter_size;
 	if (mod_align > 0)
-		out->coeff_stride = (filter_size + (mod_align-1)) & ~(mod_align-1);
+		out->coeff_stride = (filter_size+(mod_align-1)) & ~(mod_align-1);
 	else
 		out->coeff_stride = filter_size;
 
@@ -546,8 +569,8 @@ static bool init_coeff_table(EWAPixelCoeff *out, int quantize_x, int quantize_y,
     // Zeroed memory
     if (out->factor_map == nullptr) return(false);
 
-	memset(out->factor_map, 0, static_cast<int64_t>(quantize_x) * quantize_y * sizeof(int));
-    memset(out->meta, 0, static_cast<int64_t>(dst_width) * dst_height * sizeof(EWAPixelCoeffMeta));
+	memset(out->factor_map,0,static_cast<int64_t>(quantize_x) * quantize_y * sizeof(int));
+    memset(out->meta,0,static_cast<int64_t>(dst_width) * dst_height * sizeof(EWAPixelCoeffMeta));
 	
 	return(true);
 }
@@ -589,8 +612,8 @@ struct generate_coeff_params
 };
 
 #ifndef C17_ENABLE
-#define llround(x) (x<0.0) ? (long long)floor(x - 0.5) : (long long)floor(x + 0.5)
-#define lrintf(x) (long)floor(x + 0.5)
+#define llround(x) (x<0.0) ? (long long)floor(x-0.5) : (long long)floor(x+0.5)
+#define lrintf(x) (long)floor(x+0.5)
 #endif
 
 /* Coefficient table generation */
@@ -703,7 +726,7 @@ static bool generate_coeff_table_c(const generate_coeff_params &params)
             else
             {
                 // then need computation
-                float divider = 0.f;
+                float divider = 0.0f;
 
                 // This is the location of current target pixel in source pixel
                 // Quantized
@@ -760,7 +783,7 @@ static bool generate_coeff_table_c(const generate_coeff_params &params)
 								if (params.bUseLUTkernel)
 								{
 									//int index = static_cast<int>(llround((samples-1)*(dx*dx+dy*dy)/radius2 + DOUBLE_ROUND_MAGIC_NUMBER));
-									int index = static_cast<int>(llround((samples-1)*(dx*dx+dy*dy)/radius2));
+									const int index = static_cast<int>(llround((samples-1)*(dx*dx+dy*dy)/radius2));
 									factor = func->GetFactor(index);
 								}
 								else
@@ -1404,7 +1427,7 @@ JincResizeMT::JincResizeMT(PClip _child, int target_width, int target_height, do
 			env->ThrowError("JincResizeMT: initial_capacity must be > 0.");
 	}
 	else
-		initial_capacity = max(target_width * target_height, src_width * src_height);
+		initial_capacity = max(target_width*target_height,src_width*src_height);
 
 	if ( vi.Is420() && ( ((target_width%2)!=0) || ((target_height%2)!=0) ) )
 		env->ThrowError("JincResizeMT: width and height must be multiple of 2 for 4:2:0 chroma subsampling.");
