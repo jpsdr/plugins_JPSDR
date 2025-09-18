@@ -1372,11 +1372,8 @@ JincResizeMT::JincResizeMT(PClip _child, int target_width, int target_height, do
     if (!vi.IsPlanar())
         env->ThrowError("JincResizeMT: clip must be in planar format.");
 
-    if (kernel_type == SP_JINCSINGLE)
-	{
-		if ((tap < 1) || (tap > 16))
-			env->ThrowError("JincResizeMT: tap must be between 1..16.");
-	}
+	if ((tap < 1) || (tap > 16))
+		env->ThrowError("JincResizeMT: tap must be between 1..16.");
 
     if ((quant_x < 1) || (quant_x > 256))
         env->ThrowError("JincResizeMT: quant_x must be between 1..256.");
