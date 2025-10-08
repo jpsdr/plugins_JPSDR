@@ -889,7 +889,7 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
 
   int posmin,posmax,SizeS0,SizeS,SizeM;
 
-  Matrix_Compute A0(target_size,source_size,DATA_FLOAT);
+  Matrix_Compute A0(target_size,source_size,MTRXLC_DATA_FLOAT);
 
   A0.FillZero();
 
@@ -909,7 +909,7 @@ ResamplingProgram* ResamplingFunction::GetDesamplingProgram(int source_size, dou
   while ((posmax>=0) && (A0.GetF(target_size-1,posmax)==0.0)) posmax--;
   SizeS0=posmax-posmin+1;
 
-  Matrix_Compute A(target_size,SizeS0,DATA_FLOAT),B(SizeS0,SizeS0,DATA_FLOAT),C(SizeS0,target_size,DATA_FLOAT);
+  Matrix_Compute A(target_size,SizeS0,MTRXLC_DATA_FLOAT),B(SizeS0,SizeS0,MTRXLC_DATA_FLOAT),C(SizeS0,target_size,MTRXLC_DATA_FLOAT);
 
   A.FillZero();
 
