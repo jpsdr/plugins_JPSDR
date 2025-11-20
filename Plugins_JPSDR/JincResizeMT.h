@@ -37,12 +37,11 @@
 
 #include <stdint.h>
 #include <vector>
-#include <immintrin.h>
 
 #include "avisynth.h"
 #include "ThreadPoolInterface.h"
 
-#define JINCRESIZEMT_VERSION "JincResizeMT 1.1.0 JPSDR"
+#define JINCRESIZEMT_VERSION "JincResizeMT 1.2.0 JPSDR"
 
 #define JincMT_RESTRICT __restrict
 
@@ -94,14 +93,14 @@ typedef struct _MT_Data_Info_JincResizeMT
 	bool top, bottom;
 } MT_Data_Info_JincResizeMT;
 
-struct EWAPixelCoeffMeta
+typedef struct _EWAPixelCoeffMeta
 {
     int start_x;
     int start_y;
     int coeff_meta;
-};
+} EWAPixelCoeffMeta;
 
-struct EWAPixelCoeff
+typedef struct _EWAPixelCoeff
 {
     float *factor;
     EWAPixelCoeffMeta *meta;
@@ -109,32 +108,62 @@ struct EWAPixelCoeff
     int filter_size;
     int coeff_stride;
 	
-	EWAPixelCoeff() : factor(nullptr), meta(nullptr), factor_map(nullptr) {}
-};
+	_EWAPixelCoeff() : factor(nullptr), meta(nullptr), factor_map(nullptr) {}
+} EWAPixelCoeff;
 
 #define LUT_SIZE_VALUE 1024
 
-class Lut
+class JincMT_Lut
 {
     int lut_size;
 
 public:
-    Lut();
-	virtual ~Lut();
+	JincMT_Lut();
+	virtual ~JincMT_Lut();
 	bool InitLut(int lutsize, double radius, double blur, WEIGHTING_TYPE wt);
     float GetFactor(int index);
 
     double* lut;
 };
 
-typedef void (*JincResizeMT_Process)(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
+typedef struct _JincMT_generate_coeff_params
+{
+	JincMT_Lut *func;
+	EWAPixelCoeff *out, *out_fp16;
+	int quantize_x;
+	int quantize_y;
+	int samples;
+	int src_width;
+	int src_height;
+	int dst_width;
+	int dst_height;
+	double radius;
+	double crop_left;
+	double crop_top;
+	double crop_width;
+	double crop_height;
+	int initial_capacity;
+	double initial_factor;
+	int mod_align;
+	bool bUseLUTkernel;
+	double blur;
+	WEIGHTING_TYPE weighting_type;
+	SP_KERNEL_TYPE kernel_type;
+	float k10;
+	float k20;
+	float k11;
+	float k21;
+} JincMT_generate_coeff_params;
+
+typedef void (*JincResizeMT_Process)(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
 	const float Val_Min[], const float Val_Max[]);
 
 class JincResizeMT : public GenericVideoFilter
 {
-    Lut *init_lut;
+	JincMT_Lut *init_lut;
 	std::vector<EWAPixelCoeff*> out;
-    bool avx512,avx2,sse41;
+	std::vector<EWAPixelCoeff*> out_fp16;
+    bool avx512,avx2,sse41,avx512_d;
     uint8_t planecount;
     bool has_at_least_v8,has_at_least_v11;
 	bool grey,isRGBPfamily,isAlphaChannel;
@@ -153,6 +182,8 @@ class JincResizeMT : public GenericVideoFilter
 	float k11;
 	float k21;
 	float support;
+
+	bool bUseFP16coeff;
 
 	JincResizeMT_Process process_frame_1x, process_frame_2x, process_frame_3x, process_frame_4x;
 
@@ -173,7 +204,7 @@ class JincResizeMT : public GenericVideoFilter
 public:
 	JincResizeMT(PClip _child, int target_width, int target_height, double crop_left, double crop_top, double crop_width, double crop_height,
 		int quant_x, int quant_y, int tap, double blur, const char *_cplace, uint8_t _threads, int opt, int initial_capacity, bool initial_capacity_def, double initial_factor, int _weighting_type, bool _bUseLUTkernel,
-		SP_KERNEL_TYPE _sp_kernel_type, float _k10, float _k20, float _k11, float _k21, float _support,
+		SP_KERNEL_TYPE _sp_kernel_type, float _k10, float _k20, float _k11, float _k21, float _support, bool _bUseFP16coeff,
 		int range, bool _sleep, bool negativePrefetch,IScriptEnvironment* env);
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
     virtual ~JincResizeMT();

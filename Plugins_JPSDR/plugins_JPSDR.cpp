@@ -12,7 +12,7 @@ bool aWarpSharp_Enable_SSE2,aWarpSharp_Enable_SSE41,aWarpSharp_Enable_AVX;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 4.0.0"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 4.1.0"
 
 
 /*
@@ -4219,12 +4219,12 @@ AVSValue __cdecl Create_JincResize(AVSValue args, void* user_data, IScriptEnviro
     const VideoInfo& vi = args[0].AsClip()->GetVideoInfo();
 
 	const int threads = args[12].AsInt(0);
-	const bool LogicalCores = args[19].AsBool(true);
-	const bool MaxPhysCores = args[20].AsBool(true);
-	const bool SetAffinity = args[21].AsBool(false);
-	const bool sleep = args[22].AsBool(false);
-	int prefetch = args[23].AsInt(0);
-	int thread_level = args[24].AsInt(6);
+	const bool LogicalCores = args[20].AsBool(true);
+	const bool MaxPhysCores = args[21].AsBool(true);
+	const bool SetAffinity = args[22].AsBool(false);
+	const bool sleep = args[23].AsBool(false);
+	int prefetch = args[24].AsInt(0);
+	int thread_level = args[25].AsInt(6);
 
 	const bool negativePrefetch = (prefetch < 0) ? true : false;
 	prefetch = abs(prefetch);
@@ -4315,7 +4315,8 @@ AVSValue __cdecl Create_JincResize(AVSValue args, void* user_data, IScriptEnviro
 		0.0f,
 		0.0f,
 		0.0f,
-		args[18].AsInt(1), // range
+		args[18].AsBool(false), // FP16
+		args[19].AsInt(1), // range
 		sleep,
 		negativePrefetch,
         env);
@@ -4423,6 +4424,7 @@ AVSValue __cdecl Create_JincResizeTaps(AVSValue args, void* user_data, IScriptEn
 		0.0f,
 		0.0f,
 		0.0f,
+		false,
 		args[13].AsInt(1), // range
 		sleep,
 		negativePrefetch,
@@ -4434,18 +4436,18 @@ AVSValue __cdecl Create_UserDefined4(AVSValue args, void* user_data, IScriptEnvi
 	const VideoInfo& vi = args[0].AsClip()->GetVideoInfo();
 
 	const int threads = args[10].AsInt(0);
-	const bool LogicalCores = args[17].AsBool(true);
-	const bool MaxPhysCores = args[18].AsBool(true);
-	const bool SetAffinity = args[19].AsBool(false);
-	const bool sleep = args[20].AsBool(false);
-	int prefetch = args[21].AsInt(0);
-	int thread_level = args[22].AsInt(6);
+	const bool LogicalCores = args[19].AsBool(true);
+	const bool MaxPhysCores = args[20].AsBool(true);
+	const bool SetAffinity = args[21].AsBool(false);
+	const bool sleep = args[22].AsBool(false);
+	int prefetch = args[23].AsInt(0);
+	int thread_level = args[24].AsInt(6);
 	
-	float k10 = (float)args[11].AsFloat(100.0f); // set to some working defaults (about close to UserDefined2Resize b=80 c=-20)
-	float k20 = (float)args[12].AsFloat(0.0f);
-	float k11 = (float)args[13].AsFloat(60.0f);
-	float k21 = (float)args[14].AsFloat(-10.0f);
-	float support = (float)args[15].AsFloat(3.0f); 
+	float k10 = (float)args[12].AsFloat(97.0f); // set to some working defaults (about close to UserDefined2Resize b=80 c=-20)
+	float k20 = (float)args[13].AsFloat(-2.0f);
+	float k11 = (float)args[14].AsFloat(35.0f);
+	float k21 = (float)args[15].AsFloat(-1.0f);
+	float support = (float)args[16].AsFloat(3.0f); 
 	// convert to 0..1 range
 	k10 = (k10-16.0f)/219.0f;
 	k20 = (k20-16.0f)/219.0f;
@@ -4529,7 +4531,7 @@ AVSValue __cdecl Create_UserDefined4(AVSValue args, void* user_data, IScriptEnvi
 		1.0, // blur
 		args[9].AsString("auto"), // cplace
 		threads_number, // threads
-		-1, // opt
+		args[11].AsInt(-1), // opt
 		0, // initial_capacity
 		false, // initial_capacity is defined
 		1.5, // initial_factor
@@ -4541,11 +4543,13 @@ AVSValue __cdecl Create_UserDefined4(AVSValue args, void* user_data, IScriptEnvi
 		k11,
 		k21,
 		support,
-		args[16].AsInt(1), // range
+		args[17].AsBool(false), // FP16
+		args[18].AsInt(1), // range
 		sleep,
 		negativePrefetch,
 		env);
 }
+
 
 /*
 ====================================================
@@ -4762,8 +4766,8 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 
   // JincResizeMT
 
-    env->AddFunction("JincResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[quant_x]i[quant_y]i[tap]i[blur]f" \
-		"[cplace]s[threads]i[opt]i[initial_capacity]i[initial_factor]f[wt]i[lutkernel]b" \
+   env->AddFunction("JincResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[quant_x]i[quant_y]i[tap]i[blur]f" \
+		"[cplace]s[threads]i[opt]i[initial_capacity]i[initial_factor]f[wt]i[lutkernel]b[FP16]b" \
 		"[range]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_JincResize, 0);
 	env->AddFunction("Jinc36ResizeMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[quant_x]i[quant_y]i" \
 		"[cplace]s[threads]i[wt]i[lutkernel]b" \
@@ -4779,9 +4783,8 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 		"[range]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_JincResizeTaps<8>, 0);
 
 	env->AddFunction("UserDefined4ResizeSPMT", "c[target_width]i[target_height]i[src_left]f[src_top]f[src_width]f[src_height]f[quant_x]i[quant_y]i" \
-		"[cplace]s[threads]i[k10]f[k20]f[k11]f[k21]f[s]f" \
+		"[cplace]s[threads]i[opt]i[k10]f[k20]f[k11]f[k21]f[s]f[FP16]b" \
 		"[range]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_UserDefined4, 0);
 
 	return PLUGINS_JPSDR_VERSION;
 }
-

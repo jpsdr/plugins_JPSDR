@@ -40,7 +40,7 @@ template <typename T>
 #if defined(CLANG)
 __attribute__((__target__("sse4.1")))
 #endif
-void resize_plane_sse41_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
+void resize_plane_sse41_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
 	const float Val_Min[], const float Val_Max[])
 {
 	const uint8_t idx = 0;
@@ -59,9 +59,9 @@ void resize_plane_sse41_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 	const T val_max = static_cast<T>(Val_Max[idx]);
 	const __m128 min_val = _mm_set_ps1(Val_Min[idx]);
 	
-	EWAPixelCoeffMeta *meta_y = coeff->meta + (Y_Min*dst_width);
+	EWAPixelCoeffMeta *meta_y = tab_coeff->meta + (Y_Min*dst_width);
 
-	const int filter_size = coeff->filter_size, coeff_stride = coeff->coeff_stride;
+	const int filter_size = tab_coeff->filter_size, coeff_stride = tab_coeff->coeff_stride;
 
     for (int y = Y_Min; y < Y_Max; y++)
     {
@@ -70,7 +70,7 @@ void resize_plane_sse41_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
         for (int x = 0; x < dst_width; x++)
         {
 			const T *src_ptr = src + (meta->start_y * src_pitch + meta->start_x);
-            const float *coeff_ptr = coeff->factor + meta->coeff_meta; 
+            const float *coeff_ptr = tab_coeff->factor + meta->coeff_meta;
 			__m128 result = _mm_setzero_ps();			
 
             if JincMT_CONSTEXPR (std::is_same<T, uint8_t>::value)
@@ -81,7 +81,8 @@ void resize_plane_sse41_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
                     {
                         const __m128 src_ps = _mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(*(reinterpret_cast<const int32_t*>(src_ptr + lx)))));
                         const __m128 coeff = _mm_load_ps(coeff_ptr + lx);
-                        result = _mm_add_ps(result, _mm_mul_ps(src_ps, coeff));
+
+						result = _mm_add_ps(result, _mm_mul_ps(src_ps, coeff));
                     }
 
                     coeff_ptr += coeff_stride;
@@ -90,7 +91,8 @@ void resize_plane_sse41_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 
                 const __m128 hsum = _mm_hadd_ps(_mm_hadd_ps(result, result), _mm_hadd_ps(result, result));
 				const T final_res = _mm_cvtsi128_si32(_mm_packus_epi16(_mm_packus_epi32(_mm_cvtps_epi32(hsum), _mm_setzero_si128()), _mm_setzero_si128()));
-                dst[x] = clamp(final_res,val_min,val_max);
+
+				dst[x] = clamp(final_res,val_min,val_max);
             }
             else if JincMT_CONSTEXPR (std::is_same<T, uint16_t>::value)
             {
@@ -100,7 +102,8 @@ void resize_plane_sse41_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
                     {
                         const __m128 src_ps = _mm_cvtepi32_ps(_mm_cvtepu16_epi32(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src_ptr + lx))));
                         const __m128 coeff = _mm_load_ps(coeff_ptr + lx);
-                        result = _mm_add_ps(result, _mm_mul_ps(src_ps, coeff));
+
+						result = _mm_add_ps(result, _mm_mul_ps(src_ps, coeff));
                     }
 
                     coeff_ptr += coeff_stride;
@@ -109,7 +112,8 @@ void resize_plane_sse41_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 
                 const __m128 hsum = _mm_hadd_ps(_mm_hadd_ps(result, result), _mm_hadd_ps(result, result));
 				const T final_res = _mm_cvtsi128_si32(_mm_packus_epi32(_mm_cvtps_epi32(hsum), _mm_setzero_si128()));
-                dst[x] = clamp(final_res,val_min,val_max);
+
+				dst[x] = clamp(final_res,val_min,val_max);
             }
             else
             {
@@ -138,7 +142,10 @@ void resize_plane_sse41_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 
 
 template <typename T>
-void resize_plane_sse41_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
+#if defined(CLANG)
+__attribute__((__target__("sse4.1")))
+#endif
+void resize_plane_sse41_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
 	const float Val_Min[], const float Val_Max[])
 {
 	const uint8_t idx1 = (PlaneYMode) ? 0 : 1;
@@ -165,9 +172,9 @@ void resize_plane_sse41_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 	const __m128 min_val1 = _mm_set_ps1(Val_Min[idx1]);
 	const __m128 min_val2 = _mm_set_ps1(Val_Min[idx2]);
 
-	EWAPixelCoeffMeta *meta_y = coeff->meta + (Y_Min*dst_width);
+	EWAPixelCoeffMeta *meta_y = tab_coeff->meta + (Y_Min*dst_width);
 
-	const int filter_size = coeff->filter_size, coeff_stride = coeff->coeff_stride;
+	const int filter_size = tab_coeff->filter_size, coeff_stride = tab_coeff->coeff_stride;
 
 	for (int y = Y_Min; y < Y_Max; y++)
 	{
@@ -177,11 +184,11 @@ void resize_plane_sse41_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 		{
 			const T *src_ptr1 = src1 + (meta->start_y * src_pitch1 + meta->start_x);
 			const T *src_ptr2 = src2 + (meta->start_y * src_pitch2 + meta->start_x);
-			const float *coeff_ptr = coeff->factor + meta->coeff_meta;
+			const float *coeff_ptr = tab_coeff->factor + meta->coeff_meta;
 			__m128 result1 = _mm_setzero_ps();
 			__m128 result2 = _mm_setzero_ps();
 
-			if JincMT_CONSTEXPR(std::is_same<T, uint8_t>::value)
+			if JincMT_CONSTEXPR (std::is_same<T, uint8_t>::value)
 			{
 				for (int ly = 0; ly < filter_size; ++ly)
 				{
@@ -190,6 +197,7 @@ void resize_plane_sse41_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 						const __m128 src_ps1 = _mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(*(reinterpret_cast<const int32_t*>(src_ptr1 + lx)))));
 						const __m128 src_ps2 = _mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(*(reinterpret_cast<const int32_t*>(src_ptr2 + lx)))));
 						const __m128 coeff = _mm_load_ps(coeff_ptr + lx);
+
 						result1 = _mm_add_ps(result1, _mm_mul_ps(src_ps1, coeff));
 						result2 = _mm_add_ps(result2, _mm_mul_ps(src_ps2, coeff));
 					}
@@ -203,10 +211,11 @@ void resize_plane_sse41_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 				const __m128 hsum2 = _mm_hadd_ps(_mm_hadd_ps(result2, result2), _mm_hadd_ps(result2, result2));
 				const T final_res1 = _mm_cvtsi128_si32(_mm_packus_epi16(_mm_packus_epi32(_mm_cvtps_epi32(hsum1), _mm_setzero_si128()), _mm_setzero_si128()));
 				const T final_res2 = _mm_cvtsi128_si32(_mm_packus_epi16(_mm_packus_epi32(_mm_cvtps_epi32(hsum2), _mm_setzero_si128()), _mm_setzero_si128()));
+
 				dst1[x] = clamp(final_res1, val_min1, val_max1);
 				dst2[x] = clamp(final_res2, val_min2, val_max2);
 			}
-			else if JincMT_CONSTEXPR(std::is_same<T, uint16_t>::value)
+			else if JincMT_CONSTEXPR (std::is_same<T, uint16_t>::value)
 			{
 				for (int ly = 0; ly < filter_size; ++ly)
 				{
@@ -215,6 +224,7 @@ void resize_plane_sse41_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 						const __m128 src_ps1 = _mm_cvtepi32_ps(_mm_cvtepu16_epi32(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src_ptr1 + lx))));
 						const __m128 src_ps2 = _mm_cvtepi32_ps(_mm_cvtepu16_epi32(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src_ptr2 + lx))));
 						const __m128 coeff = _mm_load_ps(coeff_ptr + lx);
+
 						result1 = _mm_add_ps(result1, _mm_mul_ps(src_ps1, coeff));
 						result2 = _mm_add_ps(result2, _mm_mul_ps(src_ps2, coeff));
 					}
@@ -228,6 +238,7 @@ void resize_plane_sse41_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 				const __m128 hsum2 = _mm_hadd_ps(_mm_hadd_ps(result2, result2), _mm_hadd_ps(result2, result2));
 				const T final_res1 = _mm_cvtsi128_si32(_mm_packus_epi32(_mm_cvtps_epi32(hsum1), _mm_setzero_si128()));
 				const T final_res2 = _mm_cvtsi128_si32(_mm_packus_epi32(_mm_cvtps_epi32(hsum2), _mm_setzero_si128()));
+
 				dst1[x] = clamp(final_res1, val_min1, val_max1);
 				dst2[x] = clamp(final_res2, val_min2, val_max2);
 			}
@@ -240,6 +251,7 @@ void resize_plane_sse41_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 						const __m128 src_ps1 = _mm_max_ps(_mm_loadu_ps(reinterpret_cast<const float*>(src_ptr1 + lx)), min_val1);
 						const __m128 src_ps2 = _mm_max_ps(_mm_loadu_ps(reinterpret_cast<const float*>(src_ptr2 + lx)), min_val2);
 						const __m128 coeff = _mm_load_ps(coeff_ptr + lx);
+
 						result1 = _mm_add_ps(result1, _mm_mul_ps(src_ps1, coeff));
 						result2 = _mm_add_ps(result2, _mm_mul_ps(src_ps2, coeff));
 					}
@@ -263,7 +275,10 @@ void resize_plane_sse41_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 
 
 template <typename T>
-void resize_plane_sse41_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
+#if defined(CLANG)
+__attribute__((__target__("sse4.1")))
+#endif
+void resize_plane_sse41_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
 	const float Val_Min[], const float Val_Max[])
 {
 	const uint8_t idx1 = 0;
@@ -298,9 +313,9 @@ void resize_plane_sse41_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 	const __m128 min_val2 = _mm_set_ps1(Val_Min[idx2]);
 	const __m128 min_val3 = _mm_set_ps1(Val_Min[idx3]);
 
-	EWAPixelCoeffMeta *meta_y = coeff->meta + (Y_Min*dst_width);
+	EWAPixelCoeffMeta *meta_y = tab_coeff->meta + (Y_Min*dst_width);
 
-	const int filter_size = coeff->filter_size, coeff_stride = coeff->coeff_stride;
+	const int filter_size = tab_coeff->filter_size, coeff_stride = tab_coeff->coeff_stride;
 
 	for (int y = Y_Min; y < Y_Max; y++)
 	{
@@ -311,12 +326,12 @@ void resize_plane_sse41_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 			const T *src_ptr1 = src1 + (meta->start_y * src_pitch1 + meta->start_x);
 			const T *src_ptr2 = src2 + (meta->start_y * src_pitch2 + meta->start_x);
 			const T *src_ptr3 = src3 + (meta->start_y * src_pitch3 + meta->start_x);
-			const float *coeff_ptr = coeff->factor + meta->coeff_meta;
+			const float *coeff_ptr = tab_coeff->factor + meta->coeff_meta;
 			__m128 result1 = _mm_setzero_ps();
 			__m128 result2 = _mm_setzero_ps();
 			__m128 result3 = _mm_setzero_ps();
 
-			if JincMT_CONSTEXPR(std::is_same<T, uint8_t>::value)
+			if JincMT_CONSTEXPR (std::is_same<T, uint8_t>::value)
 			{
 				for (int ly = 0; ly < filter_size; ++ly)
 				{
@@ -326,6 +341,7 @@ void resize_plane_sse41_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 						const __m128 src_ps2 = _mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(*(reinterpret_cast<const int32_t*>(src_ptr2 + lx)))));
 						const __m128 src_ps3 = _mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(*(reinterpret_cast<const int32_t*>(src_ptr3 + lx)))));
 						const __m128 coeff = _mm_load_ps(coeff_ptr + lx);
+
 						result1 = _mm_add_ps(result1, _mm_mul_ps(src_ps1, coeff));
 						result2 = _mm_add_ps(result2, _mm_mul_ps(src_ps2, coeff));
 						result3 = _mm_add_ps(result3, _mm_mul_ps(src_ps3, coeff));
@@ -343,11 +359,12 @@ void resize_plane_sse41_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 				const T final_res1 = _mm_cvtsi128_si32(_mm_packus_epi16(_mm_packus_epi32(_mm_cvtps_epi32(hsum1), _mm_setzero_si128()), _mm_setzero_si128()));
 				const T final_res2 = _mm_cvtsi128_si32(_mm_packus_epi16(_mm_packus_epi32(_mm_cvtps_epi32(hsum2), _mm_setzero_si128()), _mm_setzero_si128()));
 				const T final_res3 = _mm_cvtsi128_si32(_mm_packus_epi16(_mm_packus_epi32(_mm_cvtps_epi32(hsum3), _mm_setzero_si128()), _mm_setzero_si128()));
+
 				dst1[x] = clamp(final_res1, val_min1, val_max1);
 				dst2[x] = clamp(final_res2, val_min2, val_max2);
 				dst3[x] = clamp(final_res3, val_min3, val_max3);
 			}
-			else if JincMT_CONSTEXPR(std::is_same<T, uint16_t>::value)
+			else if JincMT_CONSTEXPR (std::is_same<T, uint16_t>::value)
 			{
 				for (int ly = 0; ly < filter_size; ++ly)
 				{
@@ -357,6 +374,7 @@ void resize_plane_sse41_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 						const __m128 src_ps2 = _mm_cvtepi32_ps(_mm_cvtepu16_epi32(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src_ptr2 + lx))));
 						const __m128 src_ps3 = _mm_cvtepi32_ps(_mm_cvtepu16_epi32(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src_ptr3 + lx))));
 						const __m128 coeff = _mm_load_ps(coeff_ptr + lx);
+
 						result1 = _mm_add_ps(result1, _mm_mul_ps(src_ps1, coeff));
 						result2 = _mm_add_ps(result2, _mm_mul_ps(src_ps2, coeff));
 						result3 = _mm_add_ps(result3, _mm_mul_ps(src_ps3, coeff));
@@ -374,6 +392,7 @@ void resize_plane_sse41_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 				const T final_res1 = _mm_cvtsi128_si32(_mm_packus_epi32(_mm_cvtps_epi32(hsum1), _mm_setzero_si128()));
 				const T final_res2 = _mm_cvtsi128_si32(_mm_packus_epi32(_mm_cvtps_epi32(hsum2), _mm_setzero_si128()));
 				const T final_res3 = _mm_cvtsi128_si32(_mm_packus_epi32(_mm_cvtps_epi32(hsum3), _mm_setzero_si128()));
+
 				dst1[x] = clamp(final_res1, val_min1, val_max1);
 				dst2[x] = clamp(final_res2, val_min2, val_max2);
 				dst3[x] = clamp(final_res3, val_min3, val_max3);
@@ -388,6 +407,7 @@ void resize_plane_sse41_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 						const __m128 src_ps2 = _mm_max_ps(_mm_loadu_ps(reinterpret_cast<const float*>(src_ptr2 + lx)), min_val2);
 						const __m128 src_ps3 = _mm_max_ps(_mm_loadu_ps(reinterpret_cast<const float*>(src_ptr3 + lx)), min_val3);
 						const __m128 coeff = _mm_load_ps(coeff_ptr + lx);
+
 						result1 = _mm_add_ps(result1, _mm_mul_ps(src_ps1, coeff));
 						result2 = _mm_add_ps(result2, _mm_mul_ps(src_ps2, coeff));
 						result3 = _mm_add_ps(result3, _mm_mul_ps(src_ps3, coeff));
@@ -415,7 +435,10 @@ void resize_plane_sse41_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 
 
 template <typename T>
-void resize_plane_sse41_4x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
+#if defined(CLANG)
+__attribute__((__target__("sse4.1")))
+#endif
+void resize_plane_sse41_4x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
 	const float Val_Min[], const float Val_Max[])
 {
 	const uint8_t idx1 = 0;
@@ -458,9 +481,9 @@ void resize_plane_sse41_4x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 	const __m128 min_val3 = _mm_set_ps1(Val_Min[idx3]);
 	const __m128 min_val4 = _mm_set_ps1(Val_Min[idx4]);
 
-	EWAPixelCoeffMeta *meta_y = coeff->meta + (Y_Min*dst_width);
+	EWAPixelCoeffMeta *meta_y = tab_coeff->meta + (Y_Min*dst_width);
 
-	const int filter_size = coeff->filter_size, coeff_stride = coeff->coeff_stride;
+	const int filter_size = tab_coeff->filter_size, coeff_stride = tab_coeff->coeff_stride;
 
 	for (int y = Y_Min; y < Y_Max; y++)
 	{
@@ -472,13 +495,13 @@ void resize_plane_sse41_4x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 			const T *src_ptr2 = src2 + (meta->start_y * src_pitch2 + meta->start_x);
 			const T *src_ptr3 = src3 + (meta->start_y * src_pitch3 + meta->start_x);
 			const T *src_ptr4 = src4 + (meta->start_y * src_pitch4 + meta->start_x);
-			const float *coeff_ptr = coeff->factor + meta->coeff_meta;
+			const float *coeff_ptr = tab_coeff->factor + meta->coeff_meta;
 			__m128 result1 = _mm_setzero_ps();
 			__m128 result2 = _mm_setzero_ps();
 			__m128 result3 = _mm_setzero_ps();
 			__m128 result4 = _mm_setzero_ps();
 
-			if JincMT_CONSTEXPR(std::is_same<T, uint8_t>::value)
+			if JincMT_CONSTEXPR (std::is_same<T, uint8_t>::value)
 			{
 				for (int ly = 0; ly < filter_size; ++ly)
 				{
@@ -489,6 +512,7 @@ void resize_plane_sse41_4x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 						const __m128 src_ps3 = _mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(*(reinterpret_cast<const int32_t*>(src_ptr3 + lx)))));
 						const __m128 src_ps4 = _mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(*(reinterpret_cast<const int32_t*>(src_ptr4 + lx)))));
 						const __m128 coeff = _mm_load_ps(coeff_ptr + lx);
+
 						result1 = _mm_add_ps(result1, _mm_mul_ps(src_ps1, coeff));
 						result2 = _mm_add_ps(result2, _mm_mul_ps(src_ps2, coeff));
 						result3 = _mm_add_ps(result3, _mm_mul_ps(src_ps3, coeff));
@@ -510,12 +534,13 @@ void resize_plane_sse41_4x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 				const T final_res2 = _mm_cvtsi128_si32(_mm_packus_epi16(_mm_packus_epi32(_mm_cvtps_epi32(hsum2), _mm_setzero_si128()), _mm_setzero_si128()));
 				const T final_res3 = _mm_cvtsi128_si32(_mm_packus_epi16(_mm_packus_epi32(_mm_cvtps_epi32(hsum3), _mm_setzero_si128()), _mm_setzero_si128()));
 				const T final_res4 = _mm_cvtsi128_si32(_mm_packus_epi16(_mm_packus_epi32(_mm_cvtps_epi32(hsum4), _mm_setzero_si128()), _mm_setzero_si128()));
+
 				dst1[x] = clamp(final_res1, val_min1, val_max1);
 				dst2[x] = clamp(final_res2, val_min2, val_max2);
 				dst3[x] = clamp(final_res3, val_min3, val_max3);
 				dst4[x] = clamp(final_res4, val_min4, val_max4);
 			}
-			else if JincMT_CONSTEXPR(std::is_same<T, uint16_t>::value)
+			else if JincMT_CONSTEXPR (std::is_same<T, uint16_t>::value)
 			{
 				for (int ly = 0; ly < filter_size; ++ly)
 				{
@@ -526,6 +551,7 @@ void resize_plane_sse41_4x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 						const __m128 src_ps3 = _mm_cvtepi32_ps(_mm_cvtepu16_epi32(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src_ptr3 + lx))));
 						const __m128 src_ps4 = _mm_cvtepi32_ps(_mm_cvtepu16_epi32(_mm_loadu_si128(reinterpret_cast<const __m128i*>(src_ptr4 + lx))));
 						const __m128 coeff = _mm_load_ps(coeff_ptr + lx);
+
 						result1 = _mm_add_ps(result1, _mm_mul_ps(src_ps1, coeff));
 						result2 = _mm_add_ps(result2, _mm_mul_ps(src_ps2, coeff));
 						result3 = _mm_add_ps(result3, _mm_mul_ps(src_ps3, coeff));
@@ -547,6 +573,7 @@ void resize_plane_sse41_4x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 				const T final_res2 = _mm_cvtsi128_si32(_mm_packus_epi32(_mm_cvtps_epi32(hsum2), _mm_setzero_si128()));
 				const T final_res3 = _mm_cvtsi128_si32(_mm_packus_epi32(_mm_cvtps_epi32(hsum3), _mm_setzero_si128()));
 				const T final_res4 = _mm_cvtsi128_si32(_mm_packus_epi32(_mm_cvtps_epi32(hsum4), _mm_setzero_si128()));
+
 				dst1[x] = clamp(final_res1, val_min1, val_max1);
 				dst2[x] = clamp(final_res2, val_min2, val_max2);
 				dst3[x] = clamp(final_res3, val_min3, val_max3);
@@ -563,6 +590,7 @@ void resize_plane_sse41_4x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 						const __m128 src_ps3 = _mm_max_ps(_mm_loadu_ps(reinterpret_cast<const float*>(src_ptr3 + lx)), min_val3);
 						const __m128 src_ps4 = _mm_max_ps(_mm_loadu_ps(reinterpret_cast<const float*>(src_ptr4 + lx)), min_val4);
 						const __m128 coeff = _mm_load_ps(coeff_ptr + lx);
+
 						result1 = _mm_add_ps(result1, _mm_mul_ps(src_ps1, coeff));
 						result2 = _mm_add_ps(result2, _mm_mul_ps(src_ps2, coeff));
 						result3 = _mm_add_ps(result3, _mm_mul_ps(src_ps3, coeff));
@@ -593,30 +621,30 @@ void resize_plane_sse41_4x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 }
 
 
-template void resize_plane_sse41_1x<uint8_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
+template void resize_plane_sse41_1x<uint8_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
 	const float Val_Min[], const float Val_Max[]);
-template void resize_plane_sse41_1x<uint16_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
+template void resize_plane_sse41_1x<uint16_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
 	const float Val_Min[], const float Val_Max[]);
-template void resize_plane_sse41_1x<float>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
-	const float Val_Min[], const float Val_Max[]);
-
-template void resize_plane_sse41_2x<uint8_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
-	const float Val_Min[], const float Val_Max[]);
-template void resize_plane_sse41_2x<uint16_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
-	const float Val_Min[], const float Val_Max[]);
-template void resize_plane_sse41_2x<float>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
+template void resize_plane_sse41_1x<float>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
 	const float Val_Min[], const float Val_Max[]);
 
-template void resize_plane_sse41_3x<uint8_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
+template void resize_plane_sse41_2x<uint8_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
 	const float Val_Min[], const float Val_Max[]);
-template void resize_plane_sse41_3x<uint16_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
+template void resize_plane_sse41_2x<uint16_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
 	const float Val_Min[], const float Val_Max[]);
-template void resize_plane_sse41_3x<float>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
+template void resize_plane_sse41_2x<float>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
 	const float Val_Min[], const float Val_Max[]);
 
-template void resize_plane_sse41_4x<uint8_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
+template void resize_plane_sse41_3x<uint8_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
 	const float Val_Min[], const float Val_Max[]);
-template void resize_plane_sse41_4x<uint16_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
+template void resize_plane_sse41_3x<uint16_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
 	const float Val_Min[], const float Val_Max[]);
-template void resize_plane_sse41_4x<float>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *coeff,
+template void resize_plane_sse41_3x<float>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
+	const float Val_Min[], const float Val_Max[]);
+
+template void resize_plane_sse41_4x<uint8_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
+	const float Val_Min[], const float Val_Max[]);
+template void resize_plane_sse41_4x<uint16_t>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
+	const float Val_Min[], const float Val_Max[]);
+template void resize_plane_sse41_4x<float>(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
 	const float Val_Min[], const float Val_Max[]);
