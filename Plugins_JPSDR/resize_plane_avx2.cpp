@@ -445,7 +445,7 @@ static double GetFactor2D_JINCSUM_21(double dx, double dy, float k10, float k20,
 }
 
 /* Coefficient table generation for fp16*/
-#if defined(CLANG)
+#if defined(__clang__)
 __attribute__((__target__("avx2,f16c")))
 #endif
 bool generate_coeff_table_fp16_c(const JincMT_generate_coeff_params& params)
@@ -706,7 +706,7 @@ bool generate_coeff_table_fp16_c(const JincMT_generate_coeff_params& params)
 }
 
 template <typename T, bool bFP16>
-#if defined(CLANG)
+#if defined(__clang__)
 __attribute__((__target__("avx2,fma,f16c")))
 #endif
 void resize_plane_avx2_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
@@ -929,7 +929,7 @@ void resize_plane_avx2_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool
 
 
 template <typename T, bool bFP16>
-#if defined(CLANG)
+#if defined(__clang__)
 __attribute__((__target__("avx2,f16c")))
 #endif
 void resize_plane_avx2_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
@@ -1199,7 +1199,7 @@ void resize_plane_avx2_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool
 
 
 template <typename T, bool bFP16>
-#if defined(CLANG)
+#if defined(__clang__)
 __attribute__((__target__("avx2,f16c")))
 #endif
 void resize_plane_avx2_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
@@ -1516,7 +1516,7 @@ void resize_plane_avx2_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool
 
 
 template <typename T, bool bFP16>
-#if defined(CLANG)
+#if defined(__clang__)
 __attribute__((__target__("avx2,f16c")))
 #endif
 void resize_plane_avx2_4x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,

@@ -32,15 +32,16 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-// VS 2017 v15.3
-#if _MSC_VER >= 1911
+
+// VS 2019 v16.2
+#if _MSC_VER >= 1922
 
 #include <immintrin.h>
 #include "avs/minmax.h"
 #include "JincResizeMT.h"
 
 template <typename T, bool bFP16>
-#if defined(CLANG)
+#if defined(__clang__)
 __attribute__((__target__("avx512f")))
 #endif
 void resize_plane_avx512_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
@@ -266,7 +267,7 @@ void resize_plane_avx512_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bo
 
 
 template <typename T, bool bFP16>
-#if defined(CLANG)
+#if defined(__clang__)
 __attribute__((__target__("avx512f")))
 #endif
 void resize_plane_avx512_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
@@ -542,7 +543,7 @@ void resize_plane_avx512_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bo
 
 
 template <typename T, bool bFP16>
-#if defined(CLANG)
+#if defined(__clang__)
 __attribute__((__target__("avx512f")))
 #endif
 void resize_plane_avx512_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
@@ -868,7 +869,7 @@ void resize_plane_avx512_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bo
 
 
 template <typename T, bool bFP16>
-#if defined(CLANG)
+#if defined(__clang__)
 __attribute__((__target__("avx512f")))
 #endif
 void resize_plane_avx512_4x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
@@ -1244,7 +1245,7 @@ void resize_plane_avx512_4x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bo
 
 
 template <typename T, bool bFP16>
-#if defined(CLANG)
+#if defined(__clang__)
 __attribute__((__target__("avx512f")))
 #endif
 void resize_plane_avx2_4x_v2(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,

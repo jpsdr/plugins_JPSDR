@@ -37,7 +37,7 @@
 #include "JincResizeMT.h"
 
 template <typename T>
-#if defined(CLANG)
+#if defined(__clang__)
 __attribute__((__target__("sse4.1")))
 #endif
 void resize_plane_sse41_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
@@ -142,7 +142,7 @@ void resize_plane_sse41_1x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 
 
 template <typename T>
-#if defined(CLANG)
+#if defined(__clang__)
 __attribute__((__target__("sse4.1")))
 #endif
 void resize_plane_sse41_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
@@ -275,7 +275,7 @@ void resize_plane_sse41_2x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 
 
 template <typename T>
-#if defined(CLANG)
+#if defined(__clang__)
 __attribute__((__target__("sse4.1")))
 #endif
 void resize_plane_sse41_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
@@ -435,7 +435,7 @@ void resize_plane_sse41_3x(const MT_Data_Info_JincResizeMT *MT_DataGF, const boo
 
 
 template <typename T>
-#if defined(CLANG)
+#if defined(__clang__)
 __attribute__((__target__("sse4.1")))
 #endif
 void resize_plane_sse41_4x(const MT_Data_Info_JincResizeMT *MT_DataGF, const bool PlaneYMode, const EWAPixelCoeff *tab_coeff,
