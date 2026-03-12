@@ -39,13 +39,9 @@
 
 // VS 2017 v15.3
 #if _MSC_VER >= 1911
+#define AVX512_BUILD_POSSIBLE
 #define C17_ENABLE
 #define C17_MATH_ENABLE
-#endif
-
-// VS 2019 v16.2
-#if _MSC_VER >= 1922
-#define AVX512_BUILD_POSSIBLE
 #endif
 
 #ifdef C17_MATH_ENABLE

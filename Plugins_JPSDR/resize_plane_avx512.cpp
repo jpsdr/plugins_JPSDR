@@ -33,8 +33,8 @@
 // import and export plugins, or graphical user interfaces.
 
 
-// VS 2019 v16.2
-#if _MSC_VER >= 1922
+// VS 2017 v15.3
+#if _MSC_VER >= 1911
 
 #include <immintrin.h>
 #include "avs/minmax.h"
