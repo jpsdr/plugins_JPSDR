@@ -253,7 +253,7 @@ class Device;
 class SINGLE_INHERITANCE PDevice;
 struct AVSMap;
 
-
+#define AVS_UNUSED(x) (void)(x)
 
 /*
  * Avisynth C++ plugin API code function pointers.
@@ -1075,7 +1075,6 @@ public:
 #endif
 }; // end class PVideoFrame
 
-
 // VideoFrame holds a "window" into a VideoFrameBuffer.  Operator new
 // is overloaded to recycle class instances.
 
@@ -1465,8 +1464,6 @@ public:
 
 #endif
 }; // end class AVSValue
-
-#define AVS_UNUSED(x) (void)(x)
 
 // instantiable null filter
 class GenericVideoFilter : public IClip {
@@ -2047,10 +2044,6 @@ AVSC_API(IScriptEnvironment*, CreateScriptEnvironment)(int version = AVISYNTH_IN
 // C exports
 #include "avs/capi.h"
 AVSC_API(IScriptEnvironment2*, CreateScriptEnvironment2)(int version = AVISYNTH_INTERFACE_VERSION);
-
-#ifndef BUILDING_AVSCORE
-#undef AVS_UNUSED
-#endif
 
 #pragma pack(pop)
 
