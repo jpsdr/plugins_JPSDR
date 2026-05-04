@@ -68,4 +68,7 @@ __attribute__((__target__("ssse3")))
 #endif
 void resizer_h_ssse3_generic_float(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2);
 
+template<int filtersizemod4>
+void resize_h_planar_float_sse_transpose_vstripe_ks4(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2);
+
 #endif // __Resample_SSE_H__

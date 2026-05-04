@@ -54,8 +54,17 @@ const int FPScale = 1 << FPScale8bits; // fixed point scaler (1<<14)
 // for 16 bits: one bit less
 const int FPScale16bits = 13;
 const int FPScale16 = 1 << FPScale16bits; // fixed point scaler for 10-16 bit SIMD signed operation
-const int ALIGN_RESIZER_TARGET_SIZE = 8;
 const int ALIGN_FLOAT_RESIZER_COEFF_SIZE = 8; // simd friendly
+// 16: fits even avx512 32-bit float Horizontal
+// but not AVX512 uint8 case, where we process 64 pixels at a time
+const int ALIGN_RESIZER_TARGET_SIZE = 64;
+typedef struct _SafeLimit
+{
+  bool overread_possible;
+  int source_overread_offset;
+  int source_overread_beyond_targetx;
+} SafeLimit;
+
 
 struct ResamplingProgram
 {
@@ -65,6 +74,7 @@ struct ResamplingProgram
   int filter_size;
   int filter_size_real; // maybe less than filter_size if dimensions are small
   int filter_size_alignment; // for info, 1 (C), 8 (sse or avx2) or 16 (avx2)
+  int target_size_alignment; // coeff table exists (and containt zero coeffs) even beyond target_size. Helps alternative H resizers.
 
   // Array of Integer indicate starting point of sampling
   std::vector<int> pixel_offset;
@@ -79,33 +89,76 @@ struct ResamplingProgram
   // for SIMD, coefficients are copied over a padded aligned storage
   std::vector<short> kernel_sizes; 
   // 3.7.4- can be different for each line but then they get equalized and aligned.
+  
+  bool StatusOk;
 
-  // anti-overread helpers for float resizer simd code reading 8 pixels from a given offset
-  bool overread_possible,StatusOk;
-  int source_overread_offset; // offset from where reading 8 bytes requires masking garbage on the right side
-  int source_overread_beyond_targetx;
-  // in H resizers danger zone starts from here.
-  // When reading aligned_filter_size elements from (src+offset) no longer fits image scanline dimensions
+  size_t cache_size_L2; // in bytes, for possible use in resizers
+  int max_scanlines; // recommended vertical stripe for h resamplers
+
+  // In H resizers, when using SIMD loads for speed, these is a "danger zone".
+  // If SIMD load from source pixels (src+offset) over reads beyond the allocated
+  // source buffer (image scanline width), it can cause access violation.
+  // The following SafeLimit structures indicate such cases for various SIMD sizes.
+  // and how much to adjust the source pointer to avoid access violation
+  // or stop using large SIMD loads after this limit.
+  // Depending on the pixel actual size (1, 2 or 4 bytes) and filter size,
+  // the overread size can be calculated and the appropriate SafeLimit entry is used
+  // by the actual implementation of the resizer.
+  SafeLimit safelimit_filter_size_aligned;
+  SafeLimit safelimit_4_pixels;
+  SafeLimit safelimit_8_pixels;
+  SafeLimit safelimit_16_pixels;
+  SafeLimit safelimit_32_pixels;
+  SafeLimit safelimit_8_pixels_each8th_target;
+  SafeLimit safelimit_16_pixels_each16th_target;
+  SafeLimit safelimit_64_pixels_each32th_target;
+  SafeLimit safelimit_128_pixels_each64th_target;
+
+  int resampler_h_detect_optimal_scanline(int src_width, int tgt_width, size_t l2_cache_size_bytes, size_t pixel_size);
+  bool resize_h_planar_gather_permutex_vstripe_check(int iSamplesInTheGroup, int permutex_index_diff_limit, int kernel_size);
 
   ResamplingProgram(int filter_size, int source_size, int target_size, double crop_start, double crop_size, int bits_per_pixel, IScriptEnvironment* env)
     : Env(env), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size), filter_size(filter_size), filter_size_real(filter_size),
-    bits_per_pixel(bits_per_pixel), pixel_coefficient(nullptr), pixel_coefficient_float(nullptr)
+    bits_per_pixel(bits_per_pixel), pixel_coefficient(nullptr), pixel_coefficient_float(nullptr), cache_size_L2(0), max_scanlines(0)
   {
+  // In H resizers, when using SIMD loads for speed, these is a "danger zone".
+  // If SIMD load from source pixels (src+offset) over reads beyond the allocated
+  // source buffer (image scanline width), it can cause access violation.
+  // The following SafeLimit structures indicate such cases for various SIMD sizes.
+  // and how much to adjust the source pointer to avoid access violation
+  // or stop using large SIMD loads after this limit.
+  // Depending on the pixel actual size (1, 2 or 4 bytes) and filter size,
+  // the overread size can be calculated and the appropriate SafeLimit entry is used
+  // by the actual implementation of the resizer.
+
+	safelimit_filter_size_aligned.overread_possible = false;
+	safelimit_filter_size_aligned.source_overread_beyond_targetx = -1;
+	safelimit_filter_size_aligned.source_overread_offset = -1;
+
+	safelimit_4_pixels = safelimit_filter_size_aligned;
+	safelimit_8_pixels = safelimit_filter_size_aligned;
+	safelimit_16_pixels = safelimit_filter_size_aligned;
+	safelimit_32_pixels = safelimit_filter_size_aligned;
+	safelimit_8_pixels_each8th_target = safelimit_filter_size_aligned;
+	safelimit_16_pixels_each16th_target = safelimit_filter_size_aligned;
+	safelimit_64_pixels_each32th_target = safelimit_filter_size_aligned;
+	safelimit_128_pixels_each64th_target = safelimit_filter_size_aligned;
+
 	StatusOk = true;
-    overread_possible = false;
-    source_overread_offset = -1;
-    source_overread_beyond_targetx = -1;
+	//safelimit_filter_size_aligned = { false, -1, -1 };
 
-    pixel_offset.resize(target_size);
-    kernel_sizes.resize(target_size);
+    filter_size_alignment = 1;
+    // align target_size to 8 units to allow safe up to 8 pixels/cycle in H resizers. modded later.
+    target_size_alignment = 1;
+    // resize_prepare_coeff can override and realign the size of coefficient table
 
-    // align target_size to 8 units to allow safe 8 pixels/cycle in H resizers
-    // pixel_offset is in unrolled loop, 128/256bit simd size does not affect.
-	filter_size_alignment = 1; // just info. nothing special, for C. resize_h_prepare_coeff_8or16 can override and realign the coefficients for SIMD processing
 	if (bits_per_pixel<32)
 		pixel_coefficient = (short*) _aligned_malloc(sizeof(short)*target_size*filter_size, 64);
 	else
 		pixel_coefficient_float = (float*) _aligned_malloc(sizeof(float)*target_size*filter_size, 64);
+
+    pixel_offset.resize(target_size);
+    kernel_sizes.resize(target_size);
 
     if (((bits_per_pixel<32) && (pixel_coefficient==nullptr)) || 
 		((bits_per_pixel==32) && (pixel_coefficient_float==nullptr)))
@@ -115,7 +168,15 @@ struct ResamplingProgram
 	  StatusOk = false;
       //env->ThrowError("ResamplingProgram: Could not reserve memory.");
     }
-	
+
+	// If AVS+, try to get L2 cache, otherwise set to 0.
+	if (env->FunctionExists("ConvertBits"))
+	{
+		try { cache_size_L2 = env->GetEnvProperty(AEP_CACHESIZE_L2); } catch (const AvisynthError&) { cache_size_L2=0; }
+	}
+    const int pixel_size_bytes = (bits_per_pixel + 7) / 8;
+    max_scanlines = resampler_h_detect_optimal_scanline(source_size, target_size, cache_size_L2, pixel_size_bytes);
+
 	// Set all values to 0
 	if (bits_per_pixel<32) memset(pixel_coefficient,0,sizeof(short)*target_size*filter_size);
 	else std::fill_n(pixel_coefficient_float, target_size*filter_size, 0.0f);
@@ -131,6 +192,7 @@ struct ResamplingProgram
 typedef struct ResamplingProgram ResamplingProgram;
 
 void resize_prepare_coeffs(ResamplingProgram* p, IScriptEnvironment* env, int filter_size_alignment);
+
 
 /*******************************************
    ***************************************

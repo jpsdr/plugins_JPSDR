@@ -41,7 +41,7 @@
 #include "./resample_functions.h"
 #include "./ThreadPoolInterface.h"
 
-#define RESAMPLE_MT_VERSION "ResampleMT 2.9.8 JPSDR"
+#define RESAMPLE_MT_VERSION "ResampleMT 2.10.0 JPSDR"
 
 
 #ifndef __CHROMALOCATION__
@@ -141,6 +141,7 @@ private:
   uint8_t plane_range[4];
   bool mode_YUY2;
   bool Enable_MMX,Enable_SSE2,Enable_SSE3,Enable_SSSE3,Enable_SSE4_1,Enable_AVX2;
+  bool Enable_AVX512_Base,Enable_AVX512_Fast;
 
   ResamplerH resampler_h_luma;
   ResamplerH resampler_h_chroma;
@@ -201,6 +202,7 @@ private:
   uint8_t plane_range[4];
   bool mode_YUY2;
   bool Enable_MMX,Enable_SSE2,Enable_SSE3,Enable_SSSE3,Enable_SSE4_1,Enable_AVX2;
+  bool Enable_AVX512_Base,Enable_AVX512_Fast;
 	
   ResamplingProgram *resampling_program_luma;
   ResamplingProgram *resampling_program_chroma;

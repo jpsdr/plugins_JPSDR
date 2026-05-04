@@ -403,6 +403,147 @@ double UserDefined2Filter::f(double x)
 }
 
 
+/*
+ * OPTIMAL SCANLINE CALCULATION NOTES (L2 CACHE BLOCKING)
+ *
+ * This function calculates the optimal vertical strip size (max_scanline)
+ * to be processed in a cache-blocked horizontal resizing operation.
+ *
+ * CONTEXT: Single-threaded, high-throughput workload with private L2 cache.
+ * The high FPS target justifies a more aggressive cache reservation factor.
+ *
+ * 1. COEFFICIENT TABLE EXCLUSION (Horizontal 2x resize of fullhd content):
+ * The coefficient table (~245 KB) is excluded from the calculation. It is
+ * treated as a streamed resource due to its size relative to L2 (512 KB).
+ * The hardware prefetcher is expected to handle its sequential access pattern
+ * efficiently without residing fully in the reserved L2 working set.
+ *
+ * 2. CACHE RESERVATION HEURISTIC:
+ * A factor of 0.75 (3/4) is reserved for the working set. This is an aggressive
+ * approach for a single-threaded task with a private L2 cache, minimizing
+ * cache thrashing risk from OS context switches while maximizing block size.
+ *
+ * 3. CONCRETE SCENARIO (512 KB L2, 1920->3840 upscale):
+ * Reserved L2 space: 512 KB * 0.75 = 384 KB (393,216 bytes).
+ * One scanline strip (src + tgt) is 23,040 bytes.
+ * The resulting max_scanline is 17 (393,216 / 23,040 ~ 17.06).
+ */
+int ResamplingProgram::resampler_h_detect_optimal_scanline(int src_width, int tgt_width, size_t l2_cache_size_bytes, size_t pixel_size)
+{
+  const double CACHE_RESERVE_FACTOR = 0.75;
+
+  // Calculate the bytes needed for one (Source + Destination) scanline strip
+  size_t scanline_bytes = (static_cast<size_t>(src_width) + static_cast<size_t>(tgt_width)) * pixel_size;
+
+  // Calculate the reserved bytes based on the aggressive factor
+  // Use floating point math for precision, then cast to size_t
+  size_t reserved_l2_bytes = static_cast<size_t>(
+    static_cast<double>(l2_cache_size_bytes) * CACHE_RESERVE_FACTOR
+    );
+
+  // Calculate max_scanline (integer division for floor)
+  int max_scanline = static_cast<int>(reserved_l2_bytes / scanline_bytes);
+
+  // Clamp to practical bounds (4 to 64 is typical range for strip size)
+  // Dynamic by sample_size. For float32 (size=4) was 4 min and 64 max, so for uint8_t size=1 it will be 4x times more.
+  // Heuristic limits to avoid too small or too large strip sizes.
+  int iMinLimit;
+  int iMaxLimit;
+
+  switch (pixel_size)
+  {
+	case 4: // float
+		iMinLimit = 4;
+		iMaxLimit = 64;
+		break;
+	case 2: // uint16_t
+		iMinLimit = 8;
+		iMaxLimit = 128;
+		break;
+	case 1: // uint8_t
+		iMinLimit = 16;
+		iMaxLimit = 256;
+		break;
+	default: // should never happen
+		iMinLimit = 4;
+		iMaxLimit = 64;
+		break;
+  }
+
+  max_scanline = std::min(std::max(max_scanline, iMinLimit), iMaxLimit);
+
+  return max_scanline;
+}
+
+/**
+ * @brief Checks if the data access pattern for horizontal resampling requires the slower Transpose method,
+ * or if the faster Permutex approach can be used.
+ *
+ * This function determines the feasibility of using vector instructions (like AVX2/AVX-512 Permutex)
+ * to load the source samples required for a group of output samples. This method is preferred when
+ * the total spread of necessary source samples is small.
+ *
+ * @note This check is performed for methods that process multiple output sample groups per loop pass
+ * (e.g., loading 2 groups of 8 samples for AVX-512).
+ *
+ * @param iSamplesInTheGroup       The number of output samples processed in one vector iteration (e.g., 8, 16, 64).
+ * (Usually referred to as PIXELS_AT_A_TIME).
+ * @param permutex_index_diff_limit The maximum byte/element difference allowed between the earliest and latest
+ * required source sample for Permutex to be viable. This limit is dictated
+ * by the specific Permutex intrinsic used (e.g., 8 for _mm256_permutevar8x32_ps).
+ * @param kernel_size              The size of the resampling filter kernel (number of coefficients).
+ * @return true                    If the source sample spread is too large, meaning only the Transpose method is allowed.
+ * @return false                   If the source sample spread is small enough, meaning the Permutex method can be used.
+ */
+bool ResamplingProgram::resize_h_planar_gather_permutex_vstripe_check(int iSamplesInTheGroup, int permutex_index_diff_limit, int kernel_size)
+{
+  // iSamplesInTheGroup is usually denoted as PIXELS_AT_A_TIME in H resampler code
+  // permutex_index_diff_limit is like iAccessibleSourceSamplesToGroup
+
+  // Alignment checks ensure safe access to pre-calculated arrays for the entire vector block.
+
+  // 'target_size_alignment' ensures safe access for the entire group (x to x + iSamplesInTheGroup - 1)
+  // Example: for iSamplesInTheGroup = 8, we need to ensure that
+  // - program->pixel_offset[x + 0] to program->pixel_offset[x + 7] and
+  // - corresponding coefficients (spread over coeff-strides like current_coeff + filter_size*0 to filter_size*7), where filter_size is the aligned coefficient stride.
+  // are valid if iSamplesInTheGroup = 8.
+  //assert(target_size_alignment >= iSamplesInTheGroup);
+
+  // Ensure that coefficient loading is safe for "kernel_size" element loads.
+  // But this is not true. For float pixel types, we can keep the alignment to 8, which can be less than kernel_size.
+  // It's because it depends on the filter's implementation. E.g. resize_h_planar_float_avx512_permutex_vstripe_ks16 has kernel_size=16.
+  // However, it uses gather loads from coeffs, which do not need to be aligned to kernel_size.
+  // uint8_t avx512 versions with ks16 do need 32 byte alignment, the 'short' coefficients stride is aligned to 32 bytes, that is 16 coeffs.
+  // So in this case, we need the alignment.
+  // The check cannot be generalized here, it is put in the specific resampler implementations if needed.
+  // assert(filter_size_alignment >= kernel_size);
+
+  for (int x = 0; x < target_size; x += iSamplesInTheGroup) // check each group
+  {
+    // Get the index of the first required source sample for this group.
+    int start_off = pixel_offset[x + 0];
+
+    // Get the index of the last required source sample. This is the offset for the last
+    // output pixel in the group (x + iSamplesInTheGroup - 1) plus the last kernel tap (kernel_size - 1).
+    // Note: pixel_offset[] values for x >= target_size are pre-padded to match target_size-1 (ensured by resize_prepare_coeffs()).
+    const int end_off = pixel_offset[x + (iSamplesInTheGroup - 1)] + (kernel_size - 1);
+
+    // Check the total spread (difference) in source sample indices.
+    // This difference must be less than the limit imposed by the Permutex intrinsic's addressing capability.
+    // Examples of permutex_index_diff_limit:
+    // - 8 for _mm256_permutevar8x32_ps (float, avx2)
+    // - 32 for _mm512_permutex2var_ps (float, avx512)
+    // - 64 for _mm512_permutex2var_epi16 (uint16_t, avx512)
+    // - 128 for _mm512_permutex2var_epi8 (uint8_t, avx512)
+    if ((end_off - start_off) >= permutex_index_diff_limit)
+	{
+      return true; // spread is too wide; only the transpose method is allowed.
+    }
+  }
+  return false; // Spread is acceptable; Permutex is OK.
+}
+
+
 // Prepares resampling coefficients for end conditions and/or SIMD processing by:
 // 1. Sets a "real-life" size for the filter, which at small dimensions can be less than the original
 // 2. Aligning filter_size to 8 or 16 boundary for SIMD efficiency
@@ -419,19 +560,50 @@ double UserDefined2Filter::f(double x)
 // This ensures SIMD instructions can safely load full vectors even at image boundaries
 // while maintaining correct coefficient positioning and proper zero padding.
 
+
+static void checkAndSetOverread(int end_pos, SafeLimit& safelimit, int start_pos, int i, int source_size)
+{
+  if (end_pos >= source_size)
+  {
+    if (!safelimit.overread_possible)
+	{
+      safelimit.overread_possible = true;
+      safelimit.source_overread_offset = start_pos;
+      safelimit.source_overread_beyond_targetx = i;
+    }
+  }
+}
+
+
 void resize_prepare_coeffs(ResamplingProgram* p, IScriptEnvironment* env, int filter_size_alignment)
 {
   p->filter_size_alignment = filter_size_alignment;
-  p->overread_possible = false;
+  p->safelimit_filter_size_aligned.overread_possible = false;
+  p->safelimit_4_pixels.overread_possible = false;
+  p->safelimit_8_pixels.overread_possible = false;
+  p->safelimit_16_pixels.overread_possible = false;
+  p->safelimit_32_pixels.overread_possible = false;
+  p->safelimit_8_pixels_each8th_target.overread_possible = false;
+  p->safelimit_16_pixels_each16th_target.overread_possible = false;
+  p->safelimit_64_pixels_each32th_target.overread_possible = false; // avx512 uint16_t 32 target pixels, handling 64 source pixels in permutex-based resizers
+  p->safelimit_128_pixels_each64th_target.overread_possible = false; // avx512 uint8_t 64 target pixels, handling 128 source pixels in permutex-based resizers
+  // FIXME: found out how to make it general safelimit_SOURCEREADPIXELS_pixels_each_TARGETPIXELSATATIME. Not here, in each frame proecssing for sure.
 
   // note: filter_size_real was the max(kernel_sizes[])
   int filter_size_aligned = AlignNumber(p->filter_size_real, p->filter_size_alignment);
+  // FIXME: really this needs to be dynamic based on SIMD used in resizer
 
   int target_size_aligned = AlignNumber(p->target_size, ALIGN_RESIZER_TARGET_SIZE);
 
+  // align target_size to X units to allow safe, up to X pixels/cycle in H resizers.
+  // also, this is the coeff table Y-size.
+  // e.g. ALIGN_RESIZER_TARGET_SIZE = 64 allows to access coefficient table elements at
+  // current_coeff + filter_size * 63, if we step current_coeff by 64 * filter_size
+  p->target_size_alignment = ALIGN_RESIZER_TARGET_SIZE;
+
   // Common variables for both float and integer paths
-  void* new_coeff = nullptr;
-  void* src_coeff = nullptr;
+  void *new_coeff = nullptr;
+  void *src_coeff = nullptr;
   size_t element_size = 0;
 
   // allocate for a larger target_size area and nullify the coeffs.
@@ -471,19 +643,26 @@ void resize_prepare_coeffs(ResamplingProgram* p, IScriptEnvironment* env, int fi
     const int last_coeff_index = offset + p->filter_size_real - 1;
     const int shift_needed = last_coeff_index > last_line ? p->filter_size_real - kernel_size : 0;
 
+    // In order to be able to read 'filter_size_real' number of coefficients safely at the
+    // image boundaries, we right-align the actual coefficients within the allocated filter
+    // size. This will require adjusting (shifting) the pixel offsets as well, and increasing
+    // the smaller kernel sizes, to reflect the new effective size: filter_size_real.
+
     // Copy coefficients with appropriate shift
     if (p->bits_per_pixel == 32)
 	{
-      float* dst = (float*)new_coeff + i * filter_size_aligned;
-      float* src = (float*)src_coeff + i * p->filter_size;
+      float *dst = (float*)new_coeff + i * filter_size_aligned;
+      float *src = (float*)src_coeff + i * p->filter_size;
+
       for (int j = 0; j < kernel_size; j++)
         dst[j + shift_needed] = src[j];
     }
     else
 	{
-      short* dst = (short*)new_coeff + i * filter_size_aligned;
-      short* src = (short*)src_coeff + i * p->filter_size;
-      for (int j = 0; j < kernel_size; j++)
+      short *dst = (short*)new_coeff + i * filter_size_aligned;
+      short *src = (short*)src_coeff + i * p->filter_size;
+      
+	  for (int j = 0; j < kernel_size; j++)
         dst[j + shift_needed] = src[j];
     }
 
@@ -500,41 +679,46 @@ void resize_prepare_coeffs(ResamplingProgram* p, IScriptEnvironment* env, int fi
     // we must protect against source scanline overread.
     // Using this not in only 32-bit float resizers is new in 3.7.4.
     const int start_pos = p->pixel_offset[i];
-    const int end_pos_aligned = start_pos + filter_size_aligned - 1;
     const int end_pos = start_pos + p->filter_size_real - 1;
-    if (end_pos >= p->source_size)
-	{
+    if (end_pos >= p->source_size) {
       // This issue has already been fixed, so it cannot occur.
     }
 
-    // Check for SIMD optimization limits
-    if (end_pos_aligned >= p->source_size)
-	{
-      if (!p->overread_possible)
-	  {
-        // Register the first occurrence, because we are entering the danger zone from here.
-        // Up to this point, template-based alignment-aware quick code can be used
-        // in H resizers. But beyond this point an e.g. _mm256_loadu_si256() would read into 
-        // invalid memory area at the end of the frame buffer.
-        p->overread_possible = true;
-        p->source_overread_offset = start_pos;
-        p->source_overread_beyond_targetx = i; 
+    // Check for SIMD optimization limits and record first danger positions.
+    // If reading N pixels starting from `start_pos` would reach past the end
+    // of the source (>= source_size), register that first occurrence for
+    // the corresponding SafeLimit entry so resizers can avoid unsafe wide loads.
+
+    checkAndSetOverread(start_pos + filter_size_aligned - 1, p->safelimit_filter_size_aligned, start_pos, i, p->source_size);
+    checkAndSetOverread(start_pos + 4 - 1, p->safelimit_4_pixels, start_pos, i, p->source_size);
+    checkAndSetOverread(start_pos + 8 - 1, p->safelimit_8_pixels, start_pos, i, p->source_size);
+    checkAndSetOverread(start_pos + 16 - 1, p->safelimit_16_pixels, start_pos, i, p->source_size);
+    checkAndSetOverread(start_pos + 32 - 1, p->safelimit_32_pixels, start_pos, i, p->source_size);
+    // for permutex-based AVX2 ks4 float H resizers, where we read 8 pixels at a time exactly from
+    // start_pos of each Nth pixel output block
+    if (i % 8 == 0)
+      checkAndSetOverread(start_pos + 8 - 1, p->safelimit_8_pixels_each8th_target, start_pos, i, p->source_size);
+    if (i % 16 == 0)
+      checkAndSetOverread(start_pos + 16 - 1, p->safelimit_16_pixels_each16th_target, start_pos, i, p->source_size);
+    if (i % 32 == 0) // avx512 uint16_t 32 target pixels, handling 64 source pixels
+      checkAndSetOverread(start_pos + 64 - 1, p->safelimit_64_pixels_each32th_target, start_pos, i, p->source_size);
+    if (i % 64 == 0) // avx512 uint8_t 64 target pixels, handling 128 source pixels
+      checkAndSetOverread(start_pos + 128 - 1, p->safelimit_128_pixels_each64th_target, start_pos, i, p->source_size);
+
       }
-    }
-  }
+
+  // from now on, kernel_sizes[] has no role, each is filter_size_real
+  p->kernel_sizes.clear();
 
   // Fill the extra offset after target_size with fake values.
-  // Our aim is to have a safe, up to 8 pixels/cycle simd loop for V resizers.
+  // Our aim is to have a safe, up to 8-32 pixels/cycle simd loop for V and specific H resizers.
   // Their coeffs will be 0, so they don't count if such coeffs
-  // are multiplied with invalid pixels.
-  if (p->target_size < target_size_aligned)
-  {
-    p->kernel_sizes.resize(target_size_aligned);
+  // are multiplied with invalid, though existing pixels.
+  if (p->target_size < target_size_aligned) {
     p->pixel_offset.resize(target_size_aligned);
-    for (int i = p->target_size; i < target_size_aligned; ++i)
-	{
-      p->kernel_sizes[i] = p->filter_size_real;
-      p->pixel_offset[i] = 0; // 0th pixel offset makes no harm
+    int last_offset = p->pixel_offset[p->target_size - 1];
+    for (int i = p->target_size; i < target_size_aligned; ++i) {
+      p->pixel_offset[i] = last_offset; // repeat last valid offset, helps permutex-based H resizers to stay within valid distances
     }
   }
 
