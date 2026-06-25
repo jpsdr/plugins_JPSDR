@@ -41,12 +41,12 @@
 
 #define JPSDR_RESTRICT __restrict
 
-#if _MSC_VER >= 1900
+// VS 2019
+#if (_MSC_VER >= 1922) || defined(__clang__)
   #define JPSDR_CONSTEXPR constexpr
 #else
   #define JPSDR_CONSTEXPR
 #endif
-
 
 // useful SIMD helpers
 

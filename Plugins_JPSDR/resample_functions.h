@@ -84,6 +84,8 @@ struct ResamplingProgram
   // Array of array of coefficient for each pixel
   // {{pixel[0]_coeff}, {pixel[1]_coeff}, ...}
   short *pixel_coefficient;
+  short* pixel_coefficient_AVX512_H;
+  float* pixel_coefficient_AVX512_float_H;
   float *pixel_coefficient_float;
   // Array of real kernel size, handles edge cases! <= filter_size
   // for SIMD, coefficients are copied over a padded aligned storage
@@ -110,12 +112,15 @@ struct ResamplingProgram
   SafeLimit safelimit_16_pixels;
   SafeLimit safelimit_32_pixels;
   SafeLimit safelimit_8_pixels_each8th_target;
+  SafeLimit safelimit_16_pixels_each8th_target;
   SafeLimit safelimit_16_pixels_each16th_target;
   SafeLimit safelimit_64_pixels_each32th_target;
   SafeLimit safelimit_128_pixels_each64th_target;
 
   int resampler_h_detect_optimal_scanline(int src_width, int tgt_width, size_t l2_cache_size_bytes, size_t pixel_size);
   bool resize_h_planar_gather_permutex_vstripe_check(int iSamplesInTheGroup, int permutex_index_diff_limit, int kernel_size);
+  void FreeData(void);
+
 
   ResamplingProgram(int filter_size, int source_size, int target_size, double crop_start, double crop_size, int bits_per_pixel, IScriptEnvironment* env)
     : Env(env), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size), filter_size(filter_size), filter_size_real(filter_size),
@@ -140,6 +145,7 @@ struct ResamplingProgram
 	safelimit_16_pixels = safelimit_filter_size_aligned;
 	safelimit_32_pixels = safelimit_filter_size_aligned;
 	safelimit_8_pixels_each8th_target = safelimit_filter_size_aligned;
+	safelimit_16_pixels_each8th_target = safelimit_filter_size_aligned;
 	safelimit_16_pixels_each16th_target = safelimit_filter_size_aligned;
 	safelimit_64_pixels_each32th_target = safelimit_filter_size_aligned;
 	safelimit_128_pixels_each64th_target = safelimit_filter_size_aligned;
@@ -151,6 +157,8 @@ struct ResamplingProgram
     // align target_size to 8 units to allow safe up to 8 pixels/cycle in H resizers. modded later.
     target_size_alignment = 1;
     // resize_prepare_coeff can override and realign the size of coefficient table
+    pixel_coefficient_AVX512_H = nullptr;
+    pixel_coefficient_AVX512_float_H = nullptr;
 
 	if (bits_per_pixel<32)
 		pixel_coefficient = (short*) _aligned_malloc(sizeof(short)*target_size*filter_size, 64);
@@ -184,8 +192,7 @@ struct ResamplingProgram
 
   ~ResamplingProgram()
   {
-	myalignedfree(pixel_coefficient_float);
-	myalignedfree(pixel_coefficient);
+	FreeData();
   };
 };
 
@@ -216,6 +223,11 @@ public:
 	double center_pos_src, double center_pos_dst, uint8_t accuracy, int SizeY, uint8_t ShiftC, int &SizeOut,IScriptEnvironment* env);
   virtual int GetDesamplingData(int source_size, double crop_start, double crop_size, int target_size, int bits_per_pixel,
   double center_pos_src, double center_pos_dst, uint8_t ShiftC, IScriptEnvironment* env);
+
+// VS 2013
+#if _MSC_VER >= 1800
+  virtual ~ResamplingFunction() = default;
+#endif
 };
 
 class PointFilter : public ResamplingFunction 

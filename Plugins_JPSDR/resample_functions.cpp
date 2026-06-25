@@ -403,6 +403,15 @@ double UserDefined2Filter::f(double x)
 }
 
 
+void ResamplingProgram::FreeData(void)
+{
+	myalignedfree(pixel_coefficient_float);
+	myalignedfree(pixel_coefficient);
+	myalignedfree(pixel_coefficient_AVX512_H);
+	myalignedfree(pixel_coefficient_AVX512_float_H);
+}
+
+
 /*
  * OPTIMAL SCANLINE CALCULATION NOTES (L2 CACHE BLOCKING)
  *

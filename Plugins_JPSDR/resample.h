@@ -41,7 +41,7 @@
 #include "./resample_functions.h"
 #include "./ThreadPoolInterface.h"
 
-#define RESAMPLE_MT_VERSION "ResampleMT 2.10.0 JPSDR"
+#define RESAMPLE_MT_VERSION "ResampleMT 2.11.0 JPSDR"
 
 
 #ifndef __CHROMALOCATION__
