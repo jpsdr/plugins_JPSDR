@@ -225,7 +225,7 @@ public:
   double center_pos_src, double center_pos_dst, uint8_t ShiftC, IScriptEnvironment* env);
 
 // VS 2013
-#if _MSC_VER >= 1800
+#if (_MSC_VER >= 1800) || defined(__clang__)
   virtual ~ResamplingFunction() = default;
 #endif
 };
