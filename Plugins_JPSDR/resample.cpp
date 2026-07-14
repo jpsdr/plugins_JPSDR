@@ -1502,7 +1502,7 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 						Winners: (Fast) resize_h_planar_uint8_avx512_permutex_vstripe_mpz_ks4_vnni
 								(Base) resize_h_planar_uint8_avx512_permutex_vstripe_ks4_base
 						*/
-						if (!resize_prepare_coeffs_AVX512_H(program,64/*iSamplesInTheGroup*/, 1/*iGroupsCount*/))
+						if (!resize_prepare_coeffs_AVX512_H(program,64/*iSamplesInTheGroup*/, 1/*iGroupsCount*/, 4/*fixed_kernel_size*/))
 						{
 							program->FreeData();
 							env->ThrowError("Error within resize_prepare_coeffs_AVX512_H");
@@ -1539,7 +1539,7 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 						Winners: (Fast) resize_h_planar_uint8_avx512_permutex_vstripe_mpz_ks8_vnni
 								(Base) resize_h_planar_uint8_avx512_permutex_vstripe_ks8_base
 						*/
-						if (!resize_prepare_coeffs_AVX512_H(program,64/*iSamplesInTheGroup*/, 1/*iGroupsCount*/))
+						if (!resize_prepare_coeffs_AVX512_H(program,64/*iSamplesInTheGroup*/, 1/*iGroupsCount*/, 8/*fixed_kernel_size*/))
 						{
 							program->FreeData();
 							env->ThrowError("Error within resize_prepare_coeffs_AVX512_H");
@@ -1550,7 +1550,7 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 					// slower ks8 but more downsample ratio for /2
 					if (!program->resize_h_planar_gather_permutex_vstripe_check(32/*iSamplesInTheGroup*/, 128/*permutex_index_diff_limit*/, 8/*kernel_size*/))
 					{
-						if (!resize_prepare_coeffs_AVX512_H(program,32/*iSamplesInTheGroup*/, 2/*iGroupsCount*/))
+						if (!resize_prepare_coeffs_AVX512_H(program,32/*iSamplesInTheGroup*/, 2/*iGroupsCount*/, 8/*fixed_kernel_size*/))
 						{
 							program->FreeData();
 							env->ThrowError("Error within resize_prepare_coeffs_AVX512_H");
@@ -1580,7 +1580,7 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 						Winners: (Fast) resize_h_planar_uint8_avx512_permutex_vstripe_mpz_ks16_vnni
 								(Base) resize_h_planar_uint8_avx512_permutex_vstripe_ks16_base
 						*/
-						if (!resize_prepare_coeffs_AVX512_H(program,32/*iSamplesInTheGroup*/, 1/*iGroupsCount*/))
+						if (!resize_prepare_coeffs_AVX512_H(program,32/*iSamplesInTheGroup*/, 1/*iGroupsCount*/, 16/*fixed_kernel_size*/))
 						{
 							program->FreeData();
 							env->ThrowError("Error within resize_prepare_coeffs_AVX512_H");
@@ -1591,7 +1591,7 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 				}
 				if (!program->resize_h_planar_gather_permutex_vstripe_check(32/*iSamplesInTheGroup*/, 128/*permutex_index_diff_limit*/, program->filter_size_real/*kernel_size*/))
 				{
-					if (!resize_prepare_coeffs_AVX512_H(program,32/*iSamplesInTheGroup*/, 2/*iGroupsCount*/))
+					if (!resize_prepare_coeffs_AVX512_H(program,32/*iSamplesInTheGroup*/, 2/*iGroupsCount*/, 0/*fixed_kernel_size: variable-loop kernel*/))
 					{
 						program->FreeData();
 						env->ThrowError("Error within resize_prepare_coeffs_AVX512_H");
@@ -1640,7 +1640,7 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 						Winners: (Both mp) (Fast) resize_h_planar_uint16_avx512_permutex_vstripe_mp_ks4_vnni
 											(Base) resize_h_planar_uint16_avx512_permutex_vstripe_mp_ks4_base
 						*/
-						if (!resize_prepare_coeffs_AVX512_H(program,64/*iSamplesInTheGroup*/, 1/*iGroupsCount*/))
+						if (!resize_prepare_coeffs_AVX512_H(program,64/*iSamplesInTheGroup*/, 1/*iGroupsCount*/, 4/*fixed_kernel_size*/))
 						{
 							program->FreeData();
 							env->ThrowError("Error within resize_prepare_coeffs_AVX512_H");
@@ -1671,7 +1671,7 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 						Winners: (Both mp) (Fast) resize_h_planar_uint16_avx512_permutex_vstripe_mp_ks8_vnni
 											(Base) resize_h_planar_uint16_avx512_permutex_vstripe_mp_ks8_base
 						*/
-						if (!resize_prepare_coeffs_AVX512_H(program,64/*iSamplesInTheGroup*/, 1/*iGroupsCount*/))
+						if (!resize_prepare_coeffs_AVX512_H(program,64/*iSamplesInTheGroup*/, 1/*iGroupsCount*/, 8/*fixed_kernel_size*/))
 						{
 							program->FreeData();
 							env->ThrowError("Error within resize_prepare_coeffs_AVX512_H");
@@ -1696,7 +1696,7 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 					// Case R: LanczosResize(int(width*0.5 + 0.5), height, taps=2) kernel size 8
 					if (!program->resize_h_planar_gather_permutex_vstripe_check(16/*iSamplesInTheGroup*/, 64/*permutex_index_diff_limit*/, 8/*kernel_size*/))
 					{
-						if (!resize_prepare_coeffs_AVX512_H(program,64/*iSamplesInTheGroup*/, 1/*iGroupsCount*/))
+						if (!resize_prepare_coeffs_AVX512_H(program,64/*iSamplesInTheGroup*/, 1/*iGroupsCount*/, 8/*fixed_kernel_size*/))
 						{
 							program->FreeData();
 							env->ThrowError("Error within resize_prepare_coeffs_AVX512_H");
@@ -1733,7 +1733,7 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 						Winners: (Both mp) (Fast) resize_h_planar_uint16_avx512_permutex_vstripe_mp_ks8_vnni
 											(Base) resize_h_planar_uint16_avx512_permutex_vstripe_mp_ks8_base
 						*/
-						if (!resize_prepare_coeffs_AVX512_H(program,32/*iSamplesInTheGroup*/, 1/*iGroupsCount*/))
+						if (!resize_prepare_coeffs_AVX512_H(program,32/*iSamplesInTheGroup*/, 1/*iGroupsCount*/, 16/*fixed_kernel_size*/))
 						{
 							program->FreeData();
 							env->ThrowError("Error within resize_prepare_coeffs_AVX512_H");
@@ -1760,7 +1760,7 @@ ResamplerH FilteredResizeH::GetResampler(bool aligned, ResamplingProgram* progra
 				// The function itself has no hard 48 limit; it loops over filter_size_real directly.
 				if (!program->resize_h_planar_gather_permutex_vstripe_check(16/*iSamplesInTheGroup*/, 64/*permutex_index_diff_limit*/, program->filter_size_real/*kernel_size*/))
 				{
-					if (!resize_prepare_coeffs_AVX512_H(program,64/*iSamplesInTheGroup*/, 1/*iGroupsCount*/))
+					if (!resize_prepare_coeffs_AVX512_H(program,64/*iSamplesInTheGroup*/, 1/*iGroupsCount*/, 0/*fixed_kernel_size: variable-loop kernel*/))
 					{
 						program->FreeData();
 						env->ThrowError("Error within resize_prepare_coeffs_AVX512_H");
@@ -4137,3 +4137,4 @@ AVSValue __cdecl FilteredResizeMT::Create_DeUserDefined2Resize(AVSValue args, vo
 	  args[Offset_Arg+5].AsInt(0),args[Offset_Arg+6].AsInt(1),true,args[Offset_Arg+7].AsInt(0),args[Offset_Arg+8].AsInt(0),args[Offset_Arg+9].AsInt(6),&args[6],&f,
 	  preserve_center,placement_name,forced_chroma_placement,env);
 }
+
