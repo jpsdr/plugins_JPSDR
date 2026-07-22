@@ -290,7 +290,7 @@ static void GetCenterShiftForResizers(double& center_pos_luma, double& center_po
  ***************************************/
 
 template<typename pixel_t>
-static void resize_v_planar_pointresize(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2)
+static void resize_v_planar_pointresize(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table,const uint8_t range,const bool mode_YUY2)
 {
   pixel_t *src0 = (pixel_t *)src8;
   pixel_t *dst0 = (pixel_t *)dst8;
@@ -307,7 +307,7 @@ static void resize_v_planar_pointresize(BYTE* dst8, const BYTE* src8, int dst_pi
 }
 
 
-static void resize_v_c_planar_u8(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2)
+static void resize_v_c_planar_u8(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table,const uint8_t range,const bool mode_YUY2)
 {
   const int filter_size = program->filter_size;
   const int kernel_size = program->filter_size_real;
@@ -412,7 +412,7 @@ static void resize_v_c_planar_u8(BYTE* dst8, const BYTE* src8, int dst_pitch, in
 
 
 template<bool lessthan16bit>
-static void resize_v_c_planar_u16(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2)
+static void resize_v_c_planar_u16(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table,const uint8_t range,const bool mode_YUY2)
 {
   const int filter_size = program->filter_size;
   const int kernel_size = program->filter_size_real;
@@ -505,7 +505,7 @@ static void resize_v_c_planar_u16(BYTE* dst8, const BYTE* src8, int dst_pitch, i
 }
 
 
-static void resize_v_c_planar_f(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2)
+static void resize_v_c_planar_f(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table,const uint8_t range,const bool mode_YUY2)
 {
   const int filter_size = program->filter_size;
   const int kernel_size = program->filter_size_real;
@@ -846,7 +846,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 	bool _avsp,bool preserve_center,ChromaLocation_e chroma_placement,ResamplingFunction* func,IScriptEnvironment* env )
   : GenericVideoFilter(_child),
   resampling_program_luma(nullptr), resampling_program_chroma(nullptr),
-  filter_storage_luma(nullptr), filter_storage_chroma(nullptr),threads(_threads),sleep(_sleep),
+  threads(_threads),sleep(_sleep),
   avsp(_avsp)
 {
   src_height = vi.height;
@@ -1099,9 +1099,9 @@ uint8_t FilteredResizeH::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 	}
 
 	int32_t _y_min,_dh;
-	int32_t src_dh_Y,src_dh_UV,dst_dh_Y,dst_dh_UV;
+	int32_t src_dh_Y,dst_dh_Y;
 	int32_t h_y;
-	uint8_t i,max_src=1,max_dst=1,max;
+	uint8_t max_src=1,max_dst=1,max;
 
 	dst_dh_Y=(dst_size_y+(uint32_t)max_threads-1)/(uint32_t)max_threads;
 	if (dst_dh_Y<16) dst_dh_Y=16;
@@ -1170,51 +1170,92 @@ uint8_t FilteredResizeH::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 		return(1);
 	}
 
-	src_dh_UV= (UV_h>0) ? src_dh_Y>>UV_h : src_dh_Y;
-	dst_dh_UV= (UV_h>0) ? dst_dh_Y>>UV_h : dst_dh_Y;
+	// Rebalance thread partitions to reduce the size difference
+	// between the last partition and the others.
+	int32_t tab_src_dh_Y[MAX_MT_THREADS],tab_dst_dh_Y[MAX_MT_THREADS];
+	int32_t tab_src_dh_UV[MAX_MT_THREADS],tab_dst_dh_UV[MAX_MT_THREADS];
+	int32_t current_dh;
+	uint8_t current_i;
+
+	for (uint8_t i=0; i<(max-1); i++)
+	{
+		tab_src_dh_Y[i]=src_dh_Y;
+		tab_dst_dh_Y[i]=dst_dh_Y;		
+	}
+	tab_src_dh_Y[max-1]=src_size_y-(max-1)*src_dh_Y;
+	tab_dst_dh_Y[max-1]=dst_size_y-(max-1)*dst_dh_Y;
+	
+	current_i=max-2;
+	current_dh=src_dh_Y;
+	while (tab_src_dh_Y[max-1]>(current_dh+4))
+	{
+		tab_src_dh_Y[max-1]-=4;
+		tab_src_dh_Y[current_i]+=4;
+		if (current_i==0)
+		{
+			current_i=max-2;
+			current_dh+=4;
+		}
+		else current_i--;
+	}
+	current_i=max-2;
+	current_dh=dst_dh_Y;
+	while (tab_dst_dh_Y[max-1]>(current_dh+4))
+	{
+		tab_dst_dh_Y[max-1]-=4;
+		tab_dst_dh_Y[current_i]+=4;
+		if (current_i==0)
+		{
+			current_i=max-2;
+			current_dh+=4;
+		}
+		else current_i--;
+	}
+
+	if (UV_h>0)
+	{
+		for (uint8_t i=0; i<max; i++)
+		{
+			tab_src_dh_UV[i]=tab_src_dh_Y[i]>>UV_h;
+			tab_dst_dh_UV[i]=tab_dst_dh_Y[i]>>UV_h;
+		}
+	}
+	else
+	{
+		for (uint8_t i=0; i<max; i++)
+		{
+			tab_src_dh_UV[i]=tab_src_dh_Y[i];
+			tab_dst_dh_UV[i]=tab_dst_dh_Y[i];
+		}
+	}
 
 	MT_Data[0].top=true;
 	MT_Data[0].bottom=false;
 	MT_Data[0].src_Y_h_min=0;
-	MT_Data[0].src_Y_h_max=src_dh_Y;
+	MT_Data[0].src_Y_h_max=tab_src_dh_Y[0];
 	MT_Data[0].dst_Y_h_min=0;
-	MT_Data[0].dst_Y_h_max=dst_dh_Y;
+	MT_Data[0].dst_Y_h_max=tab_dst_dh_Y[0];
 	MT_Data[0].src_UV_h_min=0;
-	MT_Data[0].src_UV_h_max=src_dh_UV;
+	MT_Data[0].src_UV_h_max=tab_src_dh_UV[0];
 	MT_Data[0].dst_UV_h_min=0;
-	MT_Data[0].dst_UV_h_max=dst_dh_UV;
-
-	i=1;
-	while (i<max)
+	MT_Data[0].dst_UV_h_max=tab_dst_dh_UV[0];
+	
+	for (uint8_t i=1; i<max; i++)
 	{
 		MT_Data[i].top=false;
 		MT_Data[i].bottom=false;
 		MT_Data[i].src_Y_h_min=MT_Data[i-1].src_Y_h_max;
-		MT_Data[i].src_Y_h_max=MT_Data[i].src_Y_h_min+src_dh_Y;
+		MT_Data[i].src_Y_h_max=MT_Data[i].src_Y_h_min+tab_src_dh_Y[i];
 		MT_Data[i].dst_Y_h_min=MT_Data[i-1].dst_Y_h_max;
-		MT_Data[i].dst_Y_h_max=MT_Data[i].dst_Y_h_min+dst_dh_Y;
+		MT_Data[i].dst_Y_h_max=MT_Data[i].dst_Y_h_min+tab_dst_dh_Y[i];
 		MT_Data[i].src_UV_h_min=MT_Data[i-1].src_UV_h_max;
-		MT_Data[i].src_UV_h_max=MT_Data[i].src_UV_h_min+src_dh_UV;
+		MT_Data[i].src_UV_h_max=MT_Data[i].src_UV_h_min+tab_src_dh_UV[i];
 		MT_Data[i].dst_UV_h_min=MT_Data[i-1].dst_UV_h_max;
-		MT_Data[i].dst_UV_h_max=MT_Data[i].dst_UV_h_min+dst_dh_UV;
-		i++;
+		MT_Data[i].dst_UV_h_max=MT_Data[i].dst_UV_h_min+tab_dst_dh_UV[i];	
 	}
-
 	MT_Data[max-1].bottom=true;
-	MT_Data[max-1].src_Y_h_max=src_size_y;
-	MT_Data[max-1].dst_Y_h_max=dst_size_y;
-	if (UV_h>0)
-	{
-		MT_Data[max-1].src_UV_h_max=src_size_y >> UV_h;
-		MT_Data[max-1].dst_UV_h_max=dst_size_y >> UV_h;
-	}
-	else
-	{
-		MT_Data[max-1].src_UV_h_max=src_size_y;
-		MT_Data[max-1].dst_UV_h_max=dst_size_y;
-	}
 
-	for (i=0; i<max; i++)
+	for (uint8_t i=0; i<max; i++)
 	{
 		MT_Data[i].src_Y_w=src_size_x;
 		MT_Data[i].dst_Y_w=dst_size_x;
@@ -1234,7 +1275,7 @@ uint8_t FilteredResizeH::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 }
 
 
-void FilteredResizeH::ResamplerLumaMT(MT_Data_Info_ResampleMT *MT_DataGF)
+void FilteredResizeH::ResamplerY_MT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
 	resampler_h_luma(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
 		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
@@ -1242,42 +1283,67 @@ void FilteredResizeH::ResamplerLumaMT(MT_Data_Info_ResampleMT *MT_DataGF)
 }
 
 
-void FilteredResizeH::ResamplerLumaMT2(MT_Data_Info_ResampleMT *MT_DataGF)
+void FilteredResizeH::ResamplerYUV_MT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	resampler_h_luma(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+	resampler_h_luma(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
 		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
+		bits_per_pixel,plane_range[0],mode_YUY2);
+	resampler_h_chroma(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+		MT_DataGF->resampling_program_chroma,MT_DataGF->dst_UV_w,MT_DataGF->dst_UV_h_max-MT_DataGF->dst_UV_h_min,
 		bits_per_pixel,plane_range[1],mode_YUY2);
-}
-
-
-void FilteredResizeH::ResamplerLumaMT3(MT_Data_Info_ResampleMT *MT_DataGF)
-{
-	resampler_h_luma(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
-		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
+	resampler_h_chroma(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+		MT_DataGF->resampling_program_chroma,MT_DataGF->dst_UV_w,MT_DataGF->dst_UV_h_max-MT_DataGF->dst_UV_h_min,
 		bits_per_pixel,plane_range[2],mode_YUY2);
 }
 
-void FilteredResizeH::ResamplerLumaMT4(MT_Data_Info_ResampleMT *MT_DataGF)
+
+void FilteredResizeH::ResamplerYUVA_MT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
+	resampler_h_luma(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
+		bits_per_pixel,plane_range[0],mode_YUY2);
+	resampler_h_chroma(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+		MT_DataGF->resampling_program_chroma,MT_DataGF->dst_UV_w,MT_DataGF->dst_UV_h_max-MT_DataGF->dst_UV_h_min,
+		bits_per_pixel,plane_range[1],mode_YUY2);
+	resampler_h_chroma(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+		MT_DataGF->resampling_program_chroma,MT_DataGF->dst_UV_w,MT_DataGF->dst_UV_h_max-MT_DataGF->dst_UV_h_min,
+		bits_per_pixel,plane_range[2],mode_YUY2);
 	resampler_h_luma(MT_DataGF->dst4,MT_DataGF->src4,MT_DataGF->dst_pitch4,MT_DataGF->src_pitch4,
 		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
 		bits_per_pixel,plane_range[3],mode_YUY2);
 }
 
-void FilteredResizeH::ResamplerUChromaMT(MT_Data_Info_ResampleMT *MT_DataGF)
+
+void FilteredResizeH::ResamplerRGB_MT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	resampler_h_chroma(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
-		MT_DataGF->resampling_program_chroma,MT_DataGF->dst_UV_w,MT_DataGF->dst_UV_h_max-MT_DataGF->dst_UV_h_min,
+	resampler_h_luma(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
+		bits_per_pixel,plane_range[0],mode_YUY2);
+	resampler_h_luma(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
 		bits_per_pixel,plane_range[1],mode_YUY2);
-}
-
-
-void FilteredResizeH::ResamplerVChromaMT(MT_Data_Info_ResampleMT *MT_DataGF)
-{
-	resampler_h_chroma(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
-		MT_DataGF->resampling_program_chroma,MT_DataGF->dst_UV_w,MT_DataGF->dst_UV_h_max-MT_DataGF->dst_UV_h_min,
+	resampler_h_luma(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
 		bits_per_pixel,plane_range[2],mode_YUY2);
 }
+
+
+void FilteredResizeH::ResamplerRGBA_MT(MT_Data_Info_ResampleMT *MT_DataGF)
+{
+	resampler_h_luma(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
+		bits_per_pixel,plane_range[0],mode_YUY2);
+	resampler_h_luma(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
+		bits_per_pixel,plane_range[1],mode_YUY2);
+	resampler_h_luma(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
+		bits_per_pixel,plane_range[2],mode_YUY2);
+	resampler_h_luma(MT_DataGF->dst4,MT_DataGF->src4,MT_DataGF->dst_pitch4,MT_DataGF->src_pitch4,
+		MT_DataGF->resampling_program_luma,MT_DataGF->dst_Y_w,MT_DataGF->dst_Y_h_max-MT_DataGF->dst_Y_h_min,
+		bits_per_pixel,plane_range[3],mode_YUY2);
+}
+
 
 
 void FilteredResizeH::StaticThreadpoolH(void *ptr)
@@ -1288,19 +1354,17 @@ void FilteredResizeH::StaticThreadpoolH(void *ptr)
 
 	switch(data->f_process)
 	{
-		case 1 : ptrClass->ResamplerLumaMT(MT_DataGF);
+		case 1 : ptrClass->ResamplerY_MT(MT_DataGF);
 			break;
-		case 2 : ptrClass->ResamplerUChromaMT(MT_DataGF);
+		case 2 : ptrClass->ResamplerYUV_MT(MT_DataGF);
 			break;
-		case 3 : ptrClass->ResamplerVChromaMT(MT_DataGF);
+		case 3 : ptrClass->ResamplerYUVA_MT(MT_DataGF);
 			break;
-		case 4 : ptrClass->ResamplerLumaMT2(MT_DataGF);
+		case 4 : ptrClass->ResamplerRGB_MT(MT_DataGF);
 			break;
-		case 5 : ptrClass->ResamplerLumaMT3(MT_DataGF);
+		case 5 : ptrClass->ResamplerRGBA_MT(MT_DataGF);
 			break;
-		case 6 : ptrClass->ResamplerLumaMT4(MT_DataGF);
-			break;		
-		default : ;
+		default : break;
 	}
 }
 
@@ -1365,49 +1429,27 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 		MT_DataGF[i].dst_pitch2=dst_pitch_2;
 		MT_DataGF[i].dst_pitch3=dst_pitch_3;
 		MT_DataGF[i].dst_pitch4=dst_pitch_4;
-		MT_DataGF[i].filter_storage_luma=filter_storage_luma;
 		MT_DataGF[i].resampling_program_luma=resampling_program_luma;
 		MT_DataGF[i].resampling_program_chroma=resampling_program_chroma;
-		MT_DataGF[i].filter_storage_chromaU=filter_storage_chroma;
-		MT_DataGF[i].filter_storage_chromaV=filter_storage_chroma;
+	}
+
+	uint8_t f_proc=1; // Default
+		
+	if (grey) f_proc=1;
+	else
+	{
+		if (vi.IsPlanar() && !isRGBPfamily) f_proc=(isAlphaChannel) ? 3:2;
+		else
+		{
+			if (isRGBPfamily) f_proc=(isAlphaChannel) ? 5:4;
+		}
 	}
 
 	if (threads_number>1)
 	{
 		for(uint8_t i=0; i<threads_number; i++)
-			MT_ThreadGF[i].f_process=1;
+			MT_ThreadGF[i].f_process=f_proc;
 		if (poolInterface->StartThreads(UserId,idxPool)) poolInterface->WaitThreadsEnd(UserId,idxPool);
-
-		if (!grey && vi.IsPlanar() && !isRGBPfamily)
-		{
-			for(uint8_t i=0; i<threads_number; i++)
-				MT_ThreadGF[i].f_process=2;
-			if (poolInterface->StartThreads(UserId,idxPool)) poolInterface->WaitThreadsEnd(UserId,idxPool);
-
-			for(uint8_t i=0; i<threads_number; i++)
-				MT_ThreadGF[i].f_process=3;
-			if (poolInterface->StartThreads(UserId,idxPool)) poolInterface->WaitThreadsEnd(UserId,idxPool);
-		}
-		else
-		{
-			if (isRGBPfamily)
-			{
-				for(uint8_t i=0; i<threads_number; i++)
-					MT_ThreadGF[i].f_process=4;
-				if (poolInterface->StartThreads(UserId,idxPool)) poolInterface->WaitThreadsEnd(UserId,idxPool);
-
-				for(uint8_t i=0; i<threads_number; i++)
-					MT_ThreadGF[i].f_process=5;
-				if (poolInterface->StartThreads(UserId,idxPool)) poolInterface->WaitThreadsEnd(UserId,idxPool);								
-			}
-		}
-
-		if (isAlphaChannel)
-		{
-			for(uint8_t i=0; i<threads_number; i++)
-				MT_ThreadGF[i].f_process=6;
-			if (poolInterface->StartThreads(UserId,idxPool)) poolInterface->WaitThreadsEnd(UserId,idxPool);												
-		}
 
 		for(uint8_t i=0; i<threads_number; i++)
 			MT_ThreadGF[i].f_process=0;
@@ -1417,27 +1459,20 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 	else
 	{
 		// Do resizing
-		ResamplerLumaMT(MT_DataGF);
-    
-		if (!grey && vi.IsPlanar() && !isRGBPfamily)
+		switch(f_proc)
 		{
-			// Plane U resizing   
-			ResamplerUChromaMT(MT_DataGF);
-			// Plane V resizing
-			ResamplerVChromaMT(MT_DataGF);
+			case 1 : ResamplerY_MT(MT_DataGF);
+				break;
+			case 2 : ResamplerYUV_MT(MT_DataGF);
+				break;
+			case 3 : ResamplerYUVA_MT(MT_DataGF);
+				break;
+			case 4 : ResamplerRGB_MT(MT_DataGF);
+				break;
+			case 5 : ResamplerRGBA_MT(MT_DataGF);
+				break;
+			default : break;
 		}
-		else
-		{
-			if (isRGBPfamily)
-			{
-				// Plane B resizing
-				ResamplerLumaMT2(MT_DataGF);
-				// Plane R resizing
-				ResamplerLumaMT3(MT_DataGF);
-			}
-		}
-		// Plane A resizing
-		if (isAlphaChannel) ResamplerLumaMT4(MT_DataGF);
 	}
 
   return dst;
@@ -1952,9 +1987,6 @@ void FilteredResizeH::FreeData(void)
 {
 	mydelete(resampling_program_luma);
 	mydelete(resampling_program_chroma);
-	
-  myalignedfree(filter_storage_luma);
-  myalignedfree(filter_storage_chroma);
 }
 
 FilteredResizeH::~FilteredResizeH(void)
@@ -1977,8 +2009,6 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
     resampling_program_luma(nullptr), resampling_program_chroma(nullptr),
     src_pitch_table_luma(nullptr), src_pitch_table_chromaU(nullptr), src_pitch_table_chromaV(nullptr),
     src_pitch_luma(-1), src_pitch_chromaU(-1), src_pitch_chromaV(-1),
-    filter_storage_luma_aligned(nullptr), filter_storage_luma_unaligned(nullptr),
-    filter_storage_chroma_aligned(nullptr), filter_storage_chroma_unaligned(nullptr),
 	sleep(_sleep),threads(_threads),avsp(_avsp)
 {
 	int16_t i;
@@ -2246,9 +2276,9 @@ uint8_t FilteredResizeV::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 	}
 
 	int32_t _y_min,_dh;
-	int32_t src_dh_Y,src_dh_UV,dst_dh_Y,dst_dh_UV;
+	int32_t src_dh_Y,dst_dh_Y;
 	int32_t h_y;
-	uint8_t i,max_src=1,max_dst=1,max;
+	uint8_t max_src=1,max_dst=1,max;
 
 	dst_dh_Y=(dst_size_y+(uint32_t)max_threads-1)/(uint32_t)max_threads;
 	if (dst_dh_Y<16) dst_dh_Y=16;
@@ -2319,51 +2349,93 @@ uint8_t FilteredResizeV::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 		return(1);
 	}
 
-	src_dh_UV= (UV_h>0) ? src_dh_Y>>UV_h : src_dh_Y;
-	dst_dh_UV= (UV_h>0) ? dst_dh_Y>>UV_h : dst_dh_Y;
+
+	// Rebalance thread partitions to reduce the size difference
+	// between the last partition and the others.
+	int32_t tab_src_dh_Y[MAX_MT_THREADS],tab_dst_dh_Y[MAX_MT_THREADS];
+	int32_t tab_src_dh_UV[MAX_MT_THREADS],tab_dst_dh_UV[MAX_MT_THREADS];
+	int32_t current_dh;
+	uint8_t current_i;
+
+	for (uint8_t i=0; i<(max-1); i++)
+	{
+		tab_src_dh_Y[i]=src_dh_Y;
+		tab_dst_dh_Y[i]=dst_dh_Y;		
+	}
+	tab_src_dh_Y[max-1]=src_size_y-(max-1)*src_dh_Y;
+	tab_dst_dh_Y[max-1]=dst_size_y-(max-1)*dst_dh_Y;
+	
+	current_i=max-2;
+	current_dh=src_dh_Y;
+	while (tab_src_dh_Y[max-1]>(current_dh+4))
+	{
+		tab_src_dh_Y[max-1]-=4;
+		tab_src_dh_Y[current_i]+=4;
+		if (current_i==0)
+		{
+			current_i=max-2;
+			current_dh+=4;
+		}
+		else current_i--;
+	}
+	current_i=max-2;
+	current_dh=dst_dh_Y;
+	while (tab_dst_dh_Y[max-1]>(current_dh+4))
+	{
+		tab_dst_dh_Y[max-1]-=4;
+		tab_dst_dh_Y[current_i]+=4;
+		if (current_i==0)
+		{
+			current_i=max-2;
+			current_dh+=4;
+		}
+		else current_i--;
+	}
+
+	if (UV_h>0)
+	{
+		for (uint8_t i=0; i<max; i++)
+		{
+			tab_src_dh_UV[i]=tab_src_dh_Y[i]>>UV_h;
+			tab_dst_dh_UV[i]=tab_dst_dh_Y[i]>>UV_h;
+		}
+	}
+	else
+	{
+		for (uint8_t i=0; i<max; i++)
+		{
+			tab_src_dh_UV[i]=tab_src_dh_Y[i];
+			tab_dst_dh_UV[i]=tab_dst_dh_Y[i];
+		}
+	}
 
 	MT_Data[0].top=true;
 	MT_Data[0].bottom=false;
 	MT_Data[0].src_Y_h_min=0;
-	MT_Data[0].src_Y_h_max=src_dh_Y;
+	MT_Data[0].src_Y_h_max=tab_src_dh_Y[0];
 	MT_Data[0].dst_Y_h_min=0;
-	MT_Data[0].dst_Y_h_max=dst_dh_Y;
+	MT_Data[0].dst_Y_h_max=tab_dst_dh_Y[0];
 	MT_Data[0].src_UV_h_min=0;
-	MT_Data[0].src_UV_h_max=src_dh_UV;
+	MT_Data[0].src_UV_h_max=tab_src_dh_UV[0];
 	MT_Data[0].dst_UV_h_min=0;
-	MT_Data[0].dst_UV_h_max=dst_dh_UV;
-
-	i=1;
-	while (i<max)
+	MT_Data[0].dst_UV_h_max=tab_dst_dh_UV[0];
+	
+	for (uint8_t i=1; i<max; i++)
 	{
 		MT_Data[i].top=false;
 		MT_Data[i].bottom=false;
 		MT_Data[i].src_Y_h_min=MT_Data[i-1].src_Y_h_max;
-		MT_Data[i].src_Y_h_max=MT_Data[i].src_Y_h_min+src_dh_Y;
+		MT_Data[i].src_Y_h_max=MT_Data[i].src_Y_h_min+tab_src_dh_Y[i];
 		MT_Data[i].dst_Y_h_min=MT_Data[i-1].dst_Y_h_max;
-		MT_Data[i].dst_Y_h_max=MT_Data[i].dst_Y_h_min+dst_dh_Y;
+		MT_Data[i].dst_Y_h_max=MT_Data[i].dst_Y_h_min+tab_dst_dh_Y[i];
 		MT_Data[i].src_UV_h_min=MT_Data[i-1].src_UV_h_max;
-		MT_Data[i].src_UV_h_max=MT_Data[i].src_UV_h_min+src_dh_UV;
+		MT_Data[i].src_UV_h_max=MT_Data[i].src_UV_h_min+tab_src_dh_UV[i];
 		MT_Data[i].dst_UV_h_min=MT_Data[i-1].dst_UV_h_max;
-		MT_Data[i].dst_UV_h_max=MT_Data[i].dst_UV_h_min+dst_dh_UV;
-		i++;
+		MT_Data[i].dst_UV_h_max=MT_Data[i].dst_UV_h_min+tab_dst_dh_UV[i];	
 	}
-
 	MT_Data[max-1].bottom=true;
-	MT_Data[max-1].src_Y_h_max=src_size_y;
-	MT_Data[max-1].dst_Y_h_max=dst_size_y;
-	if (UV_h>0)
-	{
-		MT_Data[max-1].src_UV_h_max=src_size_y >> UV_h;
-		MT_Data[max-1].dst_UV_h_max=dst_size_y >> UV_h;
-	}
-	else
-	{
-		MT_Data[max-1].src_UV_h_max=src_size_y;
-		MT_Data[max-1].dst_UV_h_max=dst_size_y;
-	}
 
-	for (i=0; i<max; i++)
+	for (uint8_t i=0; i<max; i++)
 	{
 		MT_Data[i].src_Y_w=src_size_x;
 		MT_Data[i].dst_Y_w=dst_size_x;
@@ -2383,98 +2455,148 @@ uint8_t FilteredResizeV::CreateMTData(uint8_t max_threads,int32_t src_size_x,int
 }
 
 
-void FilteredResizeV::ResamplerLumaAlignedMT(MT_Data_Info_ResampleMT *MT_DataGF)
+void FilteredResizeV::ResamplerY_MT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	resampler_luma_aligned(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
-		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
-		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma,plane_range[0],mode_YUY2);
+	if (MT_DataGF->aligned1)
+		resampler_luma_aligned(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[0],mode_YUY2);
+	else
+		resampler_luma_unaligned(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[0],mode_YUY2);
 }
 
 
-void FilteredResizeV::ResamplerLumaUnalignedMT(MT_Data_Info_ResampleMT *MT_DataGF)
+void FilteredResizeV::ResamplerYUV_MT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	resampler_luma_unaligned(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
-		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
-		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma,plane_range[0],mode_YUY2);
-}
-
-void FilteredResizeV::ResamplerLumaAlignedMT2(MT_Data_Info_ResampleMT *MT_DataGF)
-{
-	resampler_luma_aligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
-		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
-		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma2,plane_range[1],mode_YUY2);
-}
-
-
-void FilteredResizeV::ResamplerLumaUnalignedMT2(MT_Data_Info_ResampleMT *MT_DataGF)
-{
-	resampler_luma_unaligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
-		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
-		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma2,plane_range[1],mode_YUY2);
-}
-
-
-void FilteredResizeV::ResamplerLumaAlignedMT3(MT_Data_Info_ResampleMT *MT_DataGF)
-{
-	resampler_luma_aligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
-		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
-		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma3,plane_range[2],mode_YUY2);
-}
-
-
-void FilteredResizeV::ResamplerLumaUnalignedMT3(MT_Data_Info_ResampleMT *MT_DataGF)
-{
-	resampler_luma_unaligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
-		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
-		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma3,plane_range[2],mode_YUY2);
+	if (MT_DataGF->aligned1)
+		resampler_luma_aligned(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[0],mode_YUY2);
+	else
+		resampler_luma_unaligned(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[0],mode_YUY2);
+	if (MT_DataGF->aligned2)
+		resampler_chroma_aligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+			MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
+			MT_DataGF->src_pitch_table_chromaU,plane_range[1],mode_YUY2);
+	else
+		resampler_chroma_unaligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+			MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
+			MT_DataGF->src_pitch_table_chromaU,plane_range[1],mode_YUY2);
+	if (MT_DataGF->aligned3)
+		resampler_chroma_aligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+			MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
+			MT_DataGF->src_pitch_table_chromaV,plane_range[2],mode_YUY2);
+	else
+		resampler_chroma_unaligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+			MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
+			MT_DataGF->src_pitch_table_chromaV,plane_range[2],mode_YUY2);
 }
 
 
-void FilteredResizeV::ResamplerLumaAlignedMT4(MT_Data_Info_ResampleMT *MT_DataGF)
+void FilteredResizeV::ResamplerYUVA_MT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	resampler_luma_aligned(MT_DataGF->dst4,MT_DataGF->src4,MT_DataGF->dst_pitch4,MT_DataGF->src_pitch4,
-		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
-		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma4,plane_range[3],mode_YUY2);
+	if (MT_DataGF->aligned1)
+		resampler_luma_aligned(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[0],mode_YUY2);
+	else
+		resampler_luma_unaligned(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[0],mode_YUY2);
+	if (MT_DataGF->aligned2)
+		resampler_chroma_aligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+			MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
+			MT_DataGF->src_pitch_table_chromaU,plane_range[1],mode_YUY2);
+	else
+		resampler_chroma_unaligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+			MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
+			MT_DataGF->src_pitch_table_chromaU,plane_range[1],mode_YUY2);
+	if (MT_DataGF->aligned3)
+		resampler_chroma_aligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+			MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
+			MT_DataGF->src_pitch_table_chromaV,plane_range[2],mode_YUY2);
+	else
+		resampler_chroma_unaligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+			MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
+			MT_DataGF->src_pitch_table_chromaV,plane_range[2],mode_YUY2);
+	if (MT_DataGF->aligned4)
+		resampler_luma_aligned(MT_DataGF->dst4,MT_DataGF->src4,MT_DataGF->dst_pitch4,MT_DataGF->src_pitch4,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[3],mode_YUY2);
+	else
+		resampler_luma_unaligned(MT_DataGF->dst4,MT_DataGF->src4,MT_DataGF->dst_pitch4,MT_DataGF->src_pitch4,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[3],mode_YUY2);
 }
 
 
-void FilteredResizeV::ResamplerLumaUnalignedMT4(MT_Data_Info_ResampleMT *MT_DataGF)
+void FilteredResizeV::ResamplerRGB_MT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	resampler_luma_unaligned(MT_DataGF->dst4,MT_DataGF->src4,MT_DataGF->dst_pitch4,MT_DataGF->src_pitch4,
-		MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
-		MT_DataGF->src_pitch_table_luma,MT_DataGF->filter_storage_luma4,plane_range[3],mode_YUY2);
+	if (MT_DataGF->aligned1)
+		resampler_luma_aligned(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[0],mode_YUY2);
+	else
+		resampler_luma_unaligned(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[0],mode_YUY2);
+	if (MT_DataGF->aligned2)
+		resampler_luma_aligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[1],mode_YUY2);
+	else
+		resampler_luma_unaligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[1],mode_YUY2);
+	if (MT_DataGF->aligned3)
+		resampler_luma_aligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[2],mode_YUY2);
+	else
+		resampler_luma_unaligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[2],mode_YUY2);
 }
 
 
-void FilteredResizeV::ResamplerUChromaAlignedMT(MT_Data_Info_ResampleMT *MT_DataGF)
+void FilteredResizeV::ResamplerRGBA_MT(MT_Data_Info_ResampleMT *MT_DataGF)
 {
-	resampler_chroma_aligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
-		MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
-		MT_DataGF->src_pitch_table_chromaU,MT_DataGF->filter_storage_chromaU,plane_range[1],mode_YUY2);
-}
-
-
-void FilteredResizeV::ResamplerUChromaUnalignedMT(MT_Data_Info_ResampleMT *MT_DataGF)
-{
-	resampler_chroma_unaligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
-		MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
-		MT_DataGF->src_pitch_table_chromaU,MT_DataGF->filter_storage_chromaU,plane_range[1],mode_YUY2);
-}
-
-
-void FilteredResizeV::ResamplerVChromaAlignedMT(MT_Data_Info_ResampleMT *MT_DataGF)
-{
-	resampler_chroma_aligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
-		MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
-		MT_DataGF->src_pitch_table_chromaV,MT_DataGF->filter_storage_chromaV,plane_range[2],mode_YUY2);
-}
-
-
-void FilteredResizeV::ResamplerVChromaUnalignedMT(MT_Data_Info_ResampleMT *MT_DataGF)
-{
-	resampler_chroma_unaligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
-		MT_DataGF->resampling_program_chroma,MT_DataGF->src_UV_w,bits_per_pixel,MT_DataGF->dst_UV_h_min,MT_DataGF->dst_UV_h_max,
-		MT_DataGF->src_pitch_table_chromaV,MT_DataGF->filter_storage_chromaV,plane_range[2],mode_YUY2);
+	if (MT_DataGF->aligned1)
+		resampler_luma_aligned(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[0],mode_YUY2);
+	else
+		resampler_luma_unaligned(MT_DataGF->dst1,MT_DataGF->src1,MT_DataGF->dst_pitch1,MT_DataGF->src_pitch1,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[0],mode_YUY2);
+	if (MT_DataGF->aligned2)
+		resampler_luma_aligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[1],mode_YUY2);
+	else
+		resampler_luma_unaligned(MT_DataGF->dst2,MT_DataGF->src2,MT_DataGF->dst_pitch2,MT_DataGF->src_pitch2,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[1],mode_YUY2);
+	if (MT_DataGF->aligned3)
+		resampler_luma_aligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[2],mode_YUY2);
+	else
+		resampler_luma_unaligned(MT_DataGF->dst3,MT_DataGF->src3,MT_DataGF->dst_pitch3,MT_DataGF->src_pitch3,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[2],mode_YUY2);
+	if (MT_DataGF->aligned4)
+		resampler_luma_aligned(MT_DataGF->dst4,MT_DataGF->src4,MT_DataGF->dst_pitch4,MT_DataGF->src_pitch4,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[3],mode_YUY2);
+	else
+		resampler_luma_unaligned(MT_DataGF->dst4,MT_DataGF->src4,MT_DataGF->dst_pitch4,MT_DataGF->src_pitch4,
+			MT_DataGF->resampling_program_luma,MT_DataGF->src_Y_w,bits_per_pixel,MT_DataGF->dst_Y_h_min,MT_DataGF->dst_Y_h_max,
+			MT_DataGF->src_pitch_table_luma,plane_range[3],mode_YUY2);
 }
 
 
@@ -2486,31 +2608,17 @@ void FilteredResizeV::StaticThreadpoolV(void *ptr)
 	
 	switch(data->f_process)
 	{
-		case 1 : ptrClass->ResamplerLumaAlignedMT(MT_DataGF);
+		case 1 : ptrClass->ResamplerY_MT(MT_DataGF);
 			break;
-		case 2 : ptrClass->ResamplerLumaUnalignedMT(MT_DataGF);
+		case 2 : ptrClass->ResamplerYUV_MT(MT_DataGF);
 			break;
-		case 3 : ptrClass->ResamplerUChromaAlignedMT(MT_DataGF);
+		case 3 : ptrClass->ResamplerYUVA_MT(MT_DataGF);
 			break;
-		case 4 : ptrClass->ResamplerUChromaUnalignedMT(MT_DataGF);
+		case 4 : ptrClass->ResamplerRGB_MT(MT_DataGF);
 			break;
-		case 5 : ptrClass->ResamplerVChromaAlignedMT(MT_DataGF);
+		case 5 : ptrClass->ResamplerRGBA_MT(MT_DataGF);
 			break;
-		case 6 : ptrClass->ResamplerVChromaUnalignedMT(MT_DataGF);
-			break;
-		case 7 : ptrClass->ResamplerLumaAlignedMT2(MT_DataGF);
-			break;
-		case 8 : ptrClass->ResamplerLumaUnalignedMT2(MT_DataGF);
-			break;			
-		case 9 : ptrClass->ResamplerLumaAlignedMT3(MT_DataGF);
-			break;
-		case 10 : ptrClass->ResamplerLumaUnalignedMT3(MT_DataGF);
-			break;			
-		case 11 : ptrClass->ResamplerLumaAlignedMT4(MT_DataGF);
-			break;
-		case 12 : ptrClass->ResamplerLumaUnalignedMT4(MT_DataGF);
-			break;			
-		default : ;
+		default : break;
 	}
 }
 
@@ -2596,97 +2704,57 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 		MT_DataGF[i].dst_pitch2=dst_pitch_2;
 		MT_DataGF[i].dst_pitch3=dst_pitch_3;
 		MT_DataGF[i].dst_pitch4=dst_pitch_4;
-		if (IsPtrAligned(srcp_1, 16) && ((src_pitch_1 & 15) == 0))
-			MT_DataGF[i].filter_storage_luma=filter_storage_luma_aligned;
-		else
-			MT_DataGF[i].filter_storage_luma=filter_storage_luma_unaligned;
-		if (IsPtrAligned(srcp_4, 16) && ((src_pitch_4 & 15) == 0))
-			MT_DataGF[i].filter_storage_luma4=filter_storage_luma_aligned;
-		else
-			MT_DataGF[i].filter_storage_luma4=filter_storage_luma_unaligned;
+
+		if (
+			(!Enable_AVX2 && Enable_SSE2 && IsPtrAligned(srcp_1,16) && ((src_pitch_1 & 15) == 0)) ||
+			(!(Enable_AVX512_Base || Enable_AVX512_Fast) &&  Enable_AVX2 && IsPtrAligned(srcp_1,32) && ((src_pitch_1 & 31) == 0)) ||
+			((Enable_AVX512_Base || Enable_AVX512_Fast) && IsPtrAligned(srcp_1,64) && ((src_pitch_1 & 63) == 0))
+			) MT_DataGF[i].aligned1=true;
+		else MT_DataGF[i].aligned1=false;
+		if (
+			(!Enable_AVX2 && Enable_SSE2 && IsPtrAligned(srcp_2,16) && ((src_pitch_2 & 15) == 0)) ||
+			(!(Enable_AVX512_Base || Enable_AVX512_Fast) &&  Enable_AVX2 && IsPtrAligned(srcp_2,32) && ((src_pitch_2 & 31) == 0)) ||
+			((Enable_AVX512_Base || Enable_AVX512_Fast) && IsPtrAligned(srcp_2,64) && ((src_pitch_2 & 63) == 0))
+			) MT_DataGF[i].aligned2=true;
+		else MT_DataGF[i].aligned2=false;
+		if (
+			(!Enable_AVX2 && Enable_SSE2 && IsPtrAligned(srcp_3,16) && ((src_pitch_3 & 15) == 0)) ||
+			(!(Enable_AVX512_Base || Enable_AVX512_Fast) &&  Enable_AVX2 && IsPtrAligned(srcp_3,32) && ((src_pitch_3 & 31) == 0)) ||
+			((Enable_AVX512_Base || Enable_AVX512_Fast) && IsPtrAligned(srcp_3,64) && ((src_pitch_3 & 63) == 0))
+			) MT_DataGF[i].aligned3=true;
+		else MT_DataGF[i].aligned3=false;
+		if (
+			(!Enable_AVX2 && Enable_SSE2 && IsPtrAligned(srcp_4,16) && ((src_pitch_4 & 15) == 0)) ||
+			(!(Enable_AVX512_Base || Enable_AVX512_Fast) &&  Enable_AVX2 && IsPtrAligned(srcp_4,32) && ((src_pitch_4 & 31) == 0)) ||
+			((Enable_AVX512_Base || Enable_AVX512_Fast) && IsPtrAligned(srcp_4,64) && ((src_pitch_4 & 63) == 0))
+			) MT_DataGF[i].aligned4=true;
+		else MT_DataGF[i].aligned4=false;
+		
 		MT_DataGF[i].src_pitch_table_luma=src_pitch_table_luma;
 		MT_DataGF[i].src_pitch_table_chromaU=src_pitch_table_chromaU;
 		MT_DataGF[i].src_pitch_table_chromaV=src_pitch_table_chromaV;
 		MT_DataGF[i].resampling_program_luma=resampling_program_luma;
 		MT_DataGF[i].resampling_program_chroma=resampling_program_chroma;
-		if (IsPtrAligned(srcp_2, 16) && ((src_pitch_2 & 15) == 0))
-		{
-			MT_DataGF[i].filter_storage_chromaU=filter_storage_chroma_aligned;
-			MT_DataGF[i].filter_storage_luma2=filter_storage_luma_aligned;
-		}
+	}
+
+
+	uint8_t f_proc=1; // Default
+		
+	if (grey) f_proc=1;
+	else
+	{
+		if (vi.IsPlanar() && !isRGBPfamily) f_proc=(isAlphaChannel) ? 3:2;
 		else
 		{
-			MT_DataGF[i].filter_storage_chromaU=filter_storage_chroma_unaligned;
-			MT_DataGF[i].filter_storage_luma2=filter_storage_luma_unaligned;
-		}
-		if (IsPtrAligned(srcp_3, 16) && ((src_pitch_3 & 15) == 0))
-		{
-			MT_DataGF[i].filter_storage_chromaV=filter_storage_chroma_aligned;
-			MT_DataGF[i].filter_storage_luma3=filter_storage_luma_aligned;
-		}
-		else
-		{
-			MT_DataGF[i].filter_storage_chromaV=filter_storage_chroma_unaligned;
-			MT_DataGF[i].filter_storage_luma3=filter_storage_luma_unaligned;
+			if (isRGBPfamily) f_proc=(isAlphaChannel) ? 5:4;
 		}
 	}
 
 	if (threads_number>1)
 	{
-		uint8_t f_proc;
-
-		if (IsPtrAligned(srcp_1, 16) && ((src_pitch_1 & 15) == 0)) f_proc=1;
-		else f_proc=2;
-
 		for(uint8_t i=0; i<threads_number; i++)
 			MT_ThreadGF[i].f_process=f_proc;
 		if (poolInterface->StartThreads(UserId,idxPool)) poolInterface->WaitThreadsEnd(UserId,idxPool);
-
-		if (!grey && vi.IsPlanar() && !isRGBPfamily)
-		{
-			if (IsPtrAligned(srcp_2, 16) && ((src_pitch_2 & 15) == 0)) f_proc=3;
-			else f_proc=4;
-
-			for(uint8_t i=0; i<threads_number; i++)
-				MT_ThreadGF[i].f_process=f_proc;
-			if (poolInterface->StartThreads(UserId,idxPool)) poolInterface->WaitThreadsEnd(UserId,idxPool);
-
-			if (IsPtrAligned(srcp_3, 16) && ((src_pitch_3 & 15) == 0)) f_proc=5;
-			else f_proc=6;
-
-			for(uint8_t i=0; i<threads_number; i++)
-				MT_ThreadGF[i].f_process=f_proc;
-			if (poolInterface->StartThreads(UserId,idxPool)) poolInterface->WaitThreadsEnd(UserId,idxPool);
-		}
-		else
-		{
-			if (isRGBPfamily)
-			{
-				if (IsPtrAligned(srcp_2, 16) && ((src_pitch_2 & 15) == 0)) f_proc=7;
-				else f_proc=8;
-
-				for(uint8_t i=0; i<threads_number; i++)
-					MT_ThreadGF[i].f_process=f_proc;
-				if (poolInterface->StartThreads(UserId,idxPool)) poolInterface->WaitThreadsEnd(UserId,idxPool);
-
-				if (IsPtrAligned(srcp_3, 16) && ((src_pitch_3 & 15) == 0)) f_proc=9;
-				else f_proc=10;
-
-				for(uint8_t i=0; i<threads_number; i++)
-					MT_ThreadGF[i].f_process=f_proc;
-				if (poolInterface->StartThreads(UserId,idxPool)) poolInterface->WaitThreadsEnd(UserId,idxPool);							
-			}
-		}
-		
-		if (isAlphaChannel)
-		{
-			if (IsPtrAligned(srcp_4, 16) && ((src_pitch_4 & 15) == 0)) f_proc=11;
-			else f_proc=12;
-
-			for(uint8_t i=0; i<threads_number; i++)
-				MT_ThreadGF[i].f_process=f_proc;
-			if (poolInterface->StartThreads(UserId,idxPool)) poolInterface->WaitThreadsEnd(UserId,idxPool);			
-		}
 
 		for(uint8_t i=0; i<threads_number; i++)
 			MT_ThreadGF[i].f_process=0;
@@ -2696,47 +2764,19 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 	else
 	{
 		// Do resizing
-		if (IsPtrAligned(srcp_1, 16) && ((src_pitch_1 & 15) == 0))
-			ResamplerLumaAlignedMT(MT_DataGF);
-		else
-			ResamplerLumaUnalignedMT(MT_DataGF);
-    
-		if (!grey && vi.IsPlanar() && !isRGBPfamily)
+		switch(f_proc)
 		{
-			// Plane U resizing   
-			if (IsPtrAligned(srcp_2, 16) && ((src_pitch_2 & 15) == 0))
-				ResamplerUChromaAlignedMT(MT_DataGF);
-			else
-				ResamplerUChromaUnalignedMT(MT_DataGF);
-
-			// Plane V resizing
-			if (IsPtrAligned(srcp_3, 16) && ((src_pitch_3 & 15) == 0))
-				ResamplerVChromaAlignedMT(MT_DataGF);
-			else
-				ResamplerVChromaUnalignedMT(MT_DataGF);
-		}
-		else
-		{
-			if (isRGBPfamily)
-			{
-				if (IsPtrAligned(srcp_2, 16) && ((src_pitch_2 & 15) == 0))
-					ResamplerLumaAlignedMT2(MT_DataGF);
-				else
-					ResamplerLumaUnalignedMT2(MT_DataGF);		
-				
-				if (IsPtrAligned(srcp_3, 16) && ((src_pitch_3 & 15) == 0))
-					ResamplerLumaAlignedMT3(MT_DataGF);
-				else
-					ResamplerLumaUnalignedMT3(MT_DataGF);								
-			}			
-		}
-		
-		if (isAlphaChannel)
-		{
-			if (IsPtrAligned(srcp_4, 16) && ((src_pitch_4 & 15) == 0))
-				ResamplerLumaAlignedMT4(MT_DataGF);
-			else
-				ResamplerLumaUnalignedMT4(MT_DataGF);	
+			case 1 : ResamplerY_MT(MT_DataGF);
+				break;
+			case 2 : ResamplerYUV_MT(MT_DataGF);
+				break;
+			case 3 : ResamplerYUVA_MT(MT_DataGF);
+				break;
+			case 4 : ResamplerRGB_MT(MT_DataGF);
+				break;
+			case 5 : ResamplerRGBA_MT(MT_DataGF);
+				break;
+			default : break;
 		}
 	}
 
@@ -2857,11 +2897,6 @@ void FilteredResizeV::FreeData(void)
 	myalignedfree(src_pitch_table_luma);
 	myalignedfree(src_pitch_table_chromaU);
 	myalignedfree(src_pitch_table_chromaV);
-
-  myalignedfree(filter_storage_luma_aligned);
-  myalignedfree(filter_storage_luma_unaligned);
-  myalignedfree(filter_storage_chroma_aligned);
-  myalignedfree(filter_storage_chroma_unaligned);
 }
 
 
@@ -4137,4 +4172,3 @@ AVSValue __cdecl FilteredResizeMT::Create_DeUserDefined2Resize(AVSValue args, vo
 	  args[Offset_Arg+5].AsInt(0),args[Offset_Arg+6].AsInt(1),true,args[Offset_Arg+7].AsInt(0),args[Offset_Arg+8].AsInt(0),args[Offset_Arg+9].AsInt(6),&args[6],&f,
 	  preserve_center,placement_name,forced_chroma_placement,env);
 }
-

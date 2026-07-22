@@ -2370,10 +2370,9 @@ void resize_h_planar_float_avx512_permutex_vstripe_4s4_ks16(BYTE* dst8, const BY
 #if defined(__clang__)
 __attribute__((__target__("avx512f,avx512cd,avx512bw,avx512dq,avx512vl,avx512vnni,avx512vbmi,avx512vbmi2,avx512bitalg,avx512vpopcntdq")))
 #endif
-void resize_v_avx512_planar_float(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2)
+void resize_v_avx512_planar_float(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2)
 {
   AVS_UNUSED(bits_per_pixel);
-  AVS_UNUSED(storage);
   AVS_UNUSED(range);
   AVS_UNUSED(mode_YUY2);
 
@@ -2442,10 +2441,9 @@ void resize_v_avx512_planar_float(BYTE* dst8, const BYTE* src8, int dst_pitch, i
 #if defined(__clang__)
 __attribute__((__target__("avx512f,avx512cd,avx512bw,avx512dq,avx512vl,avx512vnni,avx512vbmi,avx512vbmi2,avx512bitalg,avx512vpopcntdq")))
 #endif
-void resize_v_avx512_planar_float_w_sr(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2)
+void resize_v_avx512_planar_float_w_sr(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2)
 {
   AVS_UNUSED(bits_per_pixel);
-  AVS_UNUSED(storage);
   AVS_UNUSED(range);
   AVS_UNUSED(mode_YUY2);
 
@@ -2641,11 +2639,10 @@ void resize_v_avx512_planar_float_w_sr(BYTE* dst8, const BYTE* src8, int dst_pit
 #if defined(__clang__)
 __attribute__((__target__("avx512f,avx512cd,avx512bw,avx512dq,avx512vl,avx512vnni,avx512vbmi,avx512vbmi2,avx512bitalg,avx512vpopcntdq")))
 #endif
-void resize_v_avx512_planar_uint8_t_w_sr(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2)
+void resize_v_avx512_planar_uint8_t_w_sr(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2)
 {
   AVS_UNUSED(bits_per_pixel);
-  AVS_UNUSED(storage);
-
+  
   int filter_size = program->filter_size;
   const short* __restrict current_coeff = program->pixel_coefficient + filter_size*MinY;
   __m512i rounder = _mm512_set1_epi32(1 << (FPScale8bits - 1));
@@ -2828,9 +2825,8 @@ template<bool lessthan16bit>
 #if defined(__clang__)
 __attribute__((__target__("avx512f,avx512cd,avx512bw,avx512dq,avx512vl,avx512vnni,avx512vbmi,avx512vbmi2,avx512bitalg,avx512vpopcntdq")))
 #endif
-void resize_v_avx512_planar_uint16_t_w_sr(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2)
+void resize_v_avx512_planar_uint16_t_w_sr(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2)
 {
-  AVS_UNUSED(storage);
   AVS_UNUSED(mode_YUY2);
 
   int filter_size = program->filter_size;
@@ -2987,9 +2983,9 @@ void resize_v_avx512_planar_uint16_t_w_sr(BYTE* dst8, const BYTE* src8, int dst_
 }
 
 // avx512 16
-template void resize_v_avx512_planar_uint16_t_w_sr<false>(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2);
+template void resize_v_avx512_planar_uint16_t_w_sr<false>(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2);
 // avx512 10-14bit
-template void resize_v_avx512_planar_uint16_t_w_sr<true>(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2);
+template void resize_v_avx512_planar_uint16_t_w_sr<true>(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2);
 
 //----------------------- generic horizontal avx512 float
 

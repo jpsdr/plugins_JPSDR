@@ -41,7 +41,7 @@
 #include "./resample_functions.h"
 #include "./ThreadPoolInterface.h"
 
-#define RESAMPLE_MT_VERSION "ResampleMT 2.11.1 JPSDR"
+#define RESAMPLE_MT_VERSION "ResampleMT 2.12.0 JPSDR"
 
 
 #ifndef __CHROMALOCATION__
@@ -60,13 +60,13 @@ typedef enum _ChromaLocation_e
 #endif
 
 // Resizer function pointer
-typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage,const uint8_t range,const bool mode_YUY2);
-typedef void (*ResamplerH)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, int bits_per_pixel,const uint8_t range,const bool mode_YUY2);
+typedef void (*ResamplerV)(BYTE *dst, const BYTE *src, int dst_pitch, int src_pitch, ResamplingProgram *program, int width, int bits_per_pixel, int MinY, int MaxY, const int *pitch_table, const uint8_t range, const bool mode_YUY2);
+typedef void (*ResamplerH)(BYTE *dst, const BYTE *src, int dst_pitch, int src_pitch, ResamplingProgram *program, int width, int target_height, int bits_per_pixel, const uint8_t range, const bool mode_YUY2);
 
 
 typedef struct _MT_Data_Info_ResampleMT
 {
-	const BYTE*src1,*src2,*src3,*src4;
+	const BYTE *src1,*src2,*src3,*src4;
 	BYTE *dst1,*dst2,*dst3,*dst4;
 	int src_pitch1,src_pitch2,src_pitch3,src_pitch4;
 	int dst_pitch1,dst_pitch2,dst_pitch3,dst_pitch4;
@@ -74,8 +74,7 @@ typedef struct _MT_Data_Info_ResampleMT
 	int32_t src_UV_h_min,src_UV_h_max,src_UV_w;
 	int32_t dst_Y_h_min,dst_Y_h_max,dst_Y_w;
 	int32_t dst_UV_h_min,dst_UV_h_max,dst_UV_w;
-	void *filter_storage_luma,*filter_storage_luma2,*filter_storage_luma3,*filter_storage_luma4;
-	void *filter_storage_chromaU,*filter_storage_chromaV;
+	bool aligned1,aligned2,aligned3,aligned4;
 	int *src_pitch_table_luma,*src_pitch_table_chromaU,*src_pitch_table_chromaV;
 	ResamplingProgram *resampling_program_luma,*resampling_program_chroma;
 	bool top,bottom;
@@ -117,22 +116,15 @@ private:
 
 	void FreeData(void);
 
-	void ResamplerLumaMT(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerLumaMT2(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerLumaMT3(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerLumaMT4(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerUChromaMT(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerVChromaMT(MT_Data_Info_ResampleMT *MT_DataGF);
-	
+	void ResamplerY_MT(MT_Data_Info_ResampleMT *MT_DataGF);
+	void ResamplerYUV_MT(MT_Data_Info_ResampleMT *MT_DataGF);
+	void ResamplerYUVA_MT(MT_Data_Info_ResampleMT *MT_DataGF);
+	void ResamplerRGB_MT(MT_Data_Info_ResampleMT *MT_DataGF);
+	void ResamplerRGBA_MT(MT_Data_Info_ResampleMT *MT_DataGF);
 
   // Resampling
   ResamplingProgram *resampling_program_luma;
   ResamplingProgram *resampling_program_chroma;
-
-  // Note: these pointer are currently not used; they are used to pass data into run-time resampler.
-  // They are kept because this may be needed later (like when we implemented actual horizontal resizer.)
-  void* filter_storage_luma;
-  void* filter_storage_chroma;
 
   int src_width, src_height, dst_width, dst_height;
   bool grey,avsp,isRGBPfamily,isAlphaChannel,has_at_least_v8;
@@ -155,7 +147,7 @@ private:
 class FilteredResizeV : public GenericVideoFilter
 {
 public:
-  FilteredResizeV( PClip _child, double subrange_top, double subrange_height, int target_height, uint8_t _threads,
+  FilteredResizeV(PClip _child, double subrange_top, double subrange_height, int target_height, uint8_t _threads,
 	  bool _sleep,int range_mode,bool desample,int accuracy,int ChromaS,uint8_t ShiftC,bool negativePrefetch,
 	  bool _avsp,bool preserve_center,ChromaLocation_e chroma_placement,
 	  bool ResizeH,ResamplingFunction* func,IScriptEnvironment* env);
@@ -183,18 +175,11 @@ private:
 
 	void FreeData(void);
 
-	void ResamplerLumaAlignedMT(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerLumaUnalignedMT(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerLumaAlignedMT2(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerLumaUnalignedMT2(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerLumaAlignedMT3(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerLumaUnalignedMT3(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerLumaAlignedMT4(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerLumaUnalignedMT4(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerUChromaAlignedMT(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerUChromaUnalignedMT(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerVChromaAlignedMT(MT_Data_Info_ResampleMT *MT_DataGF);
-	void ResamplerVChromaUnalignedMT(MT_Data_Info_ResampleMT *MT_DataGF);
+	void ResamplerY_MT(MT_Data_Info_ResampleMT *MT_DataGF);
+	void ResamplerYUV_MT(MT_Data_Info_ResampleMT *MT_DataGF);
+	void ResamplerYUVA_MT(MT_Data_Info_ResampleMT *MT_DataGF);
+	void ResamplerRGB_MT(MT_Data_Info_ResampleMT *MT_DataGF);
+	void ResamplerRGBA_MT(MT_Data_Info_ResampleMT *MT_DataGF);
 
   bool grey,avsp,isRGBPfamily,isAlphaChannel,has_at_least_v8;
   uint8_t pixelsize; // AVS16
@@ -212,13 +197,6 @@ private:
   int src_pitch_luma;
   int src_pitch_chromaU;
   int src_pitch_chromaV;
-
-  // Note: these pointer are currently not used; they are used to pass data into run-time resampler.
-  // They are kept because this may be needed later (like when we implemented actual horizontal resizer.)
-  void* filter_storage_luma_aligned;
-  void* filter_storage_luma_unaligned;
-  void* filter_storage_chroma_aligned;
-  void* filter_storage_chroma_unaligned;
 
   ResamplerV resampler_luma_aligned;
   ResamplerV resampler_luma_unaligned;

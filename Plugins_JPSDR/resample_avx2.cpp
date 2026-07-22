@@ -745,10 +745,9 @@ void resizer_h_avx2_generic_float(BYTE* dst8, const BYTE* src8, int dst_pitch, i
 // On 32-bit fewer YMM registers are available, 2x16 kernel causes register pressure issues.
 // 10% performance loss on x86-32 with 2x16 kernel.
 
-static void resize_v_avx2_planar_uint8_pix16(BYTE* __restrict dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2)
+static void resize_v_avx2_planar_uint8_pix16(BYTE* __restrict dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2)
 {
 	AVS_UNUSED(bits_per_pixel);
-	AVS_UNUSED(storage);
 
 	int filter_size = program->filter_size;
 	const short* __restrict current_coeff = program->pixel_coefficient + filter_size*MinY;
@@ -834,10 +833,9 @@ static void resize_v_avx2_planar_uint8_pix16(BYTE* __restrict dst8, const BYTE* 
 	}
 }
 
-static void resize_v_avx2_planar_uint8_pix32(BYTE* __restrict dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2)
+static void resize_v_avx2_planar_uint8_pix32(BYTE* __restrict dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2)
 {
 	AVS_UNUSED(bits_per_pixel);
-	AVS_UNUSED(storage);
 
     int filter_size = program->filter_size;
     const short* __restrict current_coeff = program->pixel_coefficient + filter_size*MinY;
@@ -970,24 +968,24 @@ static void resize_v_avx2_planar_uint8_pix32(BYTE* __restrict dst8, const BYTE* 
 
 #if defined(X86_64)
 static void resize_v_avx2_planar_impl(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel,
-	int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2)
+	int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2)
 {
-  resize_v_avx2_planar_uint8_pix32(dst8, src8, dst_pitch, src_pitch, program, width, bits_per_pixel, MinY, MaxY, pitch_table, storage, range, mode_YUY2);
+  resize_v_avx2_planar_uint8_pix32(dst8, src8, dst_pitch, src_pitch, program, width, bits_per_pixel, MinY, MaxY, pitch_table, range, mode_YUY2);
 }
 #elif defined(X86_32)
 static void resize_v_avx2_planar_impl(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel,
-	int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2)
+	int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2)
 {
-  resize_v_avx2_planar_uint8_pix16(dst8, src8, dst_pitch, src_pitch, program, width, bits_per_pixel, MinY, MaxY, pitch_table, storage, range, mode_YUY2);
+  resize_v_avx2_planar_uint8_pix16(dst8, src8, dst_pitch, src_pitch, program, width, bits_per_pixel, MinY, MaxY, pitch_table, range, mode_YUY2);
 }
 #else
 #error Unsupported target for resize_v_avx2_planar_uint8_t
 #endif
 
 void resize_v_avx2_planar_uint8_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel,
-	int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2)
+	int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2)
 {
-  resize_v_avx2_planar_impl(dst8, src8, dst_pitch, src_pitch, program, width, bits_per_pixel, MinY, MaxY, pitch_table, storage, range, mode_YUY2);
+  resize_v_avx2_planar_impl(dst8, src8, dst_pitch, src_pitch, program, width, bits_per_pixel, MinY, MaxY, pitch_table, range, mode_YUY2);
 }
 
 
@@ -996,9 +994,8 @@ template<bool lessthan16bit>
 __attribute__((__target__("avx2,fma")))
 #endif
 void resize_v_avx2_planar_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel,
-	int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2)
+	int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2)
 {
-  AVS_UNUSED(storage);
   AVS_UNUSED(mode_YUY2);
 
   int filter_size = program->filter_size;
@@ -1112,10 +1109,9 @@ void resize_v_avx2_planar_uint16_t(BYTE* dst8, const BYTE* src8, int dst_pitch, 
 #if defined(__clang__)
 __attribute__((__target__("fma,avx2")))
 #endif
-void resize_v_avx2_planar_float(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2)
+void resize_v_avx2_planar_float(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2)
 {
   AVS_UNUSED(bits_per_pixel);
-  AVS_UNUSED(storage);
   AVS_UNUSED(range);
   AVS_UNUSED(mode_YUY2);
 
@@ -1183,10 +1179,9 @@ void resize_v_avx2_planar_float(BYTE* dst8, const BYTE* src8, int dst_pitch, int
 #if defined(__clang__)
 __attribute__((__target__("fma,avx2")))
 #endif
-void resize_v_avx2_planar_float_w_sr(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2)
+void resize_v_avx2_planar_float_w_sr(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2)
 {
   AVS_UNUSED(bits_per_pixel);
-  AVS_UNUSED(storage);
   AVS_UNUSED(range);
   AVS_UNUSED(mode_YUY2);
 
@@ -2886,9 +2881,9 @@ template void resize_h_planar_float_avx2_gather_permutex_vstripe_ks4<3>(BYTE* ds
 
 // ====================================================================
 
-template void resize_v_avx2_planar_uint16_t<false>(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2);
+template void resize_v_avx2_planar_uint16_t<false>(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2);
 // avx2 10-14bit
-template void resize_v_avx2_planar_uint16_t<true>(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const void* storage, const uint8_t range, const bool mode_YUY2);
+template void resize_v_avx2_planar_uint16_t<true>(BYTE* dst8, const BYTE* src8, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int bits_per_pixel, int MinY, int MaxY, const int* pitch_table, const uint8_t range, const bool mode_YUY2);
 
 
 #endif
