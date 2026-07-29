@@ -41,7 +41,7 @@
 #include "avisynth.h"
 #include "ThreadPoolInterface.h"
 
-#define JINCRESIZEMT_VERSION "JincResizeMT 1.2.0 JPSDR"
+#define JINCRESIZEMT_VERSION "JincResizeMT 1.2.1 JPSDR"
 
 #define JincMT_RESTRICT __restrict
 

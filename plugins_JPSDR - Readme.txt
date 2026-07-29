@@ -6,4 +6,4 @@ NNEDI3 0.9.4.69
 ResampleMT 2.12.0
 aWarSharpMT 2.1.12
 HDRTools : 1.2.3
-JincResizeMT 1.2.0
+JincResizeMT 1.2.1

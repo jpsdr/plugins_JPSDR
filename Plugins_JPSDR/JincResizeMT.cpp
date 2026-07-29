@@ -1186,7 +1186,7 @@ uint8_t CreateMTData(MT_Data_Info_JincResizeMT MT_Data[], uint8_t max_threads, u
 	}
 
 	int32_t _y_min, _dh;
-	int32_t src_dh_Y, src_dh_UV, dst_dh_Y, dst_dh_UV;
+	int32_t src_dh_Y, dst_dh_Y;
 	int32_t h_y;
 	uint8_t i, max_src = 1, max_dst = 1, max;
 
@@ -1243,41 +1243,94 @@ uint8_t CreateMTData(MT_Data_Info_JincResizeMT MT_Data[], uint8_t max_threads, u
 		return(1);
 	}
 
-	src_dh_UV = src_dh_Y >> shift_src_h_UV;
-	dst_dh_UV = dst_dh_Y >> shift_dst_h_UV;
+	// Rebalance thread partitions to reduce the size difference
+	// between the last partition and the others.
+	int32_t tab_src_dh_Y[MAX_MT_THREADS],tab_dst_dh_Y[MAX_MT_THREADS];
+	int32_t tab_src_dh_UV[MAX_MT_THREADS],tab_dst_dh_UV[MAX_MT_THREADS];
+	int32_t current_dh;
+	uint8_t current_i;
 
-	MT_Data[0].top = true;
-	MT_Data[0].bottom = false;
-	MT_Data[0].src_Y_h_min = 0;
-	MT_Data[0].src_Y_h_max = src_dh_Y;
-	MT_Data[0].dst_Y_h_min = 0;
-	MT_Data[0].dst_Y_h_max = dst_dh_Y;
-	MT_Data[0].src_UV_h_min = 0;
-	MT_Data[0].src_UV_h_max = src_dh_UV;
-	MT_Data[0].dst_UV_h_min = 0;
-	MT_Data[0].dst_UV_h_max = dst_dh_UV;
-
-	i = 1;
-	while (i < max)
+	for (uint8_t i=0; i<(max-1); i++)
 	{
-		MT_Data[i].top = false;
-		MT_Data[i].bottom = false;
-		MT_Data[i].src_Y_h_min = MT_Data[i - 1].src_Y_h_max;
-		MT_Data[i].src_Y_h_max = MT_Data[i].src_Y_h_min + src_dh_Y;
-		MT_Data[i].dst_Y_h_min = MT_Data[i - 1].dst_Y_h_max;
-		MT_Data[i].dst_Y_h_max = MT_Data[i].dst_Y_h_min + dst_dh_Y;
-		MT_Data[i].src_UV_h_min = MT_Data[i - 1].src_UV_h_max;
-		MT_Data[i].src_UV_h_max = MT_Data[i].src_UV_h_min + src_dh_UV;
-		MT_Data[i].dst_UV_h_min = MT_Data[i - 1].dst_UV_h_max;
-		MT_Data[i].dst_UV_h_max = MT_Data[i].dst_UV_h_min + dst_dh_UV;
-		i++;
+		tab_src_dh_Y[i]=src_dh_Y;
+		tab_dst_dh_Y[i]=dst_dh_Y;		
+	}
+	tab_src_dh_Y[max-1]=src_size_y-(max-1)*src_dh_Y;
+	tab_dst_dh_Y[max-1]=dst_size_y-(max-1)*dst_dh_Y;
+	
+	current_i=max-2;
+	current_dh=src_dh_Y;
+	while (tab_src_dh_Y[max-1]>(current_dh+4))
+	{
+		tab_src_dh_Y[max-1]-=4;
+		tab_src_dh_Y[current_i]+=4;
+		if (current_i==0)
+		{
+			current_i=max-2;
+			current_dh+=4;
+		}
+		else current_i--;
+	}
+	current_i=max-2;
+	current_dh=dst_dh_Y;
+	while (tab_dst_dh_Y[max-1]>(current_dh+4))
+	{
+		tab_dst_dh_Y[max-1]-=4;
+		tab_dst_dh_Y[current_i]+=4;
+		if (current_i==0)
+		{
+			current_i=max-2;
+			current_dh+=4;
+		}
+		else current_i--;
 	}
 
-	MT_Data[max - 1].bottom = true;
-	MT_Data[max - 1].src_Y_h_max = src_size_y;
-	MT_Data[max - 1].dst_Y_h_max = dst_size_y;
-	MT_Data[max - 1].src_UV_h_max = src_size_y >> shift_src_h_UV;
-	MT_Data[max - 1].dst_UV_h_max = dst_size_y >> shift_dst_h_UV;
+	if (shift_src_h_UV>0)
+	{
+		for (uint8_t i=0; i<max; i++)
+			tab_src_dh_UV[i]=tab_src_dh_Y[i]>>shift_src_h_UV;
+	}
+	else
+	{
+		for (uint8_t i=0; i<max; i++)
+			tab_src_dh_UV[i]=tab_src_dh_Y[i];
+	}
+	if (shift_dst_h_UV>0)
+	{
+		for (uint8_t i=0; i<max; i++)
+			tab_dst_dh_UV[i]=tab_dst_dh_Y[i]>>shift_dst_h_UV;
+	}
+	else
+	{
+		for (uint8_t i=0; i<max; i++)
+			tab_dst_dh_UV[i]=tab_dst_dh_Y[i];
+	}
+
+	MT_Data[0].top=true;
+	MT_Data[0].bottom=false;
+	MT_Data[0].src_Y_h_min=0;
+	MT_Data[0].src_Y_h_max=tab_src_dh_Y[0];
+	MT_Data[0].dst_Y_h_min=0;
+	MT_Data[0].dst_Y_h_max=tab_dst_dh_Y[0];
+	MT_Data[0].src_UV_h_min=0;
+	MT_Data[0].src_UV_h_max=tab_src_dh_UV[0];
+	MT_Data[0].dst_UV_h_min=0;
+	MT_Data[0].dst_UV_h_max=tab_dst_dh_UV[0];
+	
+	for (uint8_t i=1; i<max; i++)
+	{
+		MT_Data[i].top=false;
+		MT_Data[i].bottom=false;
+		MT_Data[i].src_Y_h_min=MT_Data[i-1].src_Y_h_max;
+		MT_Data[i].src_Y_h_max=MT_Data[i].src_Y_h_min+tab_src_dh_Y[i];
+		MT_Data[i].dst_Y_h_min=MT_Data[i-1].dst_Y_h_max;
+		MT_Data[i].dst_Y_h_max=MT_Data[i].dst_Y_h_min+tab_dst_dh_Y[i];
+		MT_Data[i].src_UV_h_min=MT_Data[i-1].src_UV_h_max;
+		MT_Data[i].src_UV_h_max=MT_Data[i].src_UV_h_min+tab_src_dh_UV[i];
+		MT_Data[i].dst_UV_h_min=MT_Data[i-1].dst_UV_h_max;
+		MT_Data[i].dst_UV_h_max=MT_Data[i].dst_UV_h_min+tab_dst_dh_UV[i];	
+	}
+	MT_Data[max-1].bottom=true;
 
 	for (i = 0; i < max; i++)
 	{
@@ -2123,6 +2176,8 @@ PVideoFrame __stdcall JincResizeMT::GetFrame(int n, IScriptEnvironment* env)
 			MT_ThreadGF[i].f_process = f_proc;
 		if (poolInterface->StartThreads(UserId, idxPool)) poolInterface->WaitThreadsEnd(UserId, idxPool);
 
+		for (uint8_t i = 0; i < threads_number; i++)
+			MT_ThreadGF[i].f_process = 0;
 		poolInterface->ReleaseThreadPool(UserId, sleep, idxPool);
 	}
 	else
