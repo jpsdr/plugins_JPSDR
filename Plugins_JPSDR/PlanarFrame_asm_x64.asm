@@ -53,25 +53,20 @@ height equ dword ptr[rbp+80]
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	push r12
-	.pushreg r12
 	.endprolog
 		
 		mov rdi,rcx
 		mov rbx,rdx
 		mov rdx,r8
 		mov rsi,r9
-		xor rcx,rcx
 		mov ecx,width_
 		shr ecx,1
 		movq mm5,qword ptr Ymask
 		
-		xor r8,r8
 		mov r8d,height
 		movsxd r9,pitch1
 		movsxd r10,pitch2Y
 		movsxd r11,pitch2UV
-		mov r12,4
 		
 yloop:
 		xor rax,rax
@@ -95,7 +90,7 @@ xloop:
 		movq [rbx+rax*2],mm0   ;store y
 		movd dword ptr[rdx+rax],mm2     ;store u
 		movd dword ptr[rsi+rax],mm4     ;store v
-		add rax,r12
+		add rax,4
 		cmp rax,rcx
 		jl short xloop
 		add rdi,r9
@@ -106,7 +101,6 @@ xloop:
 		jnz short yloop
 		emms
 		
-	pop r12
 	pop rdi
 	pop rsi
 	pop rbx
@@ -140,8 +134,6 @@ height equ dword ptr[rbp+80]
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	push r12
-	.pushreg r12
 	push r13
 	.pushreg r13
 	push r14
@@ -154,15 +146,12 @@ height equ dword ptr[rbp+80]
 		mov rbx,rdx
 		mov rdx,r8
 		mov rsi,r9
-		xor rcx,rcx
 		mov r13d,width_
 		
-		xor r8,r8
 		mov r8d,height
 		movsxd r9,pitch1
 		movsxd r10,pitch2Y
 		movsxd r11,pitch2UV
-		mov r12,8
 		mov r14d,r13d
 		shr r14d,1
 		mov r15d,1		
@@ -189,8 +178,9 @@ xloop_2:
 	punpcklbw xmm0,xmm2                  ;Y16Y15Y14Y13Y12Y11Y10Y9Y8Y7Y6Y5Y4Y3Y2Y1
 	movhps qword ptr [rsi+rax],xmm2
 	movdqa XMMWORD ptr[rbx+2*rax],xmm0
-	add rax,r12
-	loop xloop_2
+	add rax,8
+	dec ecx
+	jnz short xloop_2
 
 suite1_2:
 		mov ecx,r13d
@@ -222,7 +212,6 @@ suite2_2:
 	pop r15
 	pop r14
 	pop r13
-	pop r12
 	pop rdi
 	pop rsi
 	pop rbx
@@ -256,8 +245,6 @@ height equ dword ptr[rbp+80]
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	push r12
-	.pushreg r12
 	push r13
 	.pushreg r13
 	push r14
@@ -270,15 +257,12 @@ height equ dword ptr[rbp+80]
 		mov rbx,rdx
 		mov rdx,r8
 		mov rsi,r9
-		xor rcx,rcx
 		mov r13d,width_
 		
-		xor r8,r8
 		mov r8d,height
 		movsxd r9,pitch1
 		movsxd r10,pitch2Y
 		movsxd r11,pitch2UV
-		mov r12,8
 		mov r14d,r13d
 		shr r14d,1
 		mov r15d,1		
@@ -302,8 +286,9 @@ xloop_2_AVX:
 	vpunpcklbw xmm0,xmm0,xmm2                ;Y16Y15Y14Y13Y12Y11Y10Y9Y8Y7Y6Y5Y4Y3Y2Y1
 	vmovhps qword ptr [rsi+rax],xmm2
 	vmovdqa XMMWORD ptr[rbx+2*rax],xmm0
-	add rax,r12
-	loop xloop_2_AVX
+	add rax,8
+	dec ecx
+	jnz short xloop_2_AVX
 
 suite1_2_AVX:
 		mov ecx,r13d
@@ -334,7 +319,6 @@ suite2_2_AVX:
 	pop r15
 	pop r14
 	pop r13
-	pop r12
 	pop rdi
 	pop rsi
 	pop rbx
@@ -368,23 +352,18 @@ height equ dword ptr[rbp+80]
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	push r12
-	.pushreg r12
 	.endprolog
 			
 		mov rbx,rcx
 		mov rsi,r8
 		mov rdi,r9
-		xor rcx,rcx
 		mov ecx,width_
 		shr ecx,1
 		
-		xor r8,r8
 		mov r8d,height
 		movsxd r9,pitch1Y
 		movsxd r10,pitch1UV
 		movsxd r11,pitch2
-		mov r12,4			
 		
 yloop_3:
 		xor rax,rax
@@ -399,18 +378,19 @@ xloop_3:
 		punpckhbw mm3,mm1      ;VYUYVYUY
 		movq [rdi+rax*4],mm0   ;store
 		movq [rdi+rax*4+8],mm3 ;store
-		add rax,r12
+		add rax,4
 		cmp rax,rcx
 		jl short xloop_3
+
 		add rbx,r9
 		add rdx,r10
 		add rsi,r10
 		add rdi,r11
 		dec r8
 		jnz short yloop_3
+
 		emms
 
-	pop r12
 	pop rdi
 	pop rsi
 	pop rbx
@@ -444,12 +424,6 @@ height equ dword ptr[rbp+80]
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	push r12
-	.pushreg r12
-	push r13
-	.pushreg r13
-	push r14
-	.pushreg r14
 	push r15
 	.pushreg r15
 	.endprolog
@@ -457,18 +431,12 @@ height equ dword ptr[rbp+80]
 		mov rbx,rcx
 		mov rsi,r8
 		mov rdi,r9
-		xor rcx,rcx
 		mov r15d,width_
-		shr ecx,1
 		
-		xor r8,r8
 		mov r8d,height
 		movsxd r9,pitch1Y
 		movsxd r10,pitch1UV
 		movsxd r11,pitch2
-		mov r12,16
-		mov r13,32
-		mov r14,2
 		
 yloop_4:
 		xor rax,rax
@@ -482,14 +450,15 @@ xloop_4:
 		movdqa xmm2,XMMWORD ptr[rbx+8*rax] ;YYYYYYYYYYYYYYYY
 		punpcklbw xmm1,xmm0					;VUVUVUVUVUVUVUVU
 		movdqa xmm3,xmm2
-		add rax,r14
+		add rax,2
 		punpcklbw xmm2,xmm1     			;VYUYVYUYVYUYVYUY
 		punpckhbw xmm3,xmm1     			;VYUYVYUYVYUYVYUY
 		
 		movdqa XMMWORD ptr[rdi],xmm2 ;store
-		movdqa XMMWORD ptr[rdi+r12],xmm3 ;store
-		add rdi,r13
-		loop xloop_4
+		movdqa XMMWORD ptr[rdi+16],xmm3 ;store
+		add rdi,32
+		dec ecx
+		jnz short xloop_4
 		
 suite1:		
 		mov ecx,r15d
@@ -503,7 +472,7 @@ suite1:
 		punpcklbw xmm2,xmm1     			;VYUYVYUYVYUYVYUY
 		
 		movdqa XMMWORD ptr[rdi],xmm2 ;store
-		add rdi,r12			
+		add rdi,16			
 		
 suite2:		
 		add rbx,r9
@@ -514,9 +483,6 @@ suite2:
 		jnz short yloop_4
 		
 	pop r15
-	pop r14
-	pop r13
-	pop r12
 	pop rdi
 	pop rsi
 	pop rbx
@@ -550,12 +516,6 @@ height equ dword ptr[rbp+80]
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	push r12
-	.pushreg r12
-	push r13
-	.pushreg r13
-	push r14
-	.pushreg r14
 	push r15
 	.pushreg r15
 	.endprolog
@@ -563,18 +523,12 @@ height equ dword ptr[rbp+80]
 		mov rbx,rcx
 		mov rsi,r8
 		mov rdi,r9
-		xor rcx,rcx
 		mov r15d,width_
-		shr ecx,1
 		
-		xor r8,r8
 		mov r8d,height
 		movsxd r9,pitch1Y
 		movsxd r10,pitch1UV
 		movsxd r11,pitch2
-		mov r12,16
-		mov r13,32
-		mov r14,2
 		
 yloop_4_AVX:
 		xor rax,rax
@@ -587,14 +541,15 @@ xloop_4_AVX:
 		vmovq xmm0,qword ptr[rsi+4*rax]     ;00000000VVVVVVVV
 		vmovdqa xmm2,XMMWORD ptr[rbx+8*rax] ;YYYYYYYYYYYYYYYY
 		vpunpcklbw xmm1,xmm1,xmm0				;VUVUVUVUVUVUVUVU
-		add rax,r14
+		add rax,2
 		vpunpckhbw xmm3,xmm2,xmm1     			;VYUYVYUYVYUYVYUY
 		vpunpcklbw xmm2,xmm2,xmm1     			;VYUYVYUYVYUYVYUY
 		
 		vmovdqa XMMWORD ptr[rdi],xmm2 ;store
-		vmovdqa XMMWORD ptr[rdi+r12],xmm3 ;store
-		add rdi,r13
-		loop xloop_4_AVX
+		vmovdqa XMMWORD ptr[rdi+16],xmm3 ;store
+		add rdi,32
+		dec ecx
+		jnz short xloop_4_AVX
 		
 suite1_AVX:		
 		mov ecx,r15d
@@ -608,7 +563,7 @@ suite1_AVX:
 		vpunpcklbw xmm2,xmm2,xmm1     			;VYUYVYUYVYUYVYUY
 		
 		vmovdqa XMMWORD ptr[rdi],xmm2 ;store
-		add rdi,r12			
+		add rdi,16			
 		
 suite2_AVX:		
 		add rbx,r9
@@ -619,9 +574,6 @@ suite2_AVX:
 		jnz short yloop_4_AVX
 		
 	pop r15
-	pop r14
-	pop r13
-	pop r12
 	pop rdi
 	pop rsi
 	pop rbx
@@ -630,6 +582,5 @@ suite2_AVX:
 		ret
 		
 conv422toYUY2_AVX endp
-
 
 end

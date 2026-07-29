@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.68 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.69 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -86,6 +86,7 @@ protected:
 	bool grey,avsp,isRGBPfamily,isAlphaChannel,has_at_least_v8;
 	uint8_t pixelsize; // AVS16
 	uint8_t bits_per_pixel;
+	uint8_t CurrentPlaneMax;
 
 	void calcStartEnd2(void);
 	void copyPad(PVideoFrame &src,int fn,IScriptEnvironment *env);

@@ -131,7 +131,7 @@ computeNetwork0_i16_AVX512 proc inputf:dword,weightsf:dword,ptr_d:dword
 		vextracti32x8 ymm4,zmm3,1
 
 		vpunpckhqdq ymm0,ymm6,ymm5
-		vpunpckhqdq ymm1,ymm2,ymm4
+		vpunpckhqdq ymm1,ymm7,ymm4
 		vpunpcklqdq ymm6,ymm6,ymm5
 		vpunpcklqdq ymm7,ymm7,ymm4
 		vpaddd ymm6,ymm6,ymm0

@@ -227,7 +227,6 @@ computeNetwork0_AVX2 proc public frame
 		vaddps xmm0,xmm0,xmm2
 		vaddps xmm4,xmm4,xmm6
 		vaddps xmm0,xmm0,xmm4
-		mov rcx,r8
 		vaddps xmm0,xmm0,XMMWORD ptr [rdx+864+128]
 		vmovhlps xmm1,xmm1,xmm0
 		vmaxps xmm0,xmm0,xmm1
@@ -236,7 +235,7 @@ computeNetwork0_AVX2 proc public frame
 		jbe short finish_1
 		xor rax,rax
 finish_1:
-		mov BYTE PTR[rcx],al
+		mov BYTE PTR[r8],al
 				
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]
@@ -356,7 +355,6 @@ computeNetwork0_i16_AVX2 proc public frame
 		vaddps xmm0,xmm0,xmm2
 		vaddps xmm4,xmm4,xmm6
 		vaddps xmm0,xmm0,xmm4
-		mov rcx,r8
 		vaddps xmm0,xmm0,XMMWORD ptr [rdx+496+128]
 		vmovhlps xmm1,xmm1,xmm0
 		vmaxps xmm0,xmm0,xmm1
@@ -365,7 +363,7 @@ computeNetwork0_i16_AVX2 proc public frame
 		jbe short finish_2
 		xor rax,rax
 finish_2:
-		mov BYTE PTR[rcx],al
+		mov BYTE PTR[r8],al
 			
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]
@@ -393,39 +391,37 @@ computeNetwork0new_AVX2 proc public frame
 	.savexmm128 xmm7,16
 	.endprolog
 
-		mov rax,rdx
-		
 		vmovdqa ymm7,YMMWORD ptr [rcx]
-		vpmaddwd ymm0,ymm7,YMMWORD ptr [rax]
-		vpmaddwd ymm1,ymm7,YMMWORD ptr [rax+32]
-		vpmaddwd ymm2,ymm7,YMMWORD ptr [rax+64]
-		vpmaddwd ymm3,ymm7,YMMWORD ptr [rax+96]
+		vpmaddwd ymm0,ymm7,YMMWORD ptr [rdx]
+		vpmaddwd ymm1,ymm7,YMMWORD ptr [rdx+32]
+		vpmaddwd ymm2,ymm7,YMMWORD ptr [rdx+64]
+		vpmaddwd ymm3,ymm7,YMMWORD ptr [rdx+96]
 		
 		vmovdqa ymm7,YMMWORD ptr [rcx+32]
-		vpmaddwd ymm4,ymm7,YMMWORD ptr [rax+128]
-		vpmaddwd ymm5,ymm7,YMMWORD ptr [rax+160]
-		vpmaddwd ymm6,ymm7,YMMWORD ptr [rax+192]
-		vpmaddwd ymm7,ymm7,YMMWORD ptr [rax+224]
+		vpmaddwd ymm4,ymm7,YMMWORD ptr [rdx+128]
+		vpmaddwd ymm5,ymm7,YMMWORD ptr [rdx+160]
+		vpmaddwd ymm6,ymm7,YMMWORD ptr [rdx+192]
+		vpmaddwd ymm7,ymm7,YMMWORD ptr [rdx+224]
 		vpaddd ymm0,ymm0,ymm4
 		vpaddd ymm1,ymm1,ymm5
 		vpaddd ymm2,ymm2,ymm6
 		vpaddd ymm3,ymm3,ymm7
 		
 		vmovdqa ymm7,YMMWORD ptr [rcx+64]
-		vpmaddwd ymm4,ymm7,YMMWORD ptr [rax+256]
-		vpmaddwd ymm5,ymm7,YMMWORD ptr [rax+288]
-		vpmaddwd ymm6,ymm7,YMMWORD ptr [rax+320]
-		vpmaddwd ymm7,ymm7,YMMWORD ptr [rax+352]
+		vpmaddwd ymm4,ymm7,YMMWORD ptr [rdx+256]
+		vpmaddwd ymm5,ymm7,YMMWORD ptr [rdx+288]
+		vpmaddwd ymm6,ymm7,YMMWORD ptr [rdx+320]
+		vpmaddwd ymm7,ymm7,YMMWORD ptr [rdx+352]
 		vpaddd ymm0,ymm0,ymm4
 		vpaddd ymm1,ymm1,ymm5
 		vpaddd ymm2,ymm2,ymm6
 		vpaddd ymm3,ymm3,ymm7
 		
 		vmovdqa ymm7,YMMWORD ptr [rcx+96]
-		vpmaddwd ymm4,ymm7,YMMWORD ptr [rax+384]
-		vpmaddwd ymm5,ymm7,YMMWORD ptr [rax+416]
-		vpmaddwd ymm6,ymm7,YMMWORD ptr [rax+448]
-		vpmaddwd ymm7,ymm7,YMMWORD ptr [rax+480]
+		vpmaddwd ymm4,ymm7,YMMWORD ptr [rdx+384]
+		vpmaddwd ymm5,ymm7,YMMWORD ptr [rdx+416]
+		vpmaddwd ymm6,ymm7,YMMWORD ptr [rdx+448]
+		vpmaddwd ymm7,ymm7,YMMWORD ptr [rdx+480]
 		vpaddd ymm0,ymm0,ymm4
 		vpaddd ymm1,ymm1,ymm5
 		vpaddd ymm2,ymm2,ymm6
@@ -448,8 +444,8 @@ computeNetwork0new_AVX2 proc public frame
 		
 		vpaddd xmm0,xmm0,xmm6
 		vcvtdq2ps xmm0,xmm0		
-		vmulps xmm0,xmm0,XMMWORD ptr [rax+512]
-		vaddps xmm0,xmm0,XMMWORD ptr [rax+528]
+		vmulps xmm0,xmm0,XMMWORD ptr [rdx+512]
+		vaddps xmm0,xmm0,XMMWORD ptr [rdx+528]
 		vmovaps xmm1,xmm0
 		vandps xmm0,xmm0,XMMWORD ptr sign_bits_f
 		vaddps xmm0,xmm0,XMMWORD ptr ones_f
@@ -459,16 +455,15 @@ computeNetwork0new_AVX2 proc public frame
 		vpshufd xmm2,xmm0,85
 		vpshufd xmm3,xmm0,170
 		vpshufd xmm4,xmm0,255
-		vmulps xmm1,xmm1,XMMWORD ptr [rax+544]
-		vmulps xmm2,xmm2,XMMWORD ptr [rax+560]
-		vmulps xmm3,xmm3,XMMWORD ptr [rax+576]
-		vmulps xmm4,xmm4,XMMWORD ptr [rax+592]
+		vmulps xmm1,xmm1,XMMWORD ptr [rdx+544]
+		vmulps xmm2,xmm2,XMMWORD ptr [rdx+560]
+		vmulps xmm3,xmm3,XMMWORD ptr [rdx+576]
+		vmulps xmm4,xmm4,XMMWORD ptr [rdx+592]
 		vpxor xmm0,xmm0,xmm0
 		vaddps xmm1,xmm1,xmm2
 		vaddps xmm3,xmm3,xmm4
 		vaddps xmm1,xmm1,xmm3
-		mov rcx,r8
-		vaddps xmm1,xmm1,XMMWORD ptr [rax+608]
+		vaddps xmm1,xmm1,XMMWORD ptr [rdx+608]
 		vcmpps xmm1,xmm1,xmm0,1
 		vpackssdw xmm1,xmm1,xmm0
 		vpacksswb xmm1,xmm1,xmm0
@@ -476,7 +471,7 @@ computeNetwork0new_AVX2 proc public frame
 		vmovd eax,xmm1
 		xor eax,0FFFFFFFFh
 		and eax,001010101h
-		mov [rcx],eax
+		mov [r8],eax
 		
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
@@ -503,14 +498,8 @@ val_min_max equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
-	push rsi
-	.pushreg rsi
-	push rdi
-	.pushreg rdi
-	sub rsp,136
-	.allocstack 136
+	sub rsp,128
+	.allocstack 128
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -530,16 +519,12 @@ val_min_max equ qword ptr[rbp+56]
 	.endprolog
 			
 		mov rax,rcx
-		mov rbx,r9
-		xor rcx,rcx
 		mov ecx,edx
 		movsxd rdx,src_pitch
-		mov rsi,r8
-		mov r8,32
 		mov r10,val_min_max
-		
-		lea rdi,[rbx+rdx*4]
-		
+
+		lea r11,[r9+rdx*4]
+
 		vmovdqa ymm8,YMMWORD ptr w_19
 		vmovdqa ymm9,YMMWORD ptr w_3
 		vmovdqa ymm10,YMMWORD ptr ub_1
@@ -550,8 +535,8 @@ val_min_max equ qword ptr[rbp+56]
 		vpxor ymm7,ymm7,ymm7
 		
 xloop:
-		vmovdqa ymm0,YMMWORD PTR [rbx+rdx*2]
-		vmovdqa ymm1,YMMWORD PTR [rdi]
+		vmovdqa ymm0,YMMWORD PTR [r9+rdx*2]
+		vmovdqa ymm1,YMMWORD PTR [r11]
 		vpunpckhbw ymm2,ymm0,ymm7
 		vpunpckhbw ymm3,ymm1,ymm7
 		vpunpcklbw ymm0,ymm0,ymm7
@@ -561,8 +546,8 @@ xloop:
 		vpmullw ymm0,ymm0,ymm8
 		vpmullw ymm2,ymm2,ymm8
 
-		vmovdqa ymm1,YMMWORD PTR [rbx]
-		vmovdqa ymm3,YMMWORD PTR [rdi+rdx*2]
+		vmovdqa ymm1,YMMWORD PTR [r9]
+		vmovdqa ymm3,YMMWORD PTR [r11+rdx*2]
 		vpunpckhbw ymm4,ymm1,ymm7
 		vpunpckhbw ymm5,ymm3,ymm7
 		vpunpcklbw ymm1,ymm1,ymm7
@@ -593,14 +578,14 @@ xloop:
 		vextracti128 xmm3,ymm5,1
 		vpackuswb ymm0,ymm0,ymm2
 		vpaddusw xmm5,xmm5,xmm3
-		vmovdqa YMMWORD PTR [rsi],ymm0
+		vmovdqa YMMWORD PTR [r8],ymm0
 		vpaddusw xmm6,xmm6,xmm5		
 		
-		add rbx,r8
-		add rdi,r8
-		add rax,r8
-		add rsi,r8
-		sub rcx,r8
+		add r9,32
+		add r11,32
+		add rax,32
+		add r8,32
+		sub ecx,32
 		jnz xloop
 					
 		xor  rax,rax
@@ -614,16 +599,14 @@ xloop:
 	vmovdqa xmm8,XMMWORD ptr[rsp+32]
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,136
-	pop rdi
-	pop rsi
-	pop rbx
-	pop rbp
-	
+	add rsp,128
+
 	vzeroupper
-	
-		ret
-		
+
+	pop rbp
+
+	ret
+
 processLine0_AVX2_ASM endp
 
 
@@ -641,14 +624,8 @@ val_min_max equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
-	push rsi
-	.pushreg rsi
-	push rdi
-	.pushreg rdi
-	sub rsp,136
-	.allocstack 136
+	sub rsp,128
+	.allocstack 128
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -668,16 +645,11 @@ val_min_max equ qword ptr[rbp+56]
 	.endprolog
 		
 		mov rax,rcx
-		mov rbx,r9
-		xor rcx,rcx
 		mov ecx,edx
 		movsxd rdx,src_pitch
-		mov rsi,r8
-		mov r8,32
-		mov r9,16
 		mov r10,val_min_max
 			
-		lea rdi,[rbx+rdx*4]
+		lea r11,[r9+rdx*4]
 		
 		vmovdqa ymm8,YMMWORD ptr d_19
 		vmovdqa ymm9,YMMWORD ptr d_3
@@ -689,8 +661,8 @@ val_min_max equ qword ptr[rbp+56]
 		vpxor ymm7,ymm7,ymm7
 		
 xloop_16:
-		vmovdqa ymm0,YMMWORD ptr[rbx+rdx*2]
-		vmovdqa ymm1,YMMWORD ptr[rdi]
+		vmovdqa ymm0,YMMWORD ptr[r9+rdx*2]
+		vmovdqa ymm1,YMMWORD ptr[r11]
 		vpunpckhwd ymm2,ymm0,ymm7
 		vpunpckhwd ymm3,ymm1,ymm7
 		vpunpcklwd ymm0,ymm0,ymm7
@@ -699,8 +671,8 @@ xloop_16:
 		vpaddd ymm2,ymm2,ymm3
 		vpmulld ymm0,ymm0,ymm8
 		vpmulld ymm2,ymm2,ymm8
-		vmovdqa ymm1,YMMWORD ptr[rbx]
-		vmovdqa ymm3,YMMWORD ptr[rdi+rdx*2]
+		vmovdqa ymm1,YMMWORD ptr[r9]
+		vmovdqa ymm3,YMMWORD ptr[r11+rdx*2]
 		vpunpckhwd ymm4,ymm1,ymm7
 		vpunpckhwd ymm5,ymm3,ymm7
 		vpunpcklwd ymm1,ymm1,ymm7
@@ -724,14 +696,14 @@ xloop_16:
 		vpsrldq xmm5,xmm5,8
 		vpmaxuw ymm0,ymm0,ymm12
 		vpaddusw xmm5,xmm5,xmm3
-		vmovdqa YMMWORD ptr [rsi],ymm0
+		vmovdqa YMMWORD ptr [r8],ymm0
 		vpaddusw xmm6,xmm6,xmm5
 		
-		add rbx,r8
-		add rdi,r8
-		add rax,r9
-		add rsi,r8
-		sub rcx,r9
+		add r9,32
+		add r11,32
+		add rax,16
+		add r8,32
+		sub ecx,16
 		jnz xloop_16
 					
 		xor  rax,rax
@@ -745,16 +717,14 @@ xloop_16:
 	vmovdqa xmm8,XMMWORD ptr[rsp+32]
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,136
-	pop rdi
-	pop rsi
-	pop rbx
-	pop rbp
-	
+	add rsp,128
+
 	vzeroupper
-	
-		ret
-		
+
+	pop rbp
+
+	ret
+
 processLine0_AVX2_ASM_16 endp
 
 
@@ -771,14 +741,8 @@ src_pitch equ dword ptr[rbp+48]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
-	push rsi
-	.pushreg rsi
-	push rdi
-	.pushreg rdi
-	sub rsp,72
-	.allocstack 72
+	sub rsp,64
+	.allocstack 64
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -790,15 +754,10 @@ src_pitch equ dword ptr[rbp+48]
 	.endprolog
 
 		mov rax,rcx
-		mov rbx,r9
-		xor rcx,rcx
 		mov ecx,edx
 		movsxd rdx,src_pitch
-		mov rsi,r8
-		mov r8,32
-		mov r9,8
 		
-		lea rdi,[rbx+rdx*4]
+		lea r10,[r9+rdx*4]
 
 		vpxor ymm5,ymm5,ymm5
 		vpxor ymm6,ymm6,ymm6
@@ -808,12 +767,12 @@ src_pitch equ dword ptr[rbp+48]
 		
 xloop_32:
 		vmovq xmm4,qword ptr [rax]
-		vmovaps ymm2,YMMWORD ptr[rbx]		
-		vmovaps ymm0,YMMWORD ptr[rbx+rdx*2]
+		vmovaps ymm2,YMMWORD ptr[r9]		
+		vmovaps ymm0,YMMWORD ptr[r9+rdx*2]
 		vpunpcklbw xmm4,xmm4,xmm6
 
-		vmovaps ymm1,YMMWORD ptr[rdi]
-		vmovaps ymm3,YMMWORD ptr[rdi+rdx*2]		
+		vmovaps ymm1,YMMWORD ptr[r10]
+		vmovaps ymm3,YMMWORD ptr[r10+rdx*2]		
 		vaddps ymm0,ymm0,ymm1
 		vpxor xmm4,xmm4,xmm9		
 		vaddps ymm2,ymm2,ymm3		
@@ -826,14 +785,14 @@ xloop_32:
 		vsubps ymm0,ymm0,ymm2	
 		vpaddusw xmm4,xmm4,xmm3
 
-		vmovaps YMMWORD ptr[rsi],ymm0
+		vmovaps YMMWORD ptr[r8],ymm0
 		vpaddusw xmm5,xmm5,xmm4
 
-		add rbx,r8
-		add rdi,r8
-		add rax,r9
-		add rsi,r8
-		sub rcx,r9
+		add r9,32
+		add r10,32
+		add rax,8
+		add r8,32
+		sub ecx,8
 		jnz short xloop_32
 				
 		xor  rax,rax
@@ -843,16 +802,14 @@ xloop_32:
 	vmovdqa xmm8,XMMWORD ptr[rsp+32]
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,72
-	pop rdi
-	pop rsi
-	pop rbx
-	pop rbp
-			
+	add rsp,64
+
 	vzeroupper		
-			
-		ret
-		
+
+	pop rbp
+
+	ret
+
 processLine0_AVX2_ASM_32 endp
 
 
@@ -865,15 +822,14 @@ uc2f48_AVX2 proc public frame
 
 		.endprolog
 
-		mov rax,rcx
-		movsxd rcx,edx		
+		movsxd r9,edx		
 		vpxor ymm4,ymm4,ymm4
 		
-		test rax,15
+		test rcx,15
 		jnz unaligned_1
 		
-		vmovdqa xmm0,XMMWORD PTR[rax]
-		vmovdqa xmm2,XMMWORD PTR[rax+rcx*2]		
+		vmovdqa xmm0,XMMWORD PTR[rcx]
+		vmovdqa xmm2,XMMWORD PTR[rcx+r9*2]		
 		vmovhlps xmm1,xmm4,xmm0
 		vmovhlps xmm3,xmm4,xmm2
 		vinserti128 ymm0,ymm0,xmm1,1
@@ -886,7 +842,7 @@ uc2f48_AVX2 proc public frame
 		vpunpcklwd ymm2,ymm3,ymm4
 		vpunpckhwd ymm1,ymm1,ymm4
 		vpunpckhwd ymm3,ymm3,ymm4		
-		lea rax,[rax+rcx*4]
+		lea rcx,[rcx+r9*4]
 		vcvtdq2ps ymm0,ymm0
 		vcvtdq2ps xmm1,xmm1		
 		vcvtdq2ps ymm2,ymm2
@@ -900,13 +856,13 @@ uc2f48_AVX2 proc public frame
 		vmovaps XMMWORD ptr[r8+64],xmm3
 		vmovaps XMMWORD ptr[r8+80],xmm5
 		
-		vmovdqa xmm0,XMMWORD PTR[rax]
-		vmovdqa xmm2,XMMWORD PTR[rax+rcx*2]
+		vmovdqa xmm0,XMMWORD PTR[rcx]
+		vmovdqa xmm2,XMMWORD PTR[rcx+r9*2]
 		jmp suite_1		
 
 unaligned_1:		
-		vmovdqu xmm0,XMMWORD PTR[rax]
-		vmovdqu xmm2,XMMWORD PTR[rax+rcx*2]		
+		vmovdqu xmm0,XMMWORD PTR[rcx]
+		vmovdqu xmm2,XMMWORD PTR[rcx+r9*2]		
 		vmovhlps xmm1,xmm4,xmm0
 		vmovhlps xmm3,xmm4,xmm2
 		vinserti128 ymm0,ymm0,xmm1,1
@@ -919,7 +875,7 @@ unaligned_1:
 		vpunpcklwd ymm2,ymm3,ymm4
 		vpunpckhwd ymm1,ymm1,ymm4
 		vpunpckhwd ymm3,ymm3,ymm4		
-		lea rax,[rax+rcx*4]
+		lea rcx,[rcx+r9*4]
 		vcvtdq2ps ymm0,ymm0
 		vcvtdq2ps xmm1,xmm1
 		vcvtdq2ps ymm2,ymm2
@@ -933,8 +889,8 @@ unaligned_1:
 		vmovaps XMMWORD ptr[r8+64],xmm3
 		vmovaps XMMWORD ptr[r8+80],xmm5
 				
-		vmovdqu xmm0,XMMWORD PTR[rax]
-		vmovdqu xmm2,XMMWORD PTR[rax+rcx*2]				
+		vmovdqu xmm0,XMMWORD PTR[rcx]
+		vmovdqu xmm2,XMMWORD PTR[rcx+r9*2]				
 suite_1:		
 		vmovhlps xmm1,xmm4,xmm0
 		vmovhlps xmm3,xmm4,xmm2
@@ -977,20 +933,19 @@ uc2f48_AVX2_16 proc public frame
 
 		.endprolog
 
-		mov rax,rcx
-		movsxd rcx,edx		
+		movsxd r9,edx
 		vpxor ymm4,ymm4,ymm4
 		
-		test rax,31
+		test rcx,31
 		jnz short unaligned_2
 				
-		vmovdqa ymm1,YMMWORD ptr[rax]
-		vmovdqa ymm3,YMMWORD ptr[rax+rcx*2]	
+		vmovdqa ymm1,YMMWORD ptr[rcx]
+		vmovdqa ymm3,YMMWORD ptr[rcx+r9*2]	
 		vpunpcklwd ymm0,ymm1,ymm4
 		vpunpcklwd ymm2,ymm3,ymm4
 		vpunpckhwd ymm1,ymm1,ymm4
 		vpunpckhwd ymm3,ymm3,ymm4		
-		lea rax,[rax+rcx*4]		
+		lea rcx,[rcx+r9*4]		
 		vcvtdq2ps ymm0,ymm0
 		vcvtdq2ps xmm1,xmm1
 		vcvtdq2ps ymm2,ymm2
@@ -1004,18 +959,18 @@ uc2f48_AVX2_16 proc public frame
 		vmovaps XMMWORD ptr[r8+64],xmm3
 		vmovaps XMMWORD ptr[r8+80],xmm5
 		
-		vmovdqa ymm1,YMMWORD ptr[rax]
-		vmovdqa ymm3,YMMWORD ptr[rax+rcx*2]
+		vmovdqa ymm1,YMMWORD ptr[rcx]
+		vmovdqa ymm3,YMMWORD ptr[rcx+r9*2]
 		jmp short suite_2
 
 unaligned_2:
-		vmovdqu ymm1,YMMWORD ptr[rax]
-		vmovdqu ymm3,YMMWORD ptr[rax+rcx*2]
+		vmovdqu ymm1,YMMWORD ptr[rcx]
+		vmovdqu ymm3,YMMWORD ptr[rcx+r9*2]
 		vpunpcklwd ymm0,ymm1,ymm4
 		vpunpcklwd ymm2,ymm3,ymm4
 		vpunpckhwd ymm1,ymm1,ymm4
 		vpunpckhwd ymm3,ymm3,ymm4		
-		lea rax,[rax+rcx*4]		
+		lea rcx,[rcx+r9*4]		
 		vcvtdq2ps ymm0,ymm0
 		vcvtdq2ps xmm1,xmm1
 		vcvtdq2ps ymm2,ymm2
@@ -1029,8 +984,8 @@ unaligned_2:
 		vmovaps XMMWORD ptr[r8+64],xmm3
 		vmovaps XMMWORD ptr[r8+80],xmm5
 		
-		vmovdqu ymm1,YMMWORD ptr[rax]
-		vmovdqu ymm3,YMMWORD ptr[rax+rcx*2]
+		vmovdqu ymm1,YMMWORD ptr[rcx]
+		vmovdqu ymm3,YMMWORD ptr[rcx+r9*2]
 		
 suite_2:		
 		vpunpcklwd ymm0,ymm1,ymm4
@@ -1073,17 +1028,17 @@ uc2s48_AVX2 proc public frame
 	.savexmm128 xmm7,16
 	.endprolog
 
-		mov rax,rcx
-		movsxd rcx,edx
-		lea rdx,[rax+rcx*4]
-		vmovq xmm0,QWORD PTR[rax]
-		vmovd xmm1,dword ptr[rax+8]
-		vmovd xmm2,dword ptr[rax+rcx*2]
-		vmovq xmm3,QWORD PTR[rax+rcx*2+4]
-		vmovq xmm4,QWORD PTR[rdx]
-		vmovd xmm5,dword ptr[rdx+8]
-		vmovd xmm6,dword ptr[rdx+rcx*2]
-		vmovq xmm7,QWORD PTR[rdx+rcx*2+4]
+		movsxd r10,edx
+
+		lea r9,[rcx+r10*4]
+		vmovq xmm0,QWORD PTR[rcx]
+		vmovd xmm1,dword ptr[rcx+8]
+		vmovd xmm2,dword ptr[rcx+r10*2]
+		vmovq xmm3,QWORD PTR[rcx+r10*2+4]
+		vmovq xmm4,QWORD PTR[r9]
+		vmovd xmm5,dword ptr[r9+8]
+		vmovd xmm6,dword ptr[r9+r10*2]
+		vmovq xmm7,QWORD PTR[r9+r10*2+4]
 		vpunpckldq xmm1,xmm1,xmm2
 		vpxor xmm2,xmm2,xmm2
 		vpunpckldq xmm5,xmm5,xmm6
@@ -1118,26 +1073,26 @@ uc2s48_AVX2 endp
 uc2s64_AVX2 proc public frame
 
 		.endprolog
-	
-		mov rax,rcx
-		movsxd rcx,edx
-		lea rdx,[rax+rcx*4]
+
+		movsxd r10,edx
+
+		lea r9,[rcx+r10*4]
 		vpxor ymm4,ymm4,ymm4
 		
-		test rax,15
+		test rcx,15
 		jnz short unaligned_3		
 		
-		vmovdqa xmm0,XMMWORD ptr[rax]
-		vmovdqa xmm1,XMMWORD PTR[rax+rcx*2]
-		vmovdqa xmm2,XMMWORD ptr[rdx]
-		vmovdqa xmm3,XMMWORD PTR[rdx+rcx*2]
+		vmovdqa xmm0,XMMWORD ptr[rcx]
+		vmovdqa xmm1,XMMWORD PTR[rcx+r10*2]
+		vmovdqa xmm2,XMMWORD ptr[r9]
+		vmovdqa xmm3,XMMWORD PTR[r9+r10*2]
 		jmp short suite_3
 		
 unaligned_3:		
-		vmovdqu xmm0,XMMWORD ptr[rax]
-		vmovdqu xmm1,XMMWORD PTR[rax+rcx*2]
-		vmovdqu xmm2,XMMWORD ptr[rdx]
-		vmovdqu xmm3,XMMWORD PTR[rdx+rcx*2]		
+		vmovdqu xmm0,XMMWORD ptr[rcx]
+		vmovdqu xmm1,XMMWORD PTR[rcx+r10*2]
+		vmovdqu xmm2,XMMWORD ptr[r9]
+		vmovdqu xmm3,XMMWORD PTR[r9+r10*2]		
 suite_3:				
 		vmovhlps xmm5,xmm4,xmm0
 		vinserti128 ymm0,ymm0,xmm5,1
@@ -1277,7 +1232,6 @@ computeNetwork0_FMA3 proc public frame
 		vaddps xmm0,xmm0,xmm2
 		vaddps xmm4,xmm4,xmm6
 		vaddps xmm0,xmm0,xmm4
-		mov rcx,r8
 		vaddps xmm0,xmm0,XMMWORD ptr [rdx+864+128]
 		vmovhlps xmm1,xmm1,xmm0
 		vmaxps xmm0,xmm0,xmm1
@@ -1286,15 +1240,15 @@ computeNetwork0_FMA3 proc public frame
 		jbe short finish_1a
 		xor rax,rax
 finish_1a:
-		mov BYTE PTR[rcx],al
+		mov BYTE PTR[r8],al
 				
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]
 	add rsp,40
-		
+
 	vzeroupper
-		
-		ret
+
+	ret
 
 computeNetwork0_FMA3 endp
 
@@ -1407,7 +1361,6 @@ computeNetwork0_FMA4 proc public frame
 		vaddps xmm0,xmm0,xmm2
 		vaddps xmm4,xmm4,xmm6
 		vaddps xmm0,xmm0,xmm4
-		mov rcx,r8
 		vaddps xmm0,xmm0,XMMWORD ptr [rdx+864+128]
 		vmovhlps xmm1,xmm1,xmm0
 		vmaxps xmm0,xmm0,xmm1
@@ -1416,15 +1369,15 @@ computeNetwork0_FMA4 proc public frame
 		jbe short finish_1b
 		xor rax,rax
 finish_1b:
-		mov BYTE PTR[rcx],al
+		mov BYTE PTR[r8],al
 		
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]
 	add rsp,40		
-	
+
 	vzeroupper
-		
-		ret
+
+	ret
 
 computeNetwork0_FMA4 endp
 
@@ -1436,32 +1389,27 @@ computeNetwork0_FMA4 endp
 
 weightedAvgElliottMul5_m16_AVX2 proc public frame
 
-	push rdi
-	.pushreg rdi
-	sub rsp,32
-	.allocstack 32
+	sub rsp,40
+	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 
-		mov rax,rcx
-		xor rcx,rcx
-		mov ecx,edx
+		mov edx,edx  ; RAZ high
 		
-		mov r9,16
 		vmovdqa ymm6,YMMWORD ptr sign_bits_f_32
 		vmovdqa ymm7,YMMWORD ptr ones_f_32
-	
-		lea rdx,[rax+rcx*4]
-		xor rdi,rdi
+
+		lea r10,[rcx+rdx*4]
+		xor r9,r9
 		vxorps ymm0,ymm0,ymm0
 		vxorps ymm1,ymm1,ymm1
-		
+
 nloop_5:
-		vmovaps ymm2,YMMWORD ptr [rax+rdi*4]
-		vmovaps ymm4,YMMWORD ptr [rdx+rdi*4]
+		vmovaps ymm2,YMMWORD ptr [rcx+r9*4]
+		vmovaps ymm4,YMMWORD ptr [r10+r9*4]
 		vaddps ymm0,ymm0,ymm2
 		vandps ymm5,ymm4,ymm6
 		vaddps ymm5,ymm5,ymm7
@@ -1470,8 +1418,8 @@ nloop_5:
 		vmulps ymm4,ymm4,ymm2
 		vaddps ymm1,ymm1,ymm4
 		
-		vmovaps ymm2,YMMWORD ptr [rax+rdi*4+32]
-		vmovaps ymm4,YMMWORD ptr [rdx+rdi*4+32]
+		vmovaps ymm2,YMMWORD ptr [rcx+r9*4+32]
+		vmovaps ymm4,YMMWORD ptr [r10+r9*4+32]
 		vaddps ymm0,ymm0,ymm2
 		vandps ymm5,ymm4,ymm6
 		vaddps ymm5,ymm5,ymm7
@@ -1479,8 +1427,8 @@ nloop_5:
 		vmulps ymm4,ymm4,ymm5
 		vmulps ymm4,ymm4,ymm2
 		vaddps ymm1,ymm1,ymm4
-		add rdi,r9
-		sub rcx,r9
+		add r9,16
+		sub edx,16
 		jnz short nloop_5
 		
 		vextractf128 xmm2,ymm0,1
@@ -1512,12 +1460,12 @@ finish_5:
 		
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,32
-		
-		pop rdi
-		
-		ret
-		
+	add rsp,40
+
+	vzeroupper
+
+	ret
+
 weightedAvgElliottMul5_m16_AVX2 endp
 
 
@@ -1528,32 +1476,27 @@ weightedAvgElliottMul5_m16_AVX2 endp
 
 weightedAvgElliottMul5_m16_FMA3 proc public frame
 
-	push rdi
-	.pushreg rdi
-	sub rsp,32
-	.allocstack 32
+	sub rsp,40
+	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 
-		mov rax,rcx
-		xor rcx,rcx
-		mov ecx,edx
-		
-		mov r9,16
+		mov edx,edx  ; RAZ high
+
 		vmovdqa ymm6,YMMWORD ptr sign_bits_f_32
 		vmovdqa ymm7,YMMWORD ptr ones_f_32
-	
-		lea rdx,[rax+rcx*4]
-		xor rdi,rdi
+
+		lea r10,[rcx+rdx*4]
+		xor r9,r9
 		vxorps ymm0,ymm0,ymm0
 		vxorps ymm1,ymm1,ymm1
-		
+
 nloop_52:
-		vmovaps ymm2,YMMWORD ptr [rax+rdi*4]
-		vmovaps ymm4,YMMWORD ptr [rdx+rdi*4]
+		vmovaps ymm2,YMMWORD ptr [rcx+r9*4]
+		vmovaps ymm4,YMMWORD ptr [r10+r9*4]
 		vaddps ymm0,ymm0,ymm2
 		vandps ymm5,ymm4,ymm6
 		vaddps ymm5,ymm5,ymm7
@@ -1561,8 +1504,8 @@ nloop_52:
 		vmulps ymm4,ymm4,ymm5
 		vfmadd231ps ymm1,ymm2,ymm4
 		
-		vmovaps ymm2,YMMWORD ptr [rax+rdi*4+32]
-		vmovaps ymm4,YMMWORD ptr [rdx+rdi*4+32]
+		vmovaps ymm2,YMMWORD ptr [rcx+r9*4+32]
+		vmovaps ymm4,YMMWORD ptr [r10+r9*4+32]
 		vaddps ymm0,ymm0,ymm2
 		vandps ymm5,ymm4,ymm6
 		vaddps ymm5,ymm5,ymm7
@@ -1570,8 +1513,8 @@ nloop_52:
 		vmulps ymm4,ymm4,ymm5
 		vfmadd231ps ymm1,ymm2,ymm4
 		
-		add rdi,r9
-		sub rcx,r9
+		add r9,16
+		sub edx,16
 		jnz short nloop_52
 		
 		vextractf128 xmm2,ymm0,1
@@ -1600,15 +1543,15 @@ finish_52:
 		vaddss xmm1,xmm1,dword ptr[r8]
 		vaddss xmm1,xmm1,dword ptr[r8+12]
 		vmovss dword ptr[r8+12],xmm1
-		
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,32
-		
-		pop rdi
-		
-		ret
-		
+	add rsp,40
+
+	vzeroupper
+
+	ret
+
 weightedAvgElliottMul5_m16_FMA3 endp
 
 
@@ -1619,32 +1562,27 @@ weightedAvgElliottMul5_m16_FMA3 endp
 
 weightedAvgElliottMul5_m16_FMA4 proc public frame
 
-	push rdi
-	.pushreg rdi
-	sub rsp,32
-	.allocstack 32
+	sub rsp,40
+	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 
-		mov rax,rcx
-		xor rcx,rcx
-		mov ecx,edx
-		
-		mov r9,16
+		mov edx,edx  ; RAZ high
+
 		vmovdqa ymm6,YMMWORD ptr sign_bits_f_32
 		vmovdqa ymm7,YMMWORD ptr ones_f_32
 	
-		lea rdx,[rax+rcx*4]
-		xor rdi,rdi
+		lea r10,[rcx+rdx*4]
+		xor r9,r9
 		vxorps ymm0,ymm0,ymm0
 		vxorps ymm1,ymm1,ymm1
 		
 nloop_53:
-		vmovaps ymm2,YMMWORD ptr [rax+rdi*4]
-		vmovaps ymm4,YMMWORD ptr [rdx+rdi*4]
+		vmovaps ymm2,YMMWORD ptr [rcx+r9*4]
+		vmovaps ymm4,YMMWORD ptr [r10+r9*4]
 		vaddps ymm0,ymm0,ymm2
 		vandps ymm5,ymm4,ymm6
 		vaddps ymm5,ymm5,ymm7
@@ -1652,8 +1590,8 @@ nloop_53:
 		vmulps ymm4,ymm4,ymm5
 		vfmaddps ymm1,ymm2,ymm4,ymm1
 		
-		vmovaps ymm2,YMMWORD ptr [rax+rdi*4+32]
-		vmovaps ymm4,YMMWORD ptr [rdx+rdi*4+32]
+		vmovaps ymm2,YMMWORD ptr [rcx+r9*4+32]
+		vmovaps ymm4,YMMWORD ptr [r10+r9*4+32]
 		vaddps ymm0,ymm0,ymm2
 		vandps ymm5,ymm4,ymm6
 		vaddps ymm5,ymm5,ymm7
@@ -1661,8 +1599,8 @@ nloop_53:
 		vmulps ymm4,ymm4,ymm5
 		vfmaddps ymm1,ymm2,ymm4,ymm1
 		
-		add rdi,r9
-		sub rcx,r9
+		add r9,16
+		sub edx,16
 		jnz short nloop_53
 		
 		vextractf128 xmm2,ymm0,1
@@ -1694,12 +1632,12 @@ finish_53:
 		
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,32
-		
-		pop rdi
-		
-		ret
-		
+	add rsp,40
+
+	vzeroupper
+
+	ret
+
 weightedAvgElliottMul5_m16_FMA4 endp
 
 
@@ -1717,16 +1655,10 @@ inputf equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
-	push rdi
-	.pushreg rdi
-	push r12
-	.pushreg r12
-	sub rsp,32
-	.allocstack 32
+	sub rsp,40
+	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -1734,23 +1666,18 @@ inputf equ qword ptr[rbp+56]
 	.endprolog
 		
 		mov rax,rcx
-		movsxd rbx,edx
-		xor rdi,rdi
-		mov edi,r8d
+		movsxd r11,edx
+		mov r10d,r8d
 		mov rdx,inputf
-		xor r8,r8
 		mov r8d,r9d
-		mov r10,2
-		mov r11,16
-		mov r12,32
 			
-		lea rsi,[rax+rbx*2]
+		lea rsi,[rax+r11*2]
 		
 		vpxor ymm4,ymm4,ymm4
 		vpxor ymm5,ymm5,ymm5
 		vpxor ymm6,ymm6,ymm6
 		
-		cmp edi,8
+		cmp r10d,8
 		jg short suite_0
 		
 yloop_:
@@ -1761,19 +1688,20 @@ yloop_:
 		vpsadbw xmm2,xmm2,xmm6
 		vpsadbw xmm3,xmm3,xmm6
 		vmovdqa XMMWORD ptr [rdx],xmm0
-		vmovdqa XMMWORD ptr [rdx+rdi*2],xmm1
+		vmovdqa XMMWORD ptr [rdx+r10*2],xmm1
 		vpmaddwd xmm0,xmm0,xmm0
 		vpmaddwd xmm1,xmm1,xmm1
 		vpaddd xmm4,xmm4,xmm2
 		vpaddd xmm5,xmm5,xmm0
 		vpaddd xmm4,xmm4,xmm3
 		vpaddd xmm5,xmm5,xmm1
-		add rdx,r11
-		lea rax,[rax+rbx*4]
-		lea rsi,[rsi+rbx*4]
-		lea rdx,[rdx+rdi*2]
-		sub r8d,r10d
+		add rdx,16
+		lea rax,[rax+r11*4]
+		lea rsi,[rsi+r11*4]
+		lea rdx,[rdx+r10*2]
+		sub r8d,2
 		jnz short yloop_
+
 		jmp suite0
 		
 suite_0:		
@@ -1794,21 +1722,22 @@ xloop_2:
 		vpsadbw xmm2,xmm2,xmm6
 		vpsadbw xmm3,xmm3,xmm6
 		vmovdqa YMMWORD PTR[rdx],ymm0
-		vmovdqa YMMWORD PTR[rdx+rdi*2],ymm1
+		vmovdqa YMMWORD PTR[rdx+r10*2],ymm1
 		vpmaddwd ymm0,ymm0,ymm0
 		vpmaddwd ymm1,ymm1,ymm1
 		vpaddd xmm4,xmm4,xmm2
 		vpaddd ymm5,ymm5,ymm0
 		vpaddd xmm4,xmm4,xmm3
 		vpaddd ymm5,ymm5,ymm1
-		add rcx,r11
-		add rdx,r12
-		cmp rcx,rdi
+		add rcx,16
+		add rdx,32
+		cmp rcx,r10
 		jl short xloop_2
-		lea rax,[rax+rbx*4]
-		lea rsi,[rsi+rbx*4]
-		lea rdx,[rdx+rdi*2]
-		sub r8d,r10d
+
+		lea rax,[rax+r11*4]
+		lea rsi,[rsi+r11*4]
+		lea rdx,[rdx+r10*2]
+		sub r8d,2
 		jnz short yloop
 		
 		vmovhlps xmm1,xmm1,xmm4
@@ -1832,21 +1761,22 @@ xloop_2_:
 		vpsadbw xmm2,xmm2,xmm6
 		vpsadbw xmm3,xmm3,xmm6
 		vmovdqa YMMWORD PTR[rdx],ymm0
-		vmovdqa YMMWORD PTR[rdx+rdi*2],ymm1
+		vmovdqa YMMWORD PTR[rdx+r10*2],ymm1
 		vpmaddwd ymm0,ymm0,ymm0
 		vpmaddwd ymm1,ymm1,ymm1
 		vpaddd xmm4,xmm4,xmm2
 		vpaddd ymm5,ymm5,ymm0
 		vpaddd xmm4,xmm4,xmm3
 		vpaddd ymm5,ymm5,ymm1
-		add rcx,r11
-		add rdx,r12
-		cmp rcx,rdi
+		add rcx,16
+		add rdx,32
+		cmp rcx,r10
 		jl short xloop_2_
-		lea rax,[rax+rbx*4]
-		lea rsi,[rsi+rbx*4]
-		lea rdx,[rdx+rdi*2]
-		sub r8d,r10d
+
+		lea rax,[rax+r11*4]
+		lea rsi,[rsi+r11*4]
+		lea rdx,[rdx+r10*2]
+		sub r8d,2
 		jnz short yloop__
 		
 		vmovhlps xmm1,xmm1,xmm4
@@ -1858,7 +1788,7 @@ suite0:
 		vmovhlps xmm1,xmm1,xmm5
 		mov eax,r9d
 		vpaddd xmm5,xmm5,xmm1
-		mul edi
+		mul r10d
 		vpshuflw xmm1,xmm5,14
 		vcvtsi2ss xmm7,xmm7,eax
 		vpaddd xmm5,xmm5,xmm1
@@ -1886,18 +1816,15 @@ finish_4:
 				
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,32	
-		
+	add rsp,40
+
 	vzeroupper
-	
-	pop r12
-	pop rdi
+
 	pop rsi
-	pop rbx
 	pop rbp
-		
-		ret
-		
+
+	ret
+
 extract_m8_i16_AVX2 endp
 
 
@@ -1915,16 +1842,10 @@ input equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
-	push rdi
-	.pushreg rdi
-	push r12
-	.pushreg r12
-	sub rsp,32
-	.allocstack 32
+	sub rsp,40
+	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -1932,22 +1853,17 @@ input equ qword ptr[rbp+56]
 	.endprolog
 		
 		mov rax,rcx
-		movsxd rbx,edx
-		xor rdi,rdi
-		mov edi,r8d
+		movsxd r11,edx
+		mov r10d,r8d
 		mov rsi,input
-		xor r8,r8
 		mov r8d,r9d
-		mov r10,2
-		mov r11,8
-		mov r12,32
-				
-		lea rdx,[rax+rbx*2]
-		
+
+		lea rdx,[rax+r11*2]
+
 		vpxor ymm5,ymm5,ymm5
 		vpxor ymm6,ymm6,ymm6
 		vpxor ymm4,ymm4,ymm4
-				
+
 yloop2:
 		xor rcx,rcx
 xloop2:				
@@ -1964,21 +1880,22 @@ xloop2:
 		vcvtdq2ps ymm0,ymm0
 		vcvtdq2ps ymm2,ymm2
 		vmovaps YMMWORD PTR[rsi],ymm0
-		vmovaps YMMWORD PTR[rsi+rdi*4],ymm2
+		vmovaps YMMWORD PTR[rsi+r10*4],ymm2
 		vaddps ymm5,ymm5,ymm0
 		vaddps ymm5,ymm5,ymm2
 		vmulps ymm0,ymm0,ymm0
 		vmulps ymm2,ymm2,ymm2
 		vaddps ymm6,ymm6,ymm0
 		vaddps ymm6,ymm6,ymm2
-		add rcx,r11
-		add rsi,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rsi,32
+		cmp rcx,r10
 		jl short xloop2
-		lea rax,[rax+rbx*4]
-		lea rdx,[rdx+rbx*4]
-		lea rsi,[rsi+rdi*4]
-		sub r8d,r10d
+
+		lea rax,[rax+r11*4]
+		lea rdx,[rdx+r11*4]
+		lea rsi,[rsi+r10*4]
+		sub r8d,2
 		jnz short yloop2
 		
 		vextractf128 xmm0,ymm5,1
@@ -1989,7 +1906,7 @@ xloop2:
 		mov eax,r9d		
 		vmovhlps xmm0,xmm0,xmm5
 		vmovhlps xmm1,xmm1,xmm6
-		mul edi
+		mul r10d
 		vaddps xmm5,xmm5,xmm0
 		vaddps xmm6,xmm6,xmm1
 		vcvtsi2ss xmm7,xmm7,eax
@@ -2016,21 +1933,18 @@ novarjmp:
 		vmovss dword ptr[rax+8],xmm4
 finish_3:
 		vmovss dword ptr[rax+12],xmm4
-				
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,32	
-		
+	add rsp,40
+
 	vzeroupper
-		
-	pop r12
-	pop rdi
+
 	pop rsi
-	pop rbx
 	pop rbp
-		
-		ret
-		
+
+	ret
+
 extract_m8_AVX2 endp
 
 
@@ -2048,16 +1962,10 @@ input equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
-	push rdi
-	.pushreg rdi
-	push r12
-	.pushreg r12
-	sub rsp,32
-	.allocstack 32
+	sub rsp,40
+	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -2065,22 +1973,17 @@ input equ qword ptr[rbp+56]
 	.endprolog
 		
 		mov rax,rcx
-		movsxd rbx,edx
-		xor rdi,rdi
-		mov edi,r8d
+		movsxd r11,edx
+		mov r10d,r8d
 		mov rsi,input
-		xor r8,r8
 		mov r8d,r9d
-		mov r10,2
-		mov r11,8
-		mov r12,32
-				
-		lea rdx,[rax+rbx*2]
-		
+
+		lea rdx,[rax+r11*2]
+
 		vpxor ymm5,ymm5,ymm5
 		vpxor ymm6,ymm6,ymm6
 		vpxor ymm4,ymm4,ymm4
-				
+
 yloop2a:
 		xor rcx,rcx
 xloop2a:				
@@ -2097,19 +2000,19 @@ xloop2a:
 		vcvtdq2ps ymm0,ymm0
 		vcvtdq2ps ymm2,ymm2
 		vmovaps YMMWORD PTR[rsi],ymm0
-		vmovaps YMMWORD PTR[rsi+rdi*4],ymm2
+		vmovaps YMMWORD PTR[rsi+r10*4],ymm2
 		vaddps ymm5,ymm5,ymm0
 		vaddps ymm5,ymm5,ymm2
 		vfmadd231ps ymm6,ymm0,ymm0
 		vfmadd231ps ymm6,ymm2,ymm2
-		add rcx,r11
-		add rsi,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rsi,32
+		cmp rcx,r10
 		jl short xloop2a
-		lea rax,[rax+rbx*4]
-		lea rdx,[rdx+rbx*4]
-		lea rsi,[rsi+rdi*4]
-		sub r8d,r10d
+		lea rax,[rax+r11*4]
+		lea rdx,[rdx+r11*4]
+		lea rsi,[rsi+r10*4]
+		sub r8d,2
 		jnz short yloop2a
 		
 		vextractf128 xmm0,ymm5,1
@@ -2120,7 +2023,7 @@ xloop2a:
 		mov eax,r9d		
 		vmovhlps xmm0,xmm0,xmm5
 		vmovhlps xmm1,xmm1,xmm6
-		mul edi
+		mul r10d
 		vaddps xmm5,xmm5,xmm0
 		vaddps xmm6,xmm6,xmm1
 		vcvtsi2ss xmm7,xmm7,eax
@@ -2147,21 +2050,18 @@ novarjmpa:
 		vmovss dword ptr[rax+8],xmm4
 finish_3a:
 		vmovss dword ptr[rax+12],xmm4
-				
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,32	
-		
+	add rsp,40
+
 	vzeroupper
-		
-	pop r12
-	pop rdi
+
 	pop rsi
-	pop rbx
 	pop rbp
-		
-		ret
-		
+
+	ret
+
 extract_m8_FMA3 endp
 
 
@@ -2179,16 +2079,10 @@ input equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
-	push rdi
-	.pushreg rdi
-	push r12
-	.pushreg r12
-	sub rsp,32
-	.allocstack 32
+	sub rsp,40
+	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -2196,22 +2090,17 @@ input equ qword ptr[rbp+56]
 	.endprolog
 		
 		mov rax,rcx
-		movsxd rbx,edx
-		xor rdi,rdi
-		mov edi,r8d
+		movsxd r11,edx
+		mov r10d,r8d
 		mov rsi,input
-		xor r8,r8
 		mov r8d,r9d
-		mov r10,2
-		mov r11,8
-		mov r12,32
-				
-		lea rdx,[rax+rbx*2]
-		
+
+		lea rdx,[rax+r11*2]
+
 		vpxor ymm5,ymm5,ymm5
 		vpxor ymm6,ymm6,ymm6
 		vpxor ymm4,ymm4,ymm4
-				
+
 yloop2b:
 		xor rcx,rcx
 xloop2b:				
@@ -2228,19 +2117,19 @@ xloop2b:
 		vcvtdq2ps ymm0,ymm0
 		vcvtdq2ps ymm2,ymm2
 		vmovaps YMMWORD PTR[rsi],ymm0
-		vmovaps YMMWORD PTR[rsi+rdi*4],ymm2
+		vmovaps YMMWORD PTR[rsi+r10*4],ymm2
 		vaddps ymm5,ymm5,ymm0
 		vaddps ymm5,ymm5,ymm2
 		vfmaddps ymm6,ymm0,ymm0,ymm6
 		vfmaddps ymm6,ymm2,ymm2,ymm6
-		add rcx,r11
-		add rsi,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rsi,32
+		cmp rcx,r10
 		jl short xloop2b
-		lea rax,[rax+rbx*4]
-		lea rdx,[rdx+rbx*4]
-		lea rsi,[rsi+rdi*4]
-		sub r8d,r10d
+		lea rax,[rax+r11*4]
+		lea rdx,[rdx+r11*4]
+		lea rsi,[rsi+r10*4]
+		sub r8d,2
 		jnz short yloop2b
 		
 		vextractf128 xmm0,ymm5,1
@@ -2251,7 +2140,7 @@ xloop2b:
 		mov eax,r9d		
 		vmovhlps xmm0,xmm0,xmm5
 		vmovhlps xmm1,xmm1,xmm6
-		mul edi
+		mul r10d
 		vaddps xmm5,xmm5,xmm0
 		vaddps xmm6,xmm6,xmm1
 		vcvtsi2ss xmm7,xmm7,eax
@@ -2281,18 +2170,15 @@ finish_3b:
 				
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,32	
-		
+	add rsp,40
+
 	vzeroupper
-		
-	pop r12
-	pop rdi
+
 	pop rsi
-	pop rbx
 	pop rbp
-		
-		ret
-		
+
+	ret
+
 extract_m8_FMA4 endp
 
 
@@ -2310,16 +2196,10 @@ input equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
-	push rdi
-	.pushreg rdi
-	push r12
-	.pushreg r12
-	sub rsp,32
-	.allocstack 32
+	sub rsp,40
+	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -2327,25 +2207,20 @@ input equ qword ptr[rbp+56]
 	.endprolog
 		
 		mov rax,rcx
-		movsxd rbx,edx
-		xor rdi,rdi
-		mov edi,r8d
+		movsxd r11,edx
+		mov r10d,r8d
 		mov rsi,input
-		xor r8,r8
 		mov r8d,r9d
-		mov r10,2
-		mov r11,8
-		mov r12,32
-				
-		lea rdx,[rax+rbx*2]
-		
+
+		lea rdx,[rax+r11*2]
+
 		vpxor ymm5,ymm5,ymm5
 		vpxor ymm6,ymm6,ymm6
 		vpxor ymm4,ymm4,ymm4
-		
+
 		test rax,15
 		jnz short yloop2_16_		
-		
+
 yloop2_16:
 		xor rcx,rcx
 xloop2_16:
@@ -2360,21 +2235,21 @@ xloop2_16:
 		vcvtdq2ps ymm0,ymm0
 		vcvtdq2ps ymm2,ymm2
 		vmovaps YMMWORD PTR[rsi],ymm0
-		vmovaps YMMWORD PTR[rsi+rdi*4],ymm2
+		vmovaps YMMWORD PTR[rsi+r10*4],ymm2
 		vaddps ymm5,ymm5,ymm0
 		vaddps ymm5,ymm5,ymm2
 		vmulps ymm0,ymm0,ymm0
 		vmulps ymm2,ymm2,ymm2
 		vaddps ymm6,ymm6,ymm0
 		vaddps ymm6,ymm6,ymm2
-		add rcx,r11
-		add rsi,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rsi,32
+		cmp rcx,r10
 		jl short xloop2_16
-		lea rax,[rax+rbx*4]
-		lea rdx,[rdx+rbx*4]
-		lea rsi,[rsi+rdi*4]
-		sub r8d,r10d
+		lea rax,[rax+r11*4]
+		lea rdx,[rdx+r11*4]
+		lea rsi,[rsi+r10*4]
+		sub r8d,2
 		jnz short yloop2_16
 		jmp short suite1
 		
@@ -2392,21 +2267,21 @@ xloop2_16_:
 		vcvtdq2ps ymm0,ymm0
 		vcvtdq2ps ymm2,ymm2
 		vmovaps YMMWORD PTR[rsi],ymm0
-		vmovaps YMMWORD PTR[rsi+rdi*4],ymm2
+		vmovaps YMMWORD PTR[rsi+r10*4],ymm2
 		vaddps ymm5,ymm5,ymm0
 		vaddps ymm5,ymm5,ymm2
 		vmulps ymm0,ymm0,ymm0
 		vmulps ymm2,ymm2,ymm2
 		vaddps ymm6,ymm6,ymm0
 		vaddps ymm6,ymm6,ymm2
-		add rcx,r11
-		add rsi,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rsi,32
+		cmp rcx,r10
 		jl short xloop2_16_
-		lea rax,[rax+rbx*4]
-		lea rdx,[rdx+rbx*4]
-		lea rsi,[rsi+rdi*4]
-		sub r8d,r10d
+		lea rax,[rax+r11*4]
+		lea rdx,[rdx+r11*4]
+		lea rsi,[rsi+r10*4]
+		sub r8d,2
 		jnz short yloop2_16_		
 		
 suite1:		
@@ -2418,7 +2293,7 @@ suite1:
 		mov eax,r9d		
 		vmovhlps xmm0,xmm0,xmm5
 		vmovhlps xmm1,xmm1,xmm6
-		mul edi
+		mul r10d
 		vaddps xmm5,xmm5,xmm0
 		vaddps xmm6,xmm6,xmm1
 		vcvtsi2ss xmm7,xmm7,eax
@@ -2445,21 +2320,18 @@ novarjmp_16:
 		vmovss dword ptr[rax+8],xmm4
 finish_3_16:
 		vmovss dword ptr[rax+12],xmm4
-				
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,32	
-	
+	add rsp,40
+
 	vzeroupper
-		
-	pop r12
-	pop rdi
+
 	pop rsi
-	pop rbx
 	pop rbp
-		
-		ret
-		
+
+	ret
+
 extract_m8_AVX2_16 endp
 
 
@@ -2477,42 +2349,31 @@ input equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
-	push rdi
-	.pushreg rdi
-	push r12
-	.pushreg r12
-	sub rsp,32
-	.allocstack 32
+	sub rsp,40
+	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
-		
+
 		mov rax,rcx
-		movsxd rbx,edx
-		xor rdi,rdi
-		mov edi,r8d
+		movsxd r11,edx
+		mov r10d,r8d
 		mov rsi,input
-		xor r8,r8
 		mov r8d,r9d
-		mov r10,2
-		mov r11,8
-		mov r12,32
-				
-		lea rdx,[rax+rbx*2]
-		
+
+		lea rdx,[rax+r11*2]
+
 		vpxor ymm5,ymm5,ymm5
 		vpxor ymm6,ymm6,ymm6
 		vpxor ymm4,ymm4,ymm4
-		
+
 		test rax,15
 		jnz short yloop2_16a_		
-		
+
 yloop2_16a:
 		xor rcx,rcx
 xloop2_16a:
@@ -2527,19 +2388,19 @@ xloop2_16a:
 		vcvtdq2ps ymm0,ymm0
 		vcvtdq2ps ymm2,ymm2
 		vmovaps YMMWORD PTR[rsi],ymm0
-		vmovaps YMMWORD PTR[rsi+rdi*4],ymm2
+		vmovaps YMMWORD PTR[rsi+r10*4],ymm2
 		vaddps ymm5,ymm5,ymm0
 		vaddps ymm5,ymm5,ymm2
 		vfmadd231ps ymm6,ymm0,ymm0
 		vfmadd231ps ymm6,ymm2,ymm2
-		add rcx,r11
-		add rsi,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rsi,32
+		cmp rcx,r10
 		jl short xloop2_16a
-		lea rax,[rax+rbx*4]
-		lea rdx,[rdx+rbx*4]
-		lea rsi,[rsi+rdi*4]
-		sub r8d,r10d
+		lea rax,[rax+r11*4]
+		lea rdx,[rdx+r11*4]
+		lea rsi,[rsi+r10*4]
+		sub r8d,2
 		jnz short yloop2_16a
 		jmp short suite1a
 		
@@ -2557,19 +2418,19 @@ xloop2_16a_:
 		vcvtdq2ps ymm0,ymm0
 		vcvtdq2ps ymm2,ymm2
 		vmovaps YMMWORD PTR[rsi],ymm0
-		vmovaps YMMWORD PTR[rsi+rdi*4],ymm2
+		vmovaps YMMWORD PTR[rsi+r10*4],ymm2
 		vaddps ymm5,ymm5,ymm0
 		vaddps ymm5,ymm5,ymm2
 		vfmadd231ps ymm6,ymm0,ymm0
 		vfmadd231ps ymm6,ymm2,ymm2
-		add rcx,r11
-		add rsi,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rsi,32
+		cmp rcx,r10
 		jl short xloop2_16a_
-		lea rax,[rax+rbx*4]
-		lea rdx,[rdx+rbx*4]
-		lea rsi,[rsi+rdi*4]
-		sub r8d,r10d
+		lea rax,[rax+r11*4]
+		lea rdx,[rdx+r11*4]
+		lea rsi,[rsi+r10*4]
+		sub r8d,2
 		jnz short yloop2_16a_		
 		
 suite1a:		
@@ -2581,7 +2442,7 @@ suite1a:
 		mov eax,r9d		
 		vmovhlps xmm0,xmm0,xmm5
 		vmovhlps xmm1,xmm1,xmm6
-		mul edi
+		mul r10d
 		vaddps xmm5,xmm5,xmm0
 		vaddps xmm6,xmm6,xmm1
 		vcvtsi2ss xmm7,xmm7,eax
@@ -2608,21 +2469,18 @@ novarjmp_16a:
 		vmovss dword ptr[rax+8],xmm4
 finish_3_16a:
 		vmovss dword ptr[rax+12],xmm4
-				
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,32	
-	
+	add rsp,40
+
 	vzeroupper
-		
-	pop r12
-	pop rdi
+
 	pop rsi
-	pop rbx
 	pop rbp
-		
-		ret
-		
+
+	ret
+
 extract_m8_FMA3_16 endp
 
 
@@ -2640,42 +2498,31 @@ input equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
-	push rdi
-	.pushreg rdi
-	push r12
-	.pushreg r12
-	sub rsp,32
-	.allocstack 32
+	sub rsp,40
+	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
-		
+
 		mov rax,rcx
-		movsxd rbx,edx
-		xor rdi,rdi
-		mov edi,r8d
+		movsxd r11,edx
+		mov r10d,r8d
 		mov rsi,input
-		xor r8,r8
 		mov r8d,r9d
-		mov r10,2
-		mov r11,8
-		mov r12,32
-				
-		lea rdx,[rax+rbx*2]
-		
+
+		lea rdx,[rax+r11*2]
+
 		vpxor ymm5,ymm5,ymm5
 		vpxor ymm6,ymm6,ymm6
 		vpxor ymm4,ymm4,ymm4
-		
+
 		test rax,15
 		jnz short yloop2_16b_		
-		
+
 yloop2_16b:
 		xor rcx,rcx
 xloop2_16b:
@@ -2690,19 +2537,19 @@ xloop2_16b:
 		vcvtdq2ps ymm0,ymm0
 		vcvtdq2ps ymm2,ymm2
 		vmovaps YMMWORD PTR[rsi],ymm0
-		vmovaps YMMWORD PTR[rsi+rdi*4],ymm2
+		vmovaps YMMWORD PTR[rsi+r10*4],ymm2
 		vaddps ymm5,ymm5,ymm0
 		vaddps ymm5,ymm5,ymm2
 		vfmaddps ymm6,ymm0,ymm0,ymm6
 		vfmaddps ymm6,ymm2,ymm2,ymm6
-		add rcx,r11
-		add rsi,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rsi,32
+		cmp rcx,r10
 		jl short xloop2_16b
-		lea rax,[rax+rbx*4]
-		lea rdx,[rdx+rbx*4]
-		lea rsi,[rsi+rdi*4]
-		sub r8d,r10d
+		lea rax,[rax+r11*4]
+		lea rdx,[rdx+r11*4]
+		lea rsi,[rsi+r10*4]
+		sub r8d,2
 		jnz short yloop2_16b
 		jmp short suite1b
 		
@@ -2720,19 +2567,19 @@ xloop2_16b_:
 		vcvtdq2ps ymm0,ymm0
 		vcvtdq2ps ymm2,ymm2
 		vmovaps YMMWORD PTR[rsi],ymm0
-		vmovaps YMMWORD PTR[rsi+rdi*4],ymm2
+		vmovaps YMMWORD PTR[rsi+r10*4],ymm2
 		vaddps ymm5,ymm5,ymm0
 		vaddps ymm5,ymm5,ymm2
 		vfmaddps ymm6,ymm0,ymm0,ymm6
 		vfmaddps ymm6,ymm2,ymm2,ymm6
-		add rcx,r11
-		add rsi,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rsi,32
+		cmp rcx,r10
 		jl short xloop2_16b_
-		lea rax,[rax+rbx*4]
-		lea rdx,[rdx+rbx*4]
-		lea rsi,[rsi+rdi*4]
-		sub r8d,r10d
+		lea rax,[rax+r11*4]
+		lea rdx,[rdx+r11*4]
+		lea rsi,[rsi+r10*4]
+		sub r8d,2
 		jnz short yloop2_16b_		
 		
 suite1b:		
@@ -2744,7 +2591,7 @@ suite1b:
 		mov eax,r9d		
 		vmovhlps xmm0,xmm0,xmm5
 		vmovhlps xmm1,xmm1,xmm6
-		mul edi
+		mul r10d
 		vaddps xmm5,xmm5,xmm0
 		vaddps xmm6,xmm6,xmm1
 		vcvtsi2ss xmm7,xmm7,eax
@@ -2771,21 +2618,18 @@ novarjmp_16b:
 		vmovss dword ptr[rax+8],xmm4
 finish_3_16b:
 		vmovss dword ptr[rax+12],xmm4
-				
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,32	
-	
+	add rsp,40
+
 	vzeroupper
-		
-	pop r12
-	pop rdi
+
 	pop rsi
-	pop rbx
 	pop rbp
-		
-		ret
-		
+
+	ret
+
 extract_m8_FMA4_16 endp
 
 
@@ -2803,16 +2647,10 @@ input equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
-	push rdi
-	.pushreg rdi
-	push r12
-	.pushreg r12
-	sub rsp,32
-	.allocstack 32
+	sub rsp,40
+	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -2820,17 +2658,12 @@ input equ qword ptr[rbp+56]
 	.endprolog
 		
 		mov rax,rcx
-		movsxd rbx,edx
-		xor rdi,rdi
-		mov edi,r8d
+		movsxd r11,edx
+		mov r10d,r8d
 		mov rsi,input
-		xor r8,r8
 		mov r8d,r9d
-		mov r10,2
-		mov r11,8
-		mov r12,32
 				
-		lea rdx,[rax+rbx*2]
+		lea rdx,[rax+r11*2]
 		vpxor ymm5,ymm5,ymm5
 		vpxor ymm6,ymm6,ymm6
 		vpxor ymm3,ymm3,ymm3
@@ -2844,21 +2677,21 @@ xloop2_32:
 		vmovaps ymm0,YMMWORD PTR[rax+4*rcx]
 		vmovaps ymm2,YMMWORD PTR[rdx+4*rcx]		
 		vmovaps YMMWORD PTR[rsi],ymm0
-		vmovaps YMMWORD PTR[rsi+rdi*4],ymm2
+		vmovaps YMMWORD PTR[rsi+r10*4],ymm2
 		vaddps ymm5,ymm5,ymm0
 		vaddps ymm5,ymm5,ymm2
 		vmulps ymm0,ymm0,ymm0
 		vmulps ymm2,ymm2,ymm2
 		vaddps ymm6,ymm6,ymm0
 		vaddps ymm6,ymm6,ymm2
-		add rcx,r11
-		add rsi,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rsi,32
+		cmp rcx,r10
 		jl short xloop2_32
-		lea rax,[rax+rbx*4]
-		lea rdx,[rdx+rbx*4]
-		lea rsi,[rsi+rdi*4]
-		sub r8d,r10d
+		lea rax,[rax+r11*4]
+		lea rdx,[rdx+r11*4]
+		lea rsi,[rsi+r10*4]
+		sub r8d,2
 		jnz short yloop2_32
 		jmp short suite2
 		
@@ -2868,21 +2701,21 @@ xloop2_32_:
 		vmovups ymm0,YMMWORD PTR[rax+4*rcx]
 		vmovups ymm2,YMMWORD PTR[rdx+4*rcx]		
 		vmovaps YMMWORD PTR[rsi],ymm0
-		vmovaps YMMWORD PTR[rsi+rdi*4],ymm2
+		vmovaps YMMWORD PTR[rsi+r10*4],ymm2
 		vaddps ymm5,ymm5,ymm0
 		vaddps ymm5,ymm5,ymm2
 		vmulps ymm0,ymm0,ymm0
 		vmulps ymm2,ymm2,ymm2
 		vaddps ymm6,ymm6,ymm0
 		vaddps ymm6,ymm6,ymm2
-		add rcx,r11
-		add rsi,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rsi,32
+		cmp rcx,r10
 		jl short xloop2_32_
-		lea rax,[rax+rbx*4]
-		lea rdx,[rdx+rbx*4]
-		lea rsi,[rsi+rdi*4]
-		sub r8d,r10d
+		lea rax,[rax+r11*4]
+		lea rdx,[rdx+r11*4]
+		lea rsi,[rsi+r10*4]
+		sub r8d,2
 		jnz short yloop2_32_
 		
 suite2:		
@@ -2894,7 +2727,7 @@ suite2:
 		mov eax,r9d		
 		vmovhlps xmm0,xmm0,xmm5
 		vmovhlps xmm1,xmm1,xmm6
-		mul edi
+		mul r10d
 		vaddps xmm5,xmm5,xmm0
 		vaddps xmm6,xmm6,xmm1
 		vcvtsi2ss xmm7,xmm7,eax
@@ -2921,21 +2754,18 @@ novarjmp_32:
 		vmovss dword ptr[rax+8],xmm3
 finish_3_32:
 		vmovss dword ptr[rax+12],xmm3
-		
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,32
-	
+	add rsp,40
+
 	vzeroupper
-		
-	pop r12
-	pop rdi
+
 	pop rsi
-	pop rbx
 	pop rbp
-		
-		ret
-		
+
+	ret
+
 extract_m8_AVX2_32 endp
 
 
@@ -2953,16 +2783,10 @@ input equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
-	push rdi
-	.pushreg rdi
-	push r12
-	.pushreg r12
-	sub rsp,32
-	.allocstack 32
+	sub rsp,40
+	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -2970,17 +2794,12 @@ input equ qword ptr[rbp+56]
 	.endprolog
 		
 		mov rax,rcx
-		movsxd rbx,edx
-		xor rdi,rdi
-		mov edi,r8d
+		movsxd r11,edx
+		mov r10d,r8d
 		mov rsi,input
-		xor r8,r8
 		mov r8d,r9d
-		mov r10,2
-		mov r11,8
-		mov r12,32
 				
-		lea rdx,[rax+rbx*2]
+		lea rdx,[rax+r11*2]
 		vpxor ymm5,ymm5,ymm5
 		vpxor ymm6,ymm6,ymm6
 		vpxor ymm3,ymm3,ymm3
@@ -2994,20 +2813,22 @@ xloop2_32a:
 		vmovaps ymm0,YMMWORD PTR[rax+4*rcx]
 		vmovaps ymm2,YMMWORD PTR[rdx+4*rcx]		
 		vmovaps YMMWORD PTR[rsi],ymm0
-		vmovaps YMMWORD PTR[rsi+rdi*4],ymm2
+		vmovaps YMMWORD PTR[rsi+r10*4],ymm2
 		vaddps ymm5,ymm5,ymm0
 		vaddps ymm5,ymm5,ymm2
 		vfmadd231ps ymm6,ymm0,ymm0
 		vfmadd231ps ymm6,ymm2,ymm2
-		add rcx,r11
-		add rsi,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rsi,32
+		cmp rcx,r10
 		jl short xloop2_32a
-		lea rax,[rax+rbx*4]
-		lea rdx,[rdx+rbx*4]
-		lea rsi,[rsi+rdi*4]
-		sub r8d,r10d
+
+		lea rax,[rax+r11*4]
+		lea rdx,[rdx+r11*4]
+		lea rsi,[rsi+r10*4]
+		sub r8d,2
 		jnz short yloop2_32a
+
 		jmp short suite2a
 		
 yloop2_32a_:
@@ -3016,19 +2837,20 @@ xloop2_32a_:
 		vmovups ymm0,YMMWORD PTR[rax+4*rcx]
 		vmovups ymm2,YMMWORD PTR[rdx+4*rcx]		
 		vmovaps YMMWORD PTR[rsi],ymm0
-		vmovaps YMMWORD PTR[rsi+rdi*4],ymm2
+		vmovaps YMMWORD PTR[rsi+r10*4],ymm2
 		vaddps ymm5,ymm5,ymm0
 		vaddps ymm5,ymm5,ymm2
 		vfmadd231ps ymm6,ymm0,ymm0
 		vfmadd231ps ymm6,ymm2,ymm2
-		add rcx,r11
-		add rsi,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rsi,32
+		cmp rcx,r10
 		jl short xloop2_32a_
-		lea rax,[rax+rbx*4]
-		lea rdx,[rdx+rbx*4]
-		lea rsi,[rsi+rdi*4]
-		sub r8d,r10d
+
+		lea rax,[rax+r11*4]
+		lea rdx,[rdx+r11*4]
+		lea rsi,[rsi+r10*4]
+		sub r8d,2
 		jnz short yloop2_32a_
 		
 suite2a:		
@@ -3040,7 +2862,7 @@ suite2a:
 		mov eax,r9d		
 		vmovhlps xmm0,xmm0,xmm5
 		vmovhlps xmm1,xmm1,xmm6
-		mul edi
+		mul r10d
 		vaddps xmm5,xmm5,xmm0
 		vaddps xmm6,xmm6,xmm1
 		vcvtsi2ss xmm7,xmm7,eax
@@ -3067,21 +2889,18 @@ novarjmp_32a:
 		vmovss dword ptr[rax+8],xmm3
 finish_3_32a:
 		vmovss dword ptr[rax+12],xmm3
-		
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,32
-	
+	add rsp,40
+
 	vzeroupper
-		
-	pop r12
-	pop rdi
+
 	pop rsi
-	pop rbx
 	pop rbp
-		
-		ret
-		
+
+	ret
+
 extract_m8_FMA3_32 endp
 
 
@@ -3099,16 +2918,10 @@ input equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
-	push rdi
-	.pushreg rdi
-	push r12
-	.pushreg r12
-	sub rsp,32
-	.allocstack 32
+	sub rsp,40
+	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -3116,17 +2929,12 @@ input equ qword ptr[rbp+56]
 	.endprolog
 		
 		mov rax,rcx
-		movsxd rbx,edx
-		xor rdi,rdi
-		mov edi,r8d
+		movsxd r11,edx
+		mov r10d,r8d
 		mov rsi,input
-		xor r8,r8
 		mov r8d,r9d
-		mov r10,2
-		mov r11,8
-		mov r12,32
 				
-		lea rdx,[rax+rbx*2]
+		lea rdx,[rax+r11*2]
 		vpxor ymm5,ymm5,ymm5
 		vpxor ymm6,ymm6,ymm6
 		vpxor ymm3,ymm3,ymm3
@@ -3140,20 +2948,22 @@ xloop2_32b:
 		vmovaps ymm0,YMMWORD PTR[rax+4*rcx]
 		vmovaps ymm2,YMMWORD PTR[rdx+4*rcx]		
 		vmovaps YMMWORD PTR[rsi],ymm0
-		vmovaps YMMWORD PTR[rsi+rdi*4],ymm2
+		vmovaps YMMWORD PTR[rsi+r10*4],ymm2
 		vaddps ymm5,ymm5,ymm0
 		vaddps ymm5,ymm5,ymm2
 		vfmaddps ymm6,ymm0,ymm0,ymm6
 		vfmaddps ymm6,ymm2,ymm2,ymm6
-		add rcx,r11
-		add rsi,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rsi,32
+		cmp rcx,r10
 		jl short xloop2_32b
-		lea rax,[rax+rbx*4]
-		lea rdx,[rdx+rbx*4]
-		lea rsi,[rsi+rdi*4]
-		sub r8d,r10d
+
+		lea rax,[rax+r11*4]
+		lea rdx,[rdx+r11*4]
+		lea rsi,[rsi+r10*4]
+		sub r8d,2
 		jnz short yloop2_32b
+
 		jmp short suite2b
 		
 yloop2_32b_:
@@ -3162,19 +2972,20 @@ xloop2_32b_:
 		vmovups ymm0,YMMWORD PTR[rax+4*rcx]
 		vmovups ymm2,YMMWORD PTR[rdx+4*rcx]		
 		vmovaps YMMWORD PTR[rsi],ymm0
-		vmovaps YMMWORD PTR[rsi+rdi*4],ymm2
+		vmovaps YMMWORD PTR[rsi+r10*4],ymm2
 		vaddps ymm5,ymm5,ymm0
 		vaddps ymm5,ymm5,ymm2
 		vfmaddps ymm6,ymm0,ymm0,ymm6
 		vfmaddps ymm6,ymm2,ymm2,ymm6
-		add rcx,r11
-		add rsi,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rsi,32
+		cmp rcx,r10
 		jl short xloop2_32b_
-		lea rax,[rax+rbx*4]
-		lea rdx,[rdx+rbx*4]
-		lea rsi,[rsi+rdi*4]
-		sub r8d,r10d
+
+		lea rax,[rax+r11*4]
+		lea rdx,[rdx+r11*4]
+		lea rsi,[rsi+r10*4]
+		sub r8d,2
 		jnz short yloop2_32b_
 		
 suite2b:		
@@ -3186,7 +2997,7 @@ suite2b:
 		mov eax,r9d		
 		vmovhlps xmm0,xmm0,xmm5
 		vmovhlps xmm1,xmm1,xmm6
-		mul edi
+		mul r10d
 		vaddps xmm5,xmm5,xmm0
 		vaddps xmm6,xmm6,xmm1
 		vcvtsi2ss xmm7,xmm7,eax
@@ -3213,21 +3024,18 @@ novarjmp_32b:
 		vmovss dword ptr[rax+8],xmm3
 finish_3_32b:
 		vmovss dword ptr[rax+12],xmm3
-		
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,32
-	
+	add rsp,40
+
 	vzeroupper
-		
-	pop r12
-	pop rdi
+
 	pop rsi
-	pop rbx
 	pop rbp
-		
-		ret
-		
+
+	ret
+
 extract_m8_FMA4_32 endp
 
 
@@ -3245,16 +3053,10 @@ inputf equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
-	push rdi
-	.pushreg rdi
-	push r12
-	.pushreg r12
-	sub rsp,48
-	.allocstack 48
+	sub rsp,56
+	.allocstack 56
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -3264,23 +3066,18 @@ inputf equ qword ptr[rbp+56]
 	.endprolog
 		
 		mov rax,rcx
-		movsxd rbx,edx
-		xor rdi,rdi
-		mov edi,r8d
+		movsxd r11,edx
+		mov r10d,r8d
 		mov rdx,inputf
-		xor r8,r8
 		mov r8d,r9d
-		mov r10,2
-		mov r11,16
-		mov r12,32		
 			
-		lea rsi,[rax+rbx*2]
+		lea rsi,[rax+r11*2]
 		vpxor ymm4,ymm4,ymm4
 		vpxor ymm5,ymm5,ymm5
 		vpxor ymm6,ymm6,ymm6
 		vmovdqa ymm8,YMMWORD ptr uw_1
 		
-		cmp edi,8
+		cmp r10d,8
 		jg suite_3
 	
 		test rax,15
@@ -3290,7 +3087,7 @@ yloop_16_:
 		vmovdqa xmm0,XMMWORD PTR[rax]
 		vmovdqa xmm1,XMMWORD PTR[rsi]
 		vmovdqa XMMWORD ptr [rdx],xmm0
-		vmovdqa XMMWORD ptr [rdx+rdi*2],xmm1		
+		vmovdqa XMMWORD ptr [rdx+r10*2],xmm1		
 		vpmaddwd xmm2,xmm0,xmm8
 		vpmaddwd xmm3,xmm1,xmm8
 		vpmaddwd xmm0,xmm0,xmm0
@@ -3299,19 +3096,20 @@ yloop_16_:
 		vpaddd xmm5,xmm5,xmm0
 		vpaddd xmm4,xmm4,xmm3
 		vpaddd xmm5,xmm5,xmm1		
-		add rdx,r11
-		lea rax,[rax+rbx*4]
-		lea rsi,[rsi+rbx*4]
-		lea rdx,[rdx+rdi*2]
-		sub r8d,r10d
+		add rdx,16
+		lea rax,[rax+r11*4]
+		lea rsi,[rsi+r11*4]
+		lea rdx,[rdx+r10*2]
+		sub r8d,2
 		jnz short yloop_16_
+
 		jmp suite3
 		
 yloop_16___:
 		vmovdqu xmm0,XMMWORD PTR[rax]
 		vmovdqu xmm1,XMMWORD PTR[rsi]
 		vmovdqa XMMWORD ptr [rdx],xmm0
-		vmovdqa XMMWORD ptr [rdx+rdi*2],xmm1
+		vmovdqa XMMWORD ptr [rdx+r10*2],xmm1
 		vpmaddwd xmm2,xmm0,xmm8
 		vpmaddwd xmm3,xmm1,xmm8
 		vpmaddwd xmm0,xmm0,xmm0
@@ -3320,12 +3118,13 @@ yloop_16___:
 		vpaddd xmm5,xmm5,xmm0
 		vpaddd xmm4,xmm4,xmm3
 		vpaddd xmm5,xmm5,xmm1		
-		add rdx,r11
-		lea rax,[rax+rbx*4]
-		lea rsi,[rsi+rbx*4]
-		lea rdx,[rdx+rdi*2]
-		sub r8d,r10d
+		add rdx,16
+		lea rax,[rax+r11*4]
+		lea rsi,[rsi+r11*4]
+		lea rdx,[rdx+r10*2]
+		sub r8d,2
 		jnz short yloop_16___
+
 		jmp suite3		
 		
 suite_3:		
@@ -3338,7 +3137,7 @@ xloop_2_16:
 		vmovdqa ymm0,YMMWORD PTR[rax+2*rcx]
 		vmovdqa ymm1,YMMWORD PTR[rsi+2*rcx]
 		vmovdqa YMMWORD PTR[rdx],ymm0
-		vmovdqa YMMWORD PTR[rdx+rdi*2],ymm1
+		vmovdqa YMMWORD PTR[rdx+r10*2],ymm1
 		vpmaddwd ymm2,ymm0,ymm8
 		vpmaddwd ymm3,ymm1,ymm8
 		vpmaddwd ymm0,ymm0,ymm0
@@ -3347,14 +3146,15 @@ xloop_2_16:
 		vpaddd ymm5,ymm5,ymm0
 		vpaddd ymm4,ymm4,ymm3
 		vpaddd ymm5,ymm5,ymm1		
-		add rcx,r11
-		add rdx,r12
-		cmp rcx,rdi
+		add rcx,16
+		add rdx,32
+		cmp rcx,r10
 		jl short xloop_2_16
-		lea rax,[rax+rbx*4]
-		lea rsi,[rsi+rbx*4]
-		lea rdx,[rdx+rdi*2]
-		sub r8d,r10d
+
+		lea rax,[rax+r11*4]
+		lea rsi,[rsi+r11*4]
+		lea rdx,[rdx+r10*2]
+		sub r8d,2
 		jnz short yloop_16
 		
 		vextracti128 xmm1,ymm4,1
@@ -3370,7 +3170,7 @@ xloop_2_16_:
 		vmovdqu ymm0,YMMWORD PTR[rax+2*rcx]
 		vmovdqu ymm1,YMMWORD PTR[rsi+2*rcx]
 		vmovdqa YMMWORD PTR[rdx],ymm0
-		vmovdqa YMMWORD PTR[rdx+rdi*2],ymm1
+		vmovdqa YMMWORD PTR[rdx+r10*2],ymm1
 		vpmaddwd ymm2,ymm0,ymm8
 		vpmaddwd ymm3,ymm1,ymm8
 		vpmaddwd ymm0,ymm0,ymm0
@@ -3379,14 +3179,15 @@ xloop_2_16_:
 		vpaddd ymm5,ymm5,ymm0
 		vpaddd ymm4,ymm4,ymm3
 		vpaddd ymm5,ymm5,ymm1		
-		add rcx,r11
-		add rdx,r12
-		cmp rcx,rdi
+		add rcx,16
+		add rdx,32
+		cmp rcx,r10
 		jl short xloop_2_16_
-		lea rax,[rax+rbx*4]
-		lea rsi,[rsi+rbx*4]
-		lea rdx,[rdx+rdi*2]
-		sub r8d,r10d
+
+		lea rax,[rax+r11*4]
+		lea rsi,[rsi+r11*4]
+		lea rdx,[rdx+r10*2]
+		sub r8d,2
 		jnz short yloop_16__
 		
 		vextracti128 xmm1,ymm4,1
@@ -3400,7 +3201,7 @@ suite3:
 		mov eax,r9d
 		vpaddd xmm5,xmm5,xmm1
 		vpaddd xmm4,xmm4,xmm2
-		mul edi
+		mul r10d
 		
 		vpshufd xmm1,xmm5,1
 		vpshufd xmm2,xmm4,1
@@ -3431,22 +3232,19 @@ novarjmp_2_16:
 		vmovss dword ptr[rax+8],xmm6
 finish_4_16:
 		vmovss dword ptr[rax+12],xmm6		
-			
+
 	vmovdqa xmm8,XMMWORD ptr[rsp+32]
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,48
-	
+	add rsp,56
+
 	vzeroupper
-		
-	pop r12
-	pop rdi
+
 	pop rsi
-	pop rbx
 	pop rbp
-		
-		ret
-		
+
+	ret
+
 extract_m8_i16_AVX2_16 endp
 
 
@@ -3465,16 +3263,10 @@ sumsq equ qword ptr[rbp+64]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
-	push rdi
-	.pushreg rdi
-	push r12
-	.pushreg r12
-	sub rsp,32
-	.allocstack 32
+	sub rsp,40
+	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -3482,17 +3274,12 @@ sumsq equ qword ptr[rbp+64]
 	.endprolog
 		
 		mov rax,rcx
-		movsxd rbx,edx
-		xor rdi,rdi
-		mov edi,r8d
+		movsxd r11,edx
+		mov r10d,r8d
 		mov rdx,inputf
-		xor r8,r8
 		mov r8d,r9d
-		mov r10,2
-		mov r11,8
-		mov r12,16
 			
-		lea rsi,[rax+rbx*2]
+		lea rsi,[rax+r11*2]
 		vpxor xmm4,xmm4,xmm4
 		vpxor ymm5,ymm5,ymm5
 		vpxor ymm6,ymm6,ymm6
@@ -3510,7 +3297,7 @@ xloop_2_16_2:
 		vpmaddwd xmm3,xmm1,xmm7
 		vpaddd xmm4,xmm4,xmm2
 		vmovdqa XMMWORD PTR[rdx],xmm0
-		vmovdqa XMMWORD PTR[rdx+rdi*2],xmm1
+		vmovdqa XMMWORD PTR[rdx+r10*2],xmm1
 		vpaddd xmm4,xmm4,xmm3
 		vmovhlps xmm2,xmm6,xmm0
 		vmovhlps xmm3,xmm6,xmm1
@@ -3528,14 +3315,15 @@ xloop_2_16_2:
 		vpaddq ymm1,ymm1,ymm3
 		vpaddq ymm5,ymm5,ymm0
 		vpaddq ymm5,ymm5,ymm1
-		add rcx,r11
-		add rdx,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rdx,16
+		cmp rcx,r10
 		jl short xloop_2_16_2
-		lea rax,[rax+rbx*4]
-		lea rsi,[rsi+rbx*4]
-		lea rdx,[rdx+rdi*2]
-		sub r8d,r10d
+
+		lea rax,[rax+r11*4]
+		lea rsi,[rsi+r11*4]
+		lea rdx,[rdx+r10*2]
+		sub r8d,2
 		jnz yloop_16_2
 		
 		jmp suite4
@@ -3549,7 +3337,7 @@ xloop_2_16_2_:
 		vpmaddwd xmm3,xmm1,xmm7		
 		vpaddd xmm4,xmm4,xmm2
 		vmovdqa XMMWORD PTR[rdx],xmm0
-		vmovdqa XMMWORD PTR[rdx+rdi*2],xmm1
+		vmovdqa XMMWORD PTR[rdx+r10*2],xmm1
 		vpaddd xmm4,xmm4,xmm3
 		vmovhlps xmm2,xmm6,xmm0
 		vmovhlps xmm3,xmm6,xmm1
@@ -3567,14 +3355,15 @@ xloop_2_16_2_:
 		vpaddq ymm1,ymm1,ymm3
 		vpaddq ymm5,ymm5,ymm0
 		vpaddq ymm5,ymm5,ymm1
-		add rcx,r11
-		add rdx,r12
-		cmp rcx,rdi
+		add rcx,8
+		add rdx,16
+		cmp rcx,r10
 		jl short xloop_2_16_2_
-		lea rax,[rax+rbx*4]
-		lea rsi,[rsi+rbx*4]
-		lea rdx,[rdx+rdi*2]
-		sub r8d,r10d
+
+		lea rax,[rax+r11*4]
+		lea rsi,[rsi+r11*4]
+		lea rdx,[rdx+r10*2]
+		sub r8d,2
 		jnz yloop_16_2_
 		
 suite4:				
@@ -3584,27 +3373,24 @@ suite4:
 		vpaddq xmm5,xmm5,xmm1
 		mov rax,sum
 		vmovhlps xmm0,xmm6,xmm5
-		mov rbx,sumsq
+		mov r11,sumsq
 		vpaddq xmm5,xmm5,xmm0		
 		vpshufd xmm2,xmm4,1
-		vmovq qword ptr [rbx],xmm5		
+		vmovq qword ptr [r11],xmm5		
 		vpaddd xmm4,xmm4,xmm2
 		vmovd dword ptr [rax],xmm4		
-		
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,32
-	
+	add rsp,40
+
 	vzeroupper
-		
-	pop r12
-	pop rdi
+
 	pop rsi
-	pop rbx
 	pop rbp
-		
-		ret
-		
+
+	ret
+
 extract_m8_i16_AVX2_16_2 endp
 
 
@@ -3622,22 +3408,16 @@ istd equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	push r12
-	.pushreg r12
 	push r13
 	.pushreg r13
 	push r14
 	.pushreg r14
-	push r15
-	.pushreg r15
-	sub rsp,40
-	.allocstack 40
+	sub rsp,32
+	.allocstack 32
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -3646,37 +3426,32 @@ istd equ qword ptr[rbp+56]
 		
 		mov rdi,rdx
 		mov rax,r8
-		xor rbx,rbx
-		mov ebx,r9d
-		xor rsi,rsi
+		mov r11d,r9d
 		mov esi,len
-		mov r15,rcx
+		mov r10,rcx
 		
-		mov r10,4
-		mov r11,16
-		mov r12,32
 		mov r13,128
 		mov r14,512
 nloop:
-		mov rcx,r15
+		mov rcx,r10
 		vxorps ymm0,ymm0,ymm0
 		vxorps ymm1,ymm1,ymm1
 		vxorps ymm2,ymm2,ymm2
 		vxorps ymm3,ymm3,ymm3
-		mov rdx,rsi
+		mov edx,esi
 lloop:
 		vmovaps ymm7,YMMWORD ptr[rcx]
 		vmulps ymm4,ymm7,YMMWORD ptr[rdi]
-		vmulps ymm5,ymm7,YMMWORD ptr[rdi+r12]
-		vmulps ymm6,ymm7,YMMWORD ptr[rdi+2*r12]
+		vmulps ymm5,ymm7,YMMWORD ptr[rdi+32]
+		vmulps ymm6,ymm7,YMMWORD ptr[rdi+64]
 		vmulps ymm7,ymm7,YMMWORD ptr[rdi+96]
 		vaddps ymm0,ymm0,ymm4
 		vaddps ymm1,ymm1,ymm5
 		vaddps ymm2,ymm2,ymm6
 		vaddps ymm3,ymm3,ymm7
 		
-		vmovaps ymm7,YMMWORD ptr[rcx+r12]
-		vmulps ymm4,ymm7,YMMWORD ptr[rdi+r13]
+		vmovaps ymm7,YMMWORD ptr[rcx+32]
+		vmulps ymm4,ymm7,YMMWORD ptr[rdi+128]
 		vmulps ymm5,ymm7,YMMWORD ptr[rdi+160]
 		vmulps ymm6,ymm7,YMMWORD ptr[rdi+192]
 		vmulps ymm7,ymm7,YMMWORD ptr[rdi+224]
@@ -3685,8 +3460,8 @@ lloop:
 		vaddps ymm2,ymm2,ymm6
 		vaddps ymm3,ymm3,ymm7
 		
-		vmovaps ymm7,YMMWORD ptr[rcx+2*r12]
-		vmulps ymm4,ymm7,YMMWORD ptr[rdi+2*r13]
+		vmovaps ymm7,YMMWORD ptr[rcx+64]
+		vmulps ymm4,ymm7,YMMWORD ptr[rdi+256]
 		vmulps ymm5,ymm7,YMMWORD ptr[rdi+288]
 		vmulps ymm6,ymm7,YMMWORD ptr[rdi+320]
 		vmulps ymm7,ymm7,YMMWORD ptr[rdi+352]
@@ -3707,7 +3482,7 @@ lloop:
 
 		add rcx,r13
 		add rdi,r14
-		sub rdx,r12
+		sub edx,32
 		jnz lloop
 		
 		vextractf128 xmm4,ymm0,1
@@ -3724,14 +3499,13 @@ lloop:
 		vhaddps xmm0,xmm0,xmm2		
 				
 		vmovaps XMMWORD ptr[rax],xmm0
-		add rax,r11
-		sub rbx,r10
+		add rax,16
+		sub r11d,4
 		jnz nloop
 		
 		mov rcx,istd
 		mov rax,r8
 		vmovss xmm7,dword ptr[rcx]
-		xor rdx,rdx
 		mov edx,r9d
 		vshufps xmm7,xmm7,xmm7,0		
 		xor rcx,rcx
@@ -3743,27 +3517,24 @@ aloop:
 		vaddps ymm2,ymm2,YMMWORD ptr[rdi+rcx*4+32]
 		vmovaps YMMWORD ptr[rax+rcx*4],ymm0
 		vmovaps YMMWORD ptr[rax+rcx*4+32],ymm2
-		add rcx,r11
-		sub rdx,r11
+		add rcx,16
+		sub edx,16
 		jnz short aloop
-		
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,40
-	
+	add rsp,32
+
 	vzeroupper
-	
-	pop r15
+
 	pop r14
 	pop r13
-	pop r12
 	pop rdi
 	pop rsi
-	pop rbx
 	pop rbp
-			
-		ret
-		
+
+	ret
+
 dotProd_m32_m16_AVX2 endp
 
 
@@ -3781,22 +3552,16 @@ istd equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	push r12
-	.pushreg r12
 	push r13
 	.pushreg r13
 	push r14
 	.pushreg r14
-	push r15
-	.pushreg r15
-	sub rsp,40
-	.allocstack 40
+	sub rsp,32
+	.allocstack 32
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -3805,39 +3570,34 @@ istd equ qword ptr[rbp+56]
 		
 		mov rdi,rdx
 		mov rax,r8
-		xor rbx,rbx
-		mov ebx,r9d
-		xor rsi,rsi
+		mov r11d,r9d
 		mov esi,len
-		mov r15,rcx
+		mov r10,rcx
 		
-		mov r10,4
-		mov r11,16
-		mov r12,32
 		mov r13,128
 		mov r14,512
 nloop_2:
-		mov rcx,r15
+		mov rcx,r10
 		vxorps ymm0,ymm0,ymm0
 		vxorps ymm1,ymm1,ymm1
 		vxorps ymm2,ymm2,ymm2
 		vxorps ymm3,ymm3,ymm3
-		mov rdx,rsi
+		mov edx,esi
 lloop_2:
 		vmovaps ymm7,YMMWORD ptr[rcx]
 		vfmadd231ps ymm0,ymm7,YMMWORD ptr[rdi]
-		vfmadd231ps ymm1,ymm7,YMMWORD ptr[rdi+r12]
-		vfmadd231ps ymm2,ymm7,YMMWORD ptr[rdi+2*r12]
+		vfmadd231ps ymm1,ymm7,YMMWORD ptr[rdi+32]
+		vfmadd231ps ymm2,ymm7,YMMWORD ptr[rdi+64]
 		vfmadd231ps ymm3,ymm7,YMMWORD ptr[rdi+96]		
 
-		vmovaps ymm7,YMMWORD ptr[rcx+r12]
-		vfmadd231ps ymm0,ymm7,YMMWORD ptr[rdi+r13]
+		vmovaps ymm7,YMMWORD ptr[rcx+32]
+		vfmadd231ps ymm0,ymm7,YMMWORD ptr[rdi+128]
 		vfmadd231ps ymm1,ymm7,YMMWORD ptr[rdi+160]
 		vfmadd231ps ymm2,ymm7,YMMWORD ptr[rdi+192]
 		vfmadd231ps ymm3,ymm7,YMMWORD ptr[rdi+224]		
 		
-		vmovaps ymm7,YMMWORD ptr[rcx+2*r12]
-		vfmadd231ps ymm0,ymm7,YMMWORD ptr[rdi+2*r13]
+		vmovaps ymm7,YMMWORD ptr[rcx+64]
+		vfmadd231ps ymm0,ymm7,YMMWORD ptr[rdi+256]
 		vfmadd231ps ymm1,ymm7,YMMWORD ptr[rdi+288]
 		vfmadd231ps ymm2,ymm7,YMMWORD ptr[rdi+320]
 		vfmadd231ps ymm3,ymm7,YMMWORD ptr[rdi+352]		
@@ -3850,7 +3610,7 @@ lloop_2:
 				
 		add rcx,r13
 		add rdi,r14
-		sub rdx,r12
+		sub edx,32
 		jnz lloop_2
 				
 		vextractf128 xmm4,ymm0,1
@@ -3867,14 +3627,13 @@ lloop_2:
 		haddps xmm0,xmm2		
 		
 		vmovaps XMMWORD ptr[rax],xmm0
-		add rax,r11
-		sub rbx,r10
+		add rax,16
+		sub r11d,4
 		jnz nloop_2
 		
 		mov rcx,istd
 		mov rax,r8
 		vmovss xmm7,dword ptr[rcx]
-		xor rdx,rdx
 		mov edx,r9d
 		vshufps xmm7,xmm7,xmm7,0
 		xor rcx,rcx
@@ -3886,27 +3645,24 @@ aloop_2:
 		vaddps ymm2,ymm2,YMMWORD ptr[rdi+rcx*4+32]
 		vmovaps YMMWORD ptr[rax+rcx*4],ymm0
 		vmovaps YMMWORD ptr[rax+rcx*4+32],ymm2
-		add rcx,r11
-		sub rdx,r11
+		add rcx,16
+		sub edx,16
 		jnz short aloop_2
-		
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,40
-	
+	add rsp,32
+
 	vzeroupper
-	
-	pop r15
+
 	pop r14
 	pop r13
-	pop r12
 	pop rdi
 	pop rsi
-	pop rbx
 	pop rbp
-			
-		ret
-		
+
+	ret
+
 dotProd_m32_m16_FMA3 endp
 
 
@@ -3924,22 +3680,16 @@ istd equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	push r12
-	.pushreg r12
 	push r13
 	.pushreg r13
 	push r14
 	.pushreg r14
-	push r15
-	.pushreg r15
-	sub rsp,40
-	.allocstack 40
+	sub rsp,32
+	.allocstack 32
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -3948,39 +3698,34 @@ istd equ qword ptr[rbp+56]
 		
 		mov rdi,rdx
 		mov rax,r8
-		xor rbx,rbx
-		mov ebx,r9d
-		xor rsi,rsi
+		mov r11d,r9d
 		mov esi,len
-		mov r15,rcx
+		mov r10,rcx
 		
-		mov r10,4
-		mov r11,16
-		mov r12,32
 		mov r13,128
 		mov r14,512
 nloop_3:
-		mov rcx,r15
+		mov rcx,r10
 		vxorps ymm0,ymm0,ymm0
 		vxorps ymm1,ymm1,ymm1
 		vxorps ymm2,ymm2,ymm2
 		vxorps ymm3,ymm3,ymm3
-		mov rdx,rsi
+		mov edx,esi
 lloop_3:
 		vmovaps ymm7,YMMWORD ptr[rcx]
 		vfmaddps ymm0,ymm7,YMMWORD ptr[rdi],ymm0
-		vfmaddps ymm1,ymm7,YMMWORD ptr[rdi+r12],ymm1
-		vfmaddps ymm2,ymm7,YMMWORD ptr[rdi+2*r12],ymm2
+		vfmaddps ymm1,ymm7,YMMWORD ptr[rdi+32],ymm1
+		vfmaddps ymm2,ymm7,YMMWORD ptr[rdi+64],ymm2
 		vfmaddps ymm3,ymm7,YMMWORD ptr[rdi+96],ymm3
 		
-		vmovaps ymm7,YMMWORD ptr[rcx+r12]
-		vfmaddps ymm0,ymm7,YMMWORD ptr[rdi+r13],ymm0
+		vmovaps ymm7,YMMWORD ptr[rcx+32]
+		vfmaddps ymm0,ymm7,YMMWORD ptr[rdi+128],ymm0
 		vfmaddps ymm1,ymm7,YMMWORD ptr[rdi+160],ymm1
 		vfmaddps ymm2,ymm7,YMMWORD ptr[rdi+192],ymm2
 		vfmaddps ymm3,ymm7,YMMWORD ptr[rdi+224],ymm3
 		
-		vmovaps ymm7,YMMWORD ptr[rcx+2*r12]
-		vfmaddps ymm0,ymm7,YMMWORD ptr[rdi+2*r13],ymm0
+		vmovaps ymm7,YMMWORD ptr[rcx+64]
+		vfmaddps ymm0,ymm7,YMMWORD ptr[rdi+256],ymm0
 		vfmaddps ymm1,ymm7,YMMWORD ptr[rdi+288],ymm1
 		vfmaddps ymm2,ymm7,YMMWORD ptr[rdi+320],ymm2
 		vfmaddps ymm3,ymm7,YMMWORD ptr[rdi+352],ymm3
@@ -3993,7 +3738,7 @@ lloop_3:
 						
 		add rcx,r13
 		add rdi,r14
-		sub rdx,r12
+		sub edx,32
 		jnz lloop_3
 				
 		vextractf128 xmm4,ymm0,1
@@ -4010,14 +3755,13 @@ lloop_3:
 		haddps xmm0,xmm2		
 		
 		vmovaps XMMWORD ptr[rax],xmm0
-		add rax,r11
-		sub rbx,r10
+		add rax,16
+		sub r11d,4
 		jnz nloop_3
 		
 		mov rcx,istd
 		mov rax,r8
 		vmovss xmm7,dword ptr[rcx]
-		xor rdx,rdx
 		mov edx,r9d
 		vshufps xmm7,xmm7,xmm7,0
 		xor rcx,rcx
@@ -4029,27 +3773,24 @@ aloop_3:
 		vaddps ymm2,ymm2,YMMWORD ptr[rdi+rcx*4+32]
 		vmovaps YMMWORD ptr[rax+rcx*4],ymm0
 		vmovaps YMMWORD ptr[rax+rcx*4+32],ymm2
-		add rcx,r11
-		sub rdx,r11
+		add rcx,16
+		sub edx,16
 		jnz short aloop_3
-		
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,40
-		
+	add rsp,32
+
 	vzeroupper
-		
-	pop r15
+
 	pop r14
 	pop r13
-	pop r12
 	pop rdi
 	pop rsi
-	pop rbx
 	pop rbp
-			
-		ret
-		
+
+	ret
+
 dotProd_m32_m16_FMA4 endp
 
 
@@ -4067,22 +3808,16 @@ istd equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	push r12
-	.pushreg r12
 	push r13
 	.pushreg r13
 	push r14
 	.pushreg r14
-	push r15
-	.pushreg r15
-	sub rsp,40
-	.allocstack 40
+	sub rsp,32
+	.allocstack 32
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -4091,37 +3826,32 @@ istd equ qword ptr[rbp+56]
 		
 		mov rdi,rdx
 		mov rax,r8
-		xor rbx,rbx
-		mov ebx,r9d
-		xor rsi,rsi
+		mov r11d,r9d
 		mov esi,len
-		mov r15,rcx
+		mov r10,rcx
 		
-		mov r10,4
-		mov r11,16
-		mov r12,48
 		mov r13,192
 		mov r14,768
 nloop:
-		mov rcx,r15
+		mov rcx,r10
 		vxorps ymm0,ymm0,ymm0
 		vxorps ymm1,ymm1,ymm1
 		vxorps ymm2,ymm2,ymm2
 		vxorps ymm3,ymm3,ymm3
-		mov rdx,rsi
+		mov edx,esi
 lloop:
 		vmovaps ymm7,YMMWORD ptr[rcx]
 		vmulps ymm4,ymm7,YMMWORD ptr[rdi]
-		vmulps ymm5,ymm7,YMMWORD ptr[rdi+2*r11]
-		vmulps ymm6,ymm7,YMMWORD ptr[rdi+4*r11]
+		vmulps ymm5,ymm7,YMMWORD ptr[rdi+32]
+		vmulps ymm6,ymm7,YMMWORD ptr[rdi+64]
 		vmulps ymm7,ymm7,YMMWORD ptr[rdi+96]
 		vaddps ymm0,ymm0,ymm4
 		vaddps ymm1,ymm1,ymm5
 		vaddps ymm2,ymm2,ymm6
 		vaddps ymm3,ymm3,ymm7
 		
-		vmovaps ymm7,YMMWORD ptr[rcx+2*r11]
-		vmulps ymm4,ymm7,YMMWORD ptr[rdi+8*r11]
+		vmovaps ymm7,YMMWORD ptr[rcx+32]
+		vmulps ymm4,ymm7,YMMWORD ptr[rdi+128]
 		vmulps ymm5,ymm7,YMMWORD ptr[rdi+160]
 		vmulps ymm6,ymm7,YMMWORD ptr[rdi+192]
 		vmulps ymm7,ymm7,YMMWORD ptr[rdi+224]
@@ -4130,7 +3860,7 @@ lloop:
 		vaddps ymm2,ymm2,ymm6
 		vaddps ymm3,ymm3,ymm7
 		
-		vmovaps ymm7,YMMWORD ptr[rcx+4*r11]
+		vmovaps ymm7,YMMWORD ptr[rcx+64]
 		vmulps ymm4,ymm7,YMMWORD ptr[rdi+256]
 		vmulps ymm5,ymm7,YMMWORD ptr[rdi+288]
 		vmulps ymm6,ymm7,YMMWORD ptr[rdi+320]
@@ -4141,7 +3871,7 @@ lloop:
 		vaddps ymm3,ymm3,ymm7
 		
 		vmovaps ymm7,YMMWORD ptr[rcx+96]
-		vmulps ymm4,ymm7,YMMWORD ptr[rdi+2*r13]
+		vmulps ymm4,ymm7,YMMWORD ptr[rdi+384]
 		vmulps ymm5,ymm7,YMMWORD ptr[rdi+416]
 		vmulps ymm6,ymm7,YMMWORD ptr[rdi+448]
 		vmulps ymm7,ymm7,YMMWORD ptr[rdi+480]
@@ -4150,7 +3880,7 @@ lloop:
 		vaddps ymm2,ymm2,ymm6
 		vaddps ymm3,ymm3,ymm7
 
-		vmovaps ymm7,YMMWORD ptr[rcx+8*r11]
+		vmovaps ymm7,YMMWORD ptr[rcx+128]
 		vmulps ymm4,ymm7,YMMWORD ptr[rdi+512]
 		vmulps ymm5,ymm7,YMMWORD ptr[rdi+544]
 		vmulps ymm6,ymm7,YMMWORD ptr[rdi+576]
@@ -4172,7 +3902,7 @@ lloop:
 		
 		add rcx,r13
 		add rdi,r14
-		sub rdx,r12
+		sub edx,48
 		jnz lloop
 		
 		vextractf128 xmm4,ymm0,1
@@ -4189,14 +3919,13 @@ lloop:
 		vhaddps xmm0,xmm0,xmm2		
 				
 		vmovaps XMMWORD ptr[rax],xmm0
-		add rax,r11
-		sub rbx,r10
+		add rax,16
+		sub r11d,4
 		jnz nloop
 		
 		mov rcx,istd
 		mov rax,r8
 		vmovss xmm7,dword ptr[rcx]
-		xor rdx,rdx
 		mov edx,r9d
 		vshufps xmm7,xmm7,xmm7,0		
 		xor rcx,rcx
@@ -4208,27 +3937,24 @@ aloop:
 		vaddps ymm2,ymm2,YMMWORD ptr[rdi+rcx*4+32]
 		vmovaps YMMWORD ptr[rax+rcx*4],ymm0
 		vmovaps YMMWORD ptr[rax+rcx*4+32],ymm2
-		add rcx,r11
-		sub rdx,r11
+		add rcx,16
+		sub rdx,16
 		jnz short aloop
-		
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,40
-	
+	add rsp,32
+
 	vzeroupper
-	
-	pop r15
+
 	pop r14
 	pop r13
-	pop r12
 	pop rdi
 	pop rsi
-	pop rbx
 	pop rbp
-			
-		ret
-		
+
+	ret
+
 dotProd_m48_m16_AVX2 endp
 
 
@@ -4246,22 +3972,16 @@ istd equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	push r12
-	.pushreg r12
 	push r13
 	.pushreg r13
 	push r14
 	.pushreg r14
-	push r15
-	.pushreg r15
-	sub rsp,40
-	.allocstack 40
+	sub rsp,32
+	.allocstack 32
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -4270,50 +3990,45 @@ istd equ qword ptr[rbp+56]
 		
 		mov rdi,rdx
 		mov rax,r8
-		xor rbx,rbx
-		mov ebx,r9d
-		xor rsi,rsi
+		mov r11d,r9d
 		mov esi,len
-		mov r15,rcx
+		mov r10,rcx
 		
-		mov r10,4
-		mov r11,16
-		mov r12,48
 		mov r13,192
 		mov r14,768
 nloop2_2:
-		mov rcx,r15
+		mov rcx,r10
 		vxorps ymm0,ymm0,ymm0
 		vxorps ymm1,ymm1,ymm1
 		vxorps ymm2,ymm2,ymm2
 		vxorps ymm3,ymm3,ymm3
-		mov rdx,rsi
+		mov edx,esi
 lloop2_2:
 		vmovaps ymm7,YMMWORD ptr[rcx]
 		vfmadd231ps ymm0,ymm7,YMMWORD ptr[rdi]
-		vfmadd231ps ymm1,ymm7,YMMWORD ptr[rdi+2*r11]
-		vfmadd231ps ymm2,ymm7,YMMWORD ptr[rdi+4*r11]
+		vfmadd231ps ymm1,ymm7,YMMWORD ptr[rdi+32]
+		vfmadd231ps ymm2,ymm7,YMMWORD ptr[rdi+64]
 		vfmadd231ps ymm3,ymm7,YMMWORD ptr[rdi+96]		
 
-		vmovaps ymm7,YMMWORD ptr[rcx+2*r11]
-		vfmadd231ps ymm0,ymm7,YMMWORD ptr[rdi+8*r11]
+		vmovaps ymm7,YMMWORD ptr[rcx+32]
+		vfmadd231ps ymm0,ymm7,YMMWORD ptr[rdi+128]
 		vfmadd231ps ymm1,ymm7,YMMWORD ptr[rdi+160]
 		vfmadd231ps ymm2,ymm7,YMMWORD ptr[rdi+192]
 		vfmadd231ps ymm3,ymm7,YMMWORD ptr[rdi+224]		
 		
-		vmovaps ymm7,YMMWORD ptr[rcx+4*r11]
+		vmovaps ymm7,YMMWORD ptr[rcx+64]
 		vfmadd231ps ymm0,ymm7,YMMWORD ptr[rdi+256]
 		vfmadd231ps ymm1,ymm7,YMMWORD ptr[rdi+288]
 		vfmadd231ps ymm2,ymm7,YMMWORD ptr[rdi+320]
 		vfmadd231ps ymm3,ymm7,YMMWORD ptr[rdi+352]		
 		
 		vmovaps ymm7,YMMWORD ptr[rcx+96]
-		vfmadd231ps ymm0,ymm7,YMMWORD ptr[rdi+2*r13]
+		vfmadd231ps ymm0,ymm7,YMMWORD ptr[rdi+384]
 		vfmadd231ps ymm1,ymm7,YMMWORD ptr[rdi+416]
 		vfmadd231ps ymm2,ymm7,YMMWORD ptr[rdi+448]
 		vfmadd231ps ymm3,ymm7,YMMWORD ptr[rdi+480]		
 		
-		vmovaps ymm7,YMMWORD ptr[rcx+8*r11]
+		vmovaps ymm7,YMMWORD ptr[rcx+128]
 		vfmadd231ps ymm0,ymm7,YMMWORD ptr[rdi+512]
 		vfmadd231ps ymm1,ymm7,YMMWORD ptr[rdi+544]
 		vfmadd231ps ymm2,ymm7,YMMWORD ptr[rdi+576]
@@ -4327,7 +4042,7 @@ lloop2_2:
 						
 		add rcx,r13
 		add rdi,r14
-		sub rdx,r12
+		sub edx,48
 		jnz lloop2_2
 				
 		vextractf128 xmm4,ymm0,1
@@ -4344,14 +4059,13 @@ lloop2_2:
 		haddps xmm0,xmm2		
 		
 		vmovaps XMMWORD ptr[rax],xmm0
-		add rax,r11
-		sub rbx,r10
+		add rax,16
+		sub r11d,4
 		jnz nloop2_2
 		
 		mov rcx,istd
 		mov rax,r8
 		vmovss xmm7,dword ptr[rcx]
-		xor rdx,rdx
 		mov edx,r9d
 		vshufps xmm7,xmm7,xmm7,0
 		xor rcx,rcx
@@ -4363,27 +4077,24 @@ aloop2_2:
 		vaddps ymm2,ymm2,YMMWORD ptr[rdi+rcx*4+32]
 		vmovaps YMMWORD ptr[rax+rcx*4],ymm0
 		vmovaps YMMWORD ptr[rax+rcx*4+32],ymm2
-		add rcx,r11
-		sub rdx,r11
+		add rcx,16
+		sub edx,16
 		jnz short aloop2_2
-		
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,40
-	
+	add rsp,32
+
 	vzeroupper
-	
-	pop r15
+
 	pop r14
 	pop r13
-	pop r12
 	pop rdi
 	pop rsi
-	pop rbx
 	pop rbp
-			
-		ret
-		
+
+	ret
+
 dotProd_m48_m16_FMA3 endp
 
 
@@ -4401,22 +4112,16 @@ istd equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	push r12
-	.pushreg r12
 	push r13
 	.pushreg r13
 	push r14
 	.pushreg r14
-	push r15
-	.pushreg r15
-	sub rsp,40
-	.allocstack 40
+	sub rsp,32
+	.allocstack 32
 	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	vmovdqa XMMWORD ptr[rsp+16],xmm7
@@ -4425,50 +4130,45 @@ istd equ qword ptr[rbp+56]
 		
 		mov rdi,rdx
 		mov rax,r8
-		xor rbx,rbx
-		mov ebx,r9d
-		xor rsi,rsi
+		mov r11d,r9d
 		mov esi,len
-		mov r15,rcx
+		mov r10,rcx
 		
-		mov r10,4
-		mov r11,16
-		mov r12,48
 		mov r13,192
 		mov r14,768
 nloop2_3:
-		mov rcx,r15
+		mov rcx,r10
 		vxorps ymm0,ymm0,ymm0
 		vxorps ymm1,ymm1,ymm1
 		vxorps ymm2,ymm2,ymm2
 		vxorps ymm3,ymm3,ymm3
-		mov rdx,rsi
+		mov edx,esi
 lloop2_3:
 		vmovaps ymm7,YMMWORD ptr[rcx]
 		vfmaddps ymm0,ymm7,YMMWORD ptr[rdi],ymm0
-		vfmaddps ymm1,ymm7,YMMWORD ptr[rdi+2*r11],ymm1
-		vfmaddps ymm2,ymm7,YMMWORD ptr[rdi+4*r11],ymm2
+		vfmaddps ymm1,ymm7,YMMWORD ptr[rdi+32],ymm1
+		vfmaddps ymm2,ymm7,YMMWORD ptr[rdi+64],ymm2
 		vfmaddps ymm3,ymm7,YMMWORD ptr[rdi+96],ymm3
 		
-		vmovaps ymm7,YMMWORD ptr[rcx+2*r11]
-		vfmaddps ymm0,ymm7,YMMWORD ptr[rdi+8*r11],ymm0
+		vmovaps ymm7,YMMWORD ptr[rcx+32]
+		vfmaddps ymm0,ymm7,YMMWORD ptr[rdi+128],ymm0
 		vfmaddps ymm1,ymm7,YMMWORD ptr[rdi+160],ymm1
 		vfmaddps ymm2,ymm7,YMMWORD ptr[rdi+192],ymm2
 		vfmaddps ymm3,ymm7,YMMWORD ptr[rdi+224],ymm3
 		
-		vmovaps ymm7,YMMWORD ptr[rcx+4*r11]
+		vmovaps ymm7,YMMWORD ptr[rcx+64]
 		vfmaddps ymm0,ymm7,YMMWORD ptr[rdi+256],ymm0
 		vfmaddps ymm1,ymm7,YMMWORD ptr[rdi+288],ymm1
 		vfmaddps ymm2,ymm7,YMMWORD ptr[rdi+320],ymm2
 		vfmaddps ymm3,ymm7,YMMWORD ptr[rdi+352],ymm3
 
 		vmovaps ymm7,YMMWORD ptr[rcx+96]
-		vfmaddps ymm0,ymm7,YMMWORD ptr[rdi+2*r13],ymm0
+		vfmaddps ymm0,ymm7,YMMWORD ptr[rdi+384],ymm0
 		vfmaddps ymm1,ymm7,YMMWORD ptr[rdi+416],ymm1
 		vfmaddps ymm2,ymm7,YMMWORD ptr[rdi+448],ymm2
 		vfmaddps ymm3,ymm7,YMMWORD ptr[rdi+480],ymm3
 		
-		vmovaps ymm7,YMMWORD ptr[rcx+8*r11]
+		vmovaps ymm7,YMMWORD ptr[rcx+128]
 		vfmaddps ymm0,ymm7,YMMWORD ptr[rdi+512],ymm0
 		vfmaddps ymm1,ymm7,YMMWORD ptr[rdi+544],ymm1
 		vfmaddps ymm2,ymm7,YMMWORD ptr[rdi+576],ymm2
@@ -4482,7 +4182,7 @@ lloop2_3:
 						
 		add rcx,r13
 		add rdi,r14
-		sub rdx,r12
+		sub edx,48
 		jnz lloop2_3
 				
 		vextractf128 xmm4,ymm0,1
@@ -4499,14 +4199,13 @@ lloop2_3:
 		haddps xmm0,xmm2		
 		
 		vmovaps XMMWORD ptr[rax],xmm0
-		add rax,r11
-		sub rbx,r10
+		add rax,16
+		sub r11d,4
 		jnz nloop2_3
 		
 		mov rcx,istd
 		mov rax,r8
 		vmovss xmm7,dword ptr[rcx]
-		xor rdx,rdx
 		mov edx,r9d
 		vshufps xmm7,xmm7,xmm7,0
 		xor rcx,rcx
@@ -4518,27 +4217,24 @@ aloop2_3:
 		vaddps ymm2,ymm2,YMMWORD ptr[rdi+rcx*4+32]
 		vmovaps YMMWORD ptr[rax+rcx*4],ymm0
 		vmovaps YMMWORD ptr[rax+rcx*4+32],ymm2
-		add rcx,r11
-		sub rdx,r11
+		add rcx,16
+		sub edx,16
 		jnz short aloop2_3
-		
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
-	add rsp,40
-		
+	add rsp,32
+
 	vzeroupper
-		
-	pop r15
+
 	pop r14
 	pop r13
-	pop r12
 	pop rdi
 	pop rsi
-	pop rbx
 	pop rbp
-			
-		ret
-		
+
+	ret
+
 dotProd_m48_m16_FMA4 endp
 
 
@@ -4556,20 +4252,12 @@ istd equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	push r12
-	.pushreg r12
-	push r13
-	.pushreg r13
 	push r14
 	.pushreg r14
-	push r15
-	.pushreg r15
 	sub rsp,40
 	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
@@ -4580,38 +4268,32 @@ istd equ qword ptr[rbp+56]
 		
 		mov rdi,rdx
 		mov rax,r8
-		xor rbx,rbx
-		mov ebx,r9d
-		xor rsi,rsi
+		mov r11d,r9d
 		mov esi,len
-		mov r15,rcx
+		mov r10,rcx
 		
-		mov r10,4
-		mov r11,16
-		mov r12,32
-		mov r13,64
 		mov r14,256
 		
 nloop_3:
-		mov rcx,r15
+		mov rcx,r10
 		vpxor ymm0,ymm0,ymm0
 		vpxor ymm1,ymm1,ymm1
 		vpxor ymm2,ymm2,ymm2
 		vpxor ymm3,ymm3,ymm3
-		mov rdx,rsi
+		mov edx,esi
 lloop_3:
 		vmovdqa ymm7,YMMWORD ptr [rcx]
 		vpmaddwd ymm4,ymm7,YMMWORD ptr [rdi]
-		vpmaddwd ymm5,ymm7,YMMWORD ptr [rdi+r12]
-		vpmaddwd ymm6,ymm7,YMMWORD ptr [rdi+r13]
+		vpmaddwd ymm5,ymm7,YMMWORD ptr [rdi+32]
+		vpmaddwd ymm6,ymm7,YMMWORD ptr [rdi+64]
 		vpmaddwd ymm7,ymm7,YMMWORD ptr [rdi+96]
 		vpaddd ymm0,ymm0,ymm4
 		vpaddd ymm1,ymm1,ymm5
 		vpaddd ymm2,ymm2,ymm6
 		vpaddd ymm3,ymm3,ymm7
 				
-		vmovdqa ymm7,YMMWORD ptr [rcx+r12]
-		vpmaddwd ymm4,ymm7,YMMWORD ptr [rdi+r13*2]
+		vmovdqa ymm7,YMMWORD ptr [rcx+32]
+		vpmaddwd ymm4,ymm7,YMMWORD ptr [rdi+128]
 		vpmaddwd ymm5,ymm7,YMMWORD ptr [rdi+160]
 		vpmaddwd ymm6,ymm7,YMMWORD ptr [rdi+192]
 		vpmaddwd ymm7,ymm7,YMMWORD ptr [rdi+224]
@@ -4619,10 +4301,11 @@ lloop_3:
 		vpaddd ymm1,ymm1,ymm5
 		vpaddd ymm2,ymm2,ymm6
 		vpaddd ymm3,ymm3,ymm7
-		add rcx,r13
+		add rcx,64
 		add rdi,r14
-		sub rdx,r12
+		sub edx,32
 		jnz short lloop_3
+
 		vextracti128 xmm4,ymm0,1
 		vextracti128 xmm5,ymm1,1
 		vextracti128 xmm6,ymm2,1
@@ -4641,13 +4324,13 @@ lloop_3:
 		vshufps xmm0,xmm0,xmm2,136
 		vpaddd xmm6,xmm6,xmm0
 		vmovdqa XMMWORD ptr [rax],xmm6
-		add rax,r11
-		sub rbx,r10
+		add rax,16
+		sub r11d,4
 		jnz nloop_3
+
 		mov rcx,istd
 		mov rax,r8
 		vmovss xmm7,dword ptr[rcx]
-		xor rdx,rdx
 		mov edx,r9d
 		vpshufd xmm7,xmm7,0
 		xor rcx,rcx
@@ -4674,27 +4357,23 @@ aloop_3:
 		vmovaps XMMWORD ptr[rax+rcx*4+16],xmm1
 		vmovaps XMMWORD ptr[rax+rcx*4+32],xmm2
 		vmovaps XMMWORD ptr[rax+rcx*4+48],xmm3
-		add rcx,r11
-		sub rdx,r11
+		add rcx,16
+		sub edx,16
 		jnz short aloop_3
-		
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
 	add rsp,40
-		
+
 	vzeroupper
-		
-	pop r15
+
 	pop r14
-	pop r13
-	pop r12
 	pop rdi
 	pop rsi
-	pop rbx
 	pop rbp		
-		
-		ret
-		
+
+	ret
+
 dotProd_m32_m16_i16_AVX2 endp
 
 
@@ -4712,20 +4391,12 @@ istd equ qword ptr[rbp+56]
 	push rbp
 	.pushreg rbp
 	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	push r12
-	.pushreg r12
-	push r13
-	.pushreg r13
 	push r14
 	.pushreg r14
-	push r15
-	.pushreg r15
 	sub rsp,40
 	.allocstack 40
 	vmovdqa XMMWORD ptr[rsp],xmm6
@@ -4736,38 +4407,32 @@ istd equ qword ptr[rbp+56]
 		
 		mov rdi,rdx
 		mov rax,r8
-		xor rbx,rbx
-		mov ebx,r9d
-		xor rsi,rsi
+		mov r11d,r9d
 		mov esi,len
-		mov r15,rcx
+		mov r10,rcx
 		
-		mov r10,4
-		mov r11,16
-		mov r12,48
-		mov r13,96
 		mov r14,384
 		
 nloop_4:
-		mov rcx,r15
+		mov rcx,r10
 		vpxor ymm0,ymm0,ymm0
 		vpxor ymm1,ymm1,ymm1
 		vpxor ymm2,ymm2,ymm2
 		vpxor ymm3,ymm3,ymm3
-		mov rdx,rsi
+		mov edx,esi
 lloop_4:
 		vmovdqa ymm7,YMMWORD ptr [rcx]
 		vpmaddwd ymm4,ymm7,YMMWORD ptr [rdi]
-		vpmaddwd ymm5,ymm7,YMMWORD ptr [rdi+r11*2]
-		vpmaddwd ymm6,ymm7,YMMWORD ptr [rdi+r11*4]
-		vpmaddwd ymm7,ymm7,YMMWORD ptr [rdi+r13]
+		vpmaddwd ymm5,ymm7,YMMWORD ptr [rdi+32]
+		vpmaddwd ymm6,ymm7,YMMWORD ptr [rdi+64]
+		vpmaddwd ymm7,ymm7,YMMWORD ptr [rdi+96]
 		vpaddd ymm0,ymm0,ymm4
 		vpaddd ymm1,ymm1,ymm5
 		vpaddd ymm2,ymm2,ymm6
 		vpaddd ymm3,ymm3,ymm7
 				
-		vmovdqa ymm7,YMMWORD ptr [rcx+r11*2]
-		vpmaddwd ymm4,ymm7,YMMWORD ptr [rdi+r11*8]
+		vmovdqa ymm7,YMMWORD ptr [rcx+32]
+		vpmaddwd ymm4,ymm7,YMMWORD ptr [rdi+128]
 		vpmaddwd ymm5,ymm7,YMMWORD ptr [rdi+160]
 		vpmaddwd ymm6,ymm7,YMMWORD ptr [rdi+192]
 		vpmaddwd ymm7,ymm7,YMMWORD ptr [rdi+224]
@@ -4776,7 +4441,7 @@ lloop_4:
 		vpaddd ymm2,ymm2,ymm6
 		vpaddd ymm3,ymm3,ymm7		
 		
-		vmovdqa ymm7,YMMWORD ptr [rcx+r11*4]
+		vmovdqa ymm7,YMMWORD ptr [rcx+64]
 		vpmaddwd ymm4,ymm7,YMMWORD ptr [rdi+256]
 		vpmaddwd ymm5,ymm7,YMMWORD ptr [rdi+288]
 		vpmaddwd ymm6,ymm7,YMMWORD ptr [rdi+320]
@@ -4786,9 +4451,9 @@ lloop_4:
 		vpaddd ymm2,ymm2,ymm6
 		vpaddd ymm3,ymm3,ymm7	
 
-		add rcx,r13
+		add rcx,96
 		add rdi,r14
-		sub rdx,r12
+		sub edx,48
 		jnz lloop_4
 		
 		vextracti128 xmm4,ymm0,1
@@ -4810,13 +4475,13 @@ lloop_4:
 		vpaddd xmm6,xmm6,xmm0
 		vmovdqa XMMWORD ptr [rax],xmm6		
 		
-		add rax,r11
-		sub rbx,r10
+		add rax,16
+		sub r11d,4
 		jnz nloop_4
+
 		mov rcx,istd
 		mov rax,r8
 		vmovss xmm7,dword ptr[rcx]
-		xor rbx,rbx
 		mov edx,r9d
 		vpshufd xmm7,xmm7,0
 		xor rcx,rcx
@@ -4843,26 +4508,22 @@ aloop_4:
 		vmovaps XMMWORD ptr[rax+rcx*4+16],xmm1
 		vmovaps XMMWORD ptr[rax+rcx*4+32],xmm2
 		vmovaps XMMWORD ptr[rax+rcx*4+48],xmm3
-		add rcx,r11
-		sub rdx,r11
+		add rcx,16
+		sub edx,16
 		jnz short aloop_4
-		
+
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
 	add rsp,40
-		
+
 	vzeroupper
-		
-	pop r15
+
 	pop r14
-	pop r13
-	pop r12
 	pop rdi
 	pop rsi
-	pop rbx
 	pop rbp		
-		
-		ret
+
+	ret
 
 dotProd_m48_m16_i16_AVX2 endp
 
@@ -4874,23 +4535,15 @@ dotProd_m48_m16_i16_AVX2 endp
 e0_m16_AVX2 proc public frame
 
 	.endprolog
-	
-		mov rax,rcx
-		xor rcx,rcx
-		mov ecx,edx
-		
+
 		vmovaps ymm2,YMMWORD ptr exp_hi
 		vmovaps ymm3,YMMWORD ptr exp_lo
 		vmovaps ymm4,YMMWORD ptr e0_mult
 		vmovaps ymm5,YMMWORD ptr e0_bias
-		
-		mov rdx,16
-		mov r8,32
-		mov r10,64
-		
+
 eloop16:
-		vmovaps ymm0,YMMWORD ptr [rax]
-		vmovaps ymm1,YMMWORD ptr [rax+r8]
+		vmovaps ymm0,YMMWORD ptr [rcx]
+		vmovaps ymm1,YMMWORD ptr [rcx+32]
 		vminps ymm0,ymm0,ymm2
 		vminps ymm1,ymm1,ymm2
 		vmaxps ymm0,ymm0,ymm3
@@ -4901,16 +4554,16 @@ eloop16:
 		vaddps ymm1,ymm1,ymm5
 		vcvtps2dq ymm0,ymm0
 		vcvtps2dq ymm1,ymm1
-		vmovaps YMMWORD ptr [rax],ymm0
-		vmovaps YMMWORD ptr [rax+r8],ymm1
-		add rax,r10
-		sub rcx,rdx
+		vmovaps YMMWORD ptr [rcx],ymm0
+		vmovaps YMMWORD ptr [rcx+32],ymm1
+		add rcx,64
+		sub edx,16
 		
 		jnz short eloop16
-		
-		vzeroupper
-		
-		ret
+
+	vzeroupper
+
+	ret
 
 e0_m16_AVX2 endp
 
@@ -4922,23 +4575,15 @@ e0_m16_AVX2 endp
 e0_m16_FMA3 proc public frame
 
 	.endprolog
-	
-		mov rax,rcx
-		xor rcx,rcx
-		mov ecx,edx
-		
+
 		vmovaps ymm2,YMMWORD ptr exp_hi
 		vmovaps ymm3,YMMWORD ptr exp_lo
 		vmovaps ymm4,YMMWORD ptr e0_mult
 		vmovaps ymm5,YMMWORD ptr e0_bias
-				
-		mov rdx,16
-		mov r8,32
-		mov r10,64
-		
+
 eloop16_2:
-		vmovaps ymm0,YMMWORD ptr [rax]
-		vmovaps ymm1,YMMWORD ptr [rax+r8]
+		vmovaps ymm0,YMMWORD ptr [rcx]
+		vmovaps ymm1,YMMWORD ptr [rcx+32]
 		vminps ymm0,ymm0,ymm2
 		vminps ymm1,ymm1,ymm2
 		vmaxps ymm0,ymm0,ymm3
@@ -4949,16 +4594,16 @@ eloop16_2:
 				
 		vcvtps2dq ymm0,ymm0
 		vcvtps2dq ymm1,ymm1
-		vmovaps YMMWORD ptr [rax],ymm0
-		vmovaps YMMWORD ptr [rax+r8],ymm1
-		add rax,r10
-		sub rcx,rdx
+		vmovaps YMMWORD ptr [rcx],ymm0
+		vmovaps YMMWORD ptr [rcx+32],ymm1
+		add rcx,64
+		sub edx,16
 		
 		jnz short eloop16_2		
-		
-		vzeroupper
-		
-		ret
+
+	vzeroupper
+
+	ret
 
 e0_m16_FMA3 endp
 
@@ -4970,23 +4615,15 @@ e0_m16_FMA3 endp
 e0_m16_FMA4 proc public frame
 
 	.endprolog
-	
-		mov rax,rcx
-		xor rcx,rcx
-		mov ecx,edx
-		
+
 		vmovaps ymm2,YMMWORD ptr exp_hi
 		vmovaps ymm3,YMMWORD ptr exp_lo
 		vmovaps ymm4,YMMWORD ptr e0_mult
 		vmovaps ymm5,YMMWORD ptr e0_bias
-				
-		mov rdx,16
-		mov r8,32
-		mov r10,64
-		
+
 eloop16_3:
-		vmovaps ymm0,YMMWORD ptr [rax]
-		vmovaps ymm1,YMMWORD ptr [rax+r8]
+		vmovaps ymm0,YMMWORD ptr [rcx]
+		vmovaps ymm1,YMMWORD ptr [rcx+32]
 		vminps ymm0,ymm0,ymm2
 		vminps ymm1,ymm1,ymm2
 		vmaxps ymm0,ymm0,ymm3
@@ -4997,16 +4634,16 @@ eloop16_3:
 						
 		vcvtps2dq ymm0,ymm0
 		vcvtps2dq ymm1,ymm1
-		vmovaps YMMWORD ptr [rax],ymm0
-		vmovaps YMMWORD ptr [rax+r8],ymm1		
-		add rax,r10
-		sub rcx,rdx
-		
+		vmovaps YMMWORD ptr [rcx],ymm0
+		vmovaps YMMWORD ptr [rcx+32],ymm1		
+		add rcx,64
+		sub edx,16
+
 		jnz short eloop16_3
-		
-		vzeroupper
-		
-		ret
+
+	vzeroupper
+
+	ret
 
 e0_m16_FMA4 endp
 
@@ -5028,11 +4665,7 @@ e1_m16_AVX2 proc public frame
 	vmovdqa XMMWORD ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
 	.endprolog
-	
-		mov rax,rcx
-		xor rcx,rcx
-		mov ecx,edx
-		
+
 		vmovaps ymm3,YMMWORD ptr exp_hi
 		vmovaps ymm4,YMMWORD ptr exp_lo
 		vmovaps ymm5,YMMWORD ptr e1_scale
@@ -5040,12 +4673,9 @@ e1_m16_AVX2 proc public frame
 		vmovaps ymm7,YMMWORD ptr e1_c1
 		vmovaps ymm8,YMMWORD ptr e1_c2
 		vmovaps ymm9,YMMWORD ptr e1_c0
-		
-		mov rdx,8
-		mov r9,32	
-		
+
 eloop8:
-		vmovaps ymm0,YMMWORD ptr [rax]
+		vmovaps ymm0,YMMWORD ptr [rcx]
 		vminps ymm0,ymm0,ymm3
 		vmaxps ymm0,ymm0,ymm4
 		vmulps ymm0,ymm0,ymm5
@@ -5060,9 +4690,9 @@ eloop8:
 		vaddps ymm0,ymm0,ymm9
 		vaddps ymm0,ymm0,ymm1
 		vpaddd ymm0,ymm0,ymm2
-		vmovaps YMMWORD ptr [rax],ymm0
-		add rax,r9
-		sub rcx,rdx
+		vmovaps YMMWORD ptr [rcx],ymm0
+		add rcx,32
+		sub edx,8
 		jnz short eloop8
 		
 	vmovdqa xmm9,XMMWORD ptr[rsp+48]
@@ -5070,11 +4700,11 @@ eloop8:
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
 	add rsp,72
-		
+
 	vzeroupper
-		
-		ret
-		
+
+	ret
+
 e1_m16_AVX2 endp
 
 
@@ -5107,11 +4737,7 @@ e2_m16_AVX2 proc public frame
 	vmovdqa XMMWORD ptr[rsp+144],xmm15
 	.savexmm128 xmm15,144
 	.endprolog
-	
-		mov rax,rcx
-		xor rcx,rcx
-		mov ecx,edx
-		
+
 		vmovaps ymm7,YMMWORD ptr exp_hi
 		vmovaps ymm8,YMMWORD ptr exp_lo
 		vmovaps ymm9,YMMWORD ptr exp_rln2
@@ -5121,12 +4747,9 @@ e2_m16_AVX2 proc public frame
 		vmovaps ymm13,YMMWORD ptr exp_c1
 		vmovaps ymm14,YMMWORD ptr exp_q0
 		vmovaps ymm15,YMMWORD ptr am_1
-		
-		mov rdx,8
-		mov r8,32
 
 eloop4:
-		vmovaps ymm0,YMMWORD ptr [rax]		
+		vmovaps ymm0,YMMWORD ptr [rcx]		
 		vminps ymm0,ymm0,ymm7
 		vmaxps ymm0,ymm0,ymm8
 		vmulps ymm1,ymm0,ymm9
@@ -5163,9 +4786,9 @@ eloop4:
 		vaddps ymm2,ymm2,ymm2
 		vaddps ymm0,ymm2,ymm15
 		vmulps ymm0,ymm0,ymm1		
-		vmovaps YMMWORD ptr [rax],ymm0
-		add rax,r8
-		sub rcx,rdx
+		vmovaps YMMWORD ptr [rcx],ymm0
+		add rcx,32
+		sub edx,8
 		jnz eloop4
 		
 	vmovdqa xmm15,XMMWORD ptr[rsp+144]
@@ -5179,11 +4802,11 @@ eloop4:
 	vmovdqa xmm7,XMMWORD ptr[rsp+16]
 	vmovdqa xmm6,XMMWORD ptr[rsp]	
 	add rsp,168
-		
+
 	vzeroupper
-		
-		ret
-		
+
+	ret
+
 e2_m16_AVX2 endp
 
 

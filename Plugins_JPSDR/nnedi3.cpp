@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.68 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.69 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -417,14 +417,15 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		env->ThrowError("nnedi3: Error while allocating planar dstPF!");
 	}
 	
-	bool AVX512=false;
-
+	bool AVX512 = false;
+	
 	if (opt==0)
 	{
 		const int CPUF=env->GetCPUFlags();
 
 #ifdef AVX512_BUILD_POSSIBLE
-		if (((CPUF & CPUF_AVX512F)!=0) && ((CPUF & CPUF_AVX512DQ)!=0) && ((CPUF & CPUF_AVX512BW)!=0))
+		if (((CPUF & CPUF_AVX512F)!=0) && ((CPUF & CPUF_AVX512DQ)!=0)
+			&& ((CPUF & CPUF_AVX512BW)!=0) && ((CPUF & CPUF_AVX512VL)!=0))
 		{
 			AVX512=true;
 			opt=6;
@@ -461,7 +462,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		}
 
 		char buf[512];
-		sprintf_s(buf,512,"nnedi3: auto-detected opt setting = %d (%d)\n",opt,CPUF);
+		if (AVX512) sprintf_s(buf,512,"nnedi3: auto-detected opt setting = 8 (%d)\n",CPUF);
+		else sprintf_s(buf,512,"nnedi3: auto-detected opt setting = %d (%d)\n",opt,CPUF);
 		OutputDebugString(buf);
 	}
 	else
@@ -1047,11 +1049,20 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	
 	int hslice[PLANE_MAX],hremain[PLANE_MAX];
 	int srow[PLANE_MAX] = {6,6,6,6};
+	int TabSlice[PLANE_MAX][MAX_MT_THREADS];
+	
 	for (int i=0; i<PlaneMax; i++)
 	{
 		const int height = srcPF->GetHeight(i)-12;
+
 		hslice[i] = height/(int)threads_number;
 		hremain[i] = height%(int)threads_number;
+		
+		// Balance threads
+		for (int j=0; j<(int)threads_number; j++)
+			TabSlice[i][j]=hslice[i];
+		for (int j=0; j<hremain[i]; j++)
+			TabSlice[i][j]++;
 	}
 
 	int NNPixels_pitch[PLANE_MAX];
@@ -1119,7 +1130,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			pssInfo[i].height[b] = srcPF->GetHeight(b);
 			pssInfo[i].width[b] = srcPF->GetWidth(b);
 			pssInfo[i].sheight[b] = srow[b];
-			srow[b] += i == 0 ? hslice[b]+hremain[b] : hslice[b];
+			//srow[b] += i == 0 ? hslice[b]+hremain[b] : hslice[b];
+			srow[b] += TabSlice[b][i];
 			pssInfo[i].eheight[b] = srow[b];
 			pssInfo[i].plane_range[b] = plane_range[b];
 		}
@@ -1214,6 +1226,8 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	
 	const uint8_t PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
 	int plane[4];
+	
+	CurrentPlaneMax=PlaneMax;
 
 	if (isRGBPfamily)
 	{
@@ -1265,14 +1279,8 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	{
 		if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,-1,false))
 			env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool !");
-
-		for (uint8_t b=0; b<PlaneMax; b++)
-		{
-			for (uint8_t i=0; i<threads_number; i++)
-				pssInfo[i].current_plane=b;
-
-			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
-		}
+		
+		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
 	else
 	{
@@ -1299,7 +1307,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 					evalFunc_1_32(pssInfo);
 				}
 				break;
-			default : ;
+			default : break;
 		}
 	}
 	
@@ -1308,15 +1316,12 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	if (threads_number>1)
 	{
 		for (uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process= f_proc_2;
+			MT_Thread[i].f_process=f_proc_2;
+		
+		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 
-		for (uint8_t b=0; b<PlaneMax; b++)
-		{
-			for (uint8_t i=0; i<threads_number; i++)
-				pssInfo[i].current_plane=b;
-
-			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
-		}
+		for (uint8_t i=0; i<threads_number; i++)
+			MT_Thread[i].f_process=0;
 
 		poolInterface->ReleaseThreadPool(UserId,sleep);
 	}
@@ -1345,7 +1350,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 					evalFunc_2_32(pssInfo);
 				}
 				break;
-			default :;
+			default : break;
 		}
 	}
 	
@@ -3868,23 +3873,53 @@ void nnedi3::StaticThreadpool(void *ptr)
 {
 	const Public_MT_Data_Thread *data=(const Public_MT_Data_Thread *)ptr;
 	nnedi3 *ptrClass=(nnedi3 *)data->pClass;
-	void *ps = &(ptrClass->pssInfo[data->thread_Id]);
+	PS_INFO *ps = &(ptrClass->pssInfo[data->thread_Id]);
+	const uint8_t PlaneMax=ptrClass->CurrentPlaneMax;
 	
 	switch(data->f_process)
 	{
-		case 1 : evalFunc_1(ps);
+		case 1 :
+			for (uint8_t b=0; b<PlaneMax; b++)
+			{
+				ps->current_plane=b;
+				evalFunc_1(ps);
+			}
 			break;
-		case 2 : evalFunc_2(ps);
+		case 2 :
+			for (uint8_t b=0; b<PlaneMax; b++)
+			{
+				ps->current_plane=b;
+				evalFunc_2(ps);
+			}
 			break;
-		case 3 : evalFunc_1_16(ps);
+		case 3 :
+			for (uint8_t b=0; b<PlaneMax; b++)
+			{
+				ps->current_plane=b;
+				evalFunc_1_16(ps);
+			}
 			break;
-		case 4 : evalFunc_2_16(ps);
+		case 4 :
+			for (uint8_t b=0; b<PlaneMax; b++)
+			{
+				ps->current_plane=b;
+				evalFunc_2_16(ps);
+			}
 			break;
-		case 5 : evalFunc_1_32(ps);
+		case 5 :
+			for (uint8_t b=0; b<PlaneMax; b++)
+			{
+				ps->current_plane=b;
+				evalFunc_1_32(ps);
+			}
 			break;
-		case 6 : evalFunc_2_32(ps);
+		case 6 :
+			for (uint8_t b=0; b<PlaneMax; b++)
+			{
+				ps->current_plane=b;
+				evalFunc_2_32(ps);
+			}
 			break;
-		default : ;
+		default : break;
 	}
 }
-
