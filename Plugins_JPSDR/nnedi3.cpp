@@ -475,6 +475,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		}
 	}
 
+	if (nsize==0) AVX512=false; // AVX-512 not compatible with asize not multiple of 32.
+
 	const int dims0 = 49*4+5*4+9*4;
 	const int dims0new = 4*65+4*5;
 	const int dims1 = (xdiaTable[nsize]*ydiaTable[nsize]+1) << (nnsTablePow2[nns]+1);
