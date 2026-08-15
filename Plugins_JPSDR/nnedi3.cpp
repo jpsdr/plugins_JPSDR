@@ -1697,6 +1697,26 @@ void computeNetwork0_i16_C(const float *inputf, const float *weightsf, uint8_t *
 }
 
 
+void computeNetwork0_i16_64_C(const float *inputf, const float *weightsf, uint8_t *d)
+{
+	const float *wf = weightsf+2*64;
+	float temp[12],scale=1.0f;
+
+	dotProdS_C(inputf,weightsf,temp,4,64,&scale);
+
+	const float t=temp[0];
+
+	elliott_C(temp,4);
+	temp[0] = t;
+	dotProd_C(temp,wf+8,temp+4,4,4,&scale);
+	elliott_C(temp+4,4);
+	dotProd_C(temp,wf+8+4*5,temp+8,4,8,&scale);
+
+	if (max(temp[10],temp[11])<=max(temp[8],temp[9])) d[0]=1;
+	else d[0]=0;
+}
+
+
 void uc2f48_C(const uint8_t *t, const int pitch, float *p)
 {
 	const int pitch2 = pitch << 1;
@@ -2384,7 +2404,7 @@ void evalFunc_1_16(void *ps)
 					}
 				}
 			}
-			else computeNetwork0=computeNetwork0_i16_C;
+			else computeNetwork0=(AVX512)?computeNetwork0_i16_64_C:computeNetwork0_i16_C;
 		}
 		else  // use float dot products
 		{
