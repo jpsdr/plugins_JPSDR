@@ -1,4 +1,4 @@
-Version 4.3.1
+Version 4.4.0
 
 Merge of :
 AutoYUY2 4.1.13
