@@ -2648,6 +2648,9 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_HDRtoSDR(AVSValue args, void* user_data
 	int prefetch=args[9].AsInt(0);
 	int thread_level=args[10].AsInt(6);
 
+	if ((Coeff_X<=0.0f) || (Coeff_Y<=0.0f) || (Coeff_Z<=0.0f))
+		env->ThrowError("ConvertXYZ_Scale_HDRtoSDR: Wrong parameter value!");
+
 	const bool avsp=env->FunctionExists("ConvertBits");
 	const bool negativePrefetch=(prefetch<0)?true:false;
 	prefetch=abs(prefetch);
@@ -2736,7 +2739,7 @@ AVSValue __cdecl Create_ConvertXYZ_Scale_SDRtoHDR(AVSValue args, void* user_data
 	int prefetch=args[9].AsInt(0);
 	int thread_level=args[10].AsInt(6);
 
-	if ((Coeff_X==0.0f) || (Coeff_Y==0.0f) || (Coeff_Z==0.0f))
+	if ((Coeff_X<=0.0f) || (Coeff_Y<=0.0f) || (Coeff_Z<=0.0f))
 		env->ThrowError("ConvertXYZ_Scale_SDRtoHDR: Wrong parameter value!");
 
 	const bool avsp=env->FunctionExists("ConvertBits");

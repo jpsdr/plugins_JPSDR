@@ -28740,7 +28740,8 @@ ConverXYZ_BT2446_C_HDRtoSDR::ConverXYZ_BT2446_C_HDRtoSDR(PClip _child,bool _Chro
 	lookup2Z_32=(float *)malloc(1048576*sizeof(float));
 
 	if ((lookupY_16==nullptr) || (lookupX_16==nullptr) || (lookupiY_16==nullptr) || (lookupZ_16==nullptr)
-		|| (lookupY_32==nullptr) || (lookupiY_32==nullptr) || (lookup2Y_16==nullptr)
+		|| (lookupY_32==nullptr) || (lookupiY_32==nullptr)
+		|| (lookup2X_16==nullptr) || (lookup2Y_16==nullptr) || (lookup2Z_16==nullptr)
 		|| (lookup2X_32==nullptr) || (lookup2Y_32==nullptr) || (lookup2Z_32==nullptr))
 	{
 		FreeData();
