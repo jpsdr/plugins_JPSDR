@@ -2164,13 +2164,19 @@ void resize_h_planar_uint16_avx512_permutex_vstripe_mp_2s32_ks4_pretransposed_co
 
         _mm512_stream_si512(reinterpret_cast<__m512i*>(dst_ptr), result_0_31_int16);
 
-        const int w_mod32 = width / 32 * 32;
-        if (x < (w_mod32 - 32))
-		{
-		  result_32_63_int16 = _mm512_min_epu16(result_32_63_int16, clamp_limit_max);
-		  result_32_63_int16 = _mm512_max_epu16(result_32_63_int16, clamp_limit_min);
+        const int remaining_32_63_out = width - (x + 32);
+        if (remaining_32_63_out >= 32)
+        {
+          result_32_63_int16 = _mm512_min_epu16(result_32_63_int16, clamp_limit_max);
+          result_32_63_int16 = _mm512_max_epu16(result_32_63_int16, clamp_limit_min);
           _mm512_stream_si512(reinterpret_cast<__m512i*>(dst_ptr + 32), result_32_63_int16);
-		}
+        }
+        else if (remaining_32_63_out > 0)
+        {
+          result_32_63_int16 = _mm512_min_epu16(result_32_63_int16, clamp_limit_max);
+          result_32_63_int16 = _mm512_max_epu16(result_32_63_int16, clamp_limit_min);
+          _mm512_mask_storeu_epi16(dst_ptr + 32, _bzhi_u32(~0u, remaining_32_63_out), result_32_63_int16);
+        }
 
         dst_ptr       += dst_pitch;
         src_ptr_0_31  += src_pitch;
@@ -2462,13 +2468,19 @@ void resize_h_planar_uint16_avx512_permutex_vstripe_mp_2s32_ks8_pretransposed_co
 
 		_mm512_stream_si512(reinterpret_cast<__m512i*>(dst_ptr), result_0_31_int16);
 
-        const int w_mod32 = width / 32 * 32;
-        if (x < (w_mod32 - 32))
-		{
-		  result_32_63_int16 = _mm512_min_epu16(result_32_63_int16, clamp_limit_max);
-		  result_32_63_int16 = _mm512_max_epu16(result_32_63_int16, clamp_limit_min);
+        const int remaining_32_63_out = width - (x + 32);
+        if (remaining_32_63_out >= 32)
+        {
+          result_32_63_int16 = _mm512_min_epu16(result_32_63_int16, clamp_limit_max);
+          result_32_63_int16 = _mm512_max_epu16(result_32_63_int16, clamp_limit_min);
           _mm512_stream_si512(reinterpret_cast<__m512i*>(dst_ptr + 32), result_32_63_int16);
-		}
+        }
+        else if (remaining_32_63_out > 0)
+        {
+          result_32_63_int16 = _mm512_min_epu16(result_32_63_int16, clamp_limit_max);
+          result_32_63_int16 = _mm512_max_epu16(result_32_63_int16, clamp_limit_min);
+          _mm512_mask_storeu_epi16(dst_ptr + 32, _bzhi_u32(~0u, remaining_32_63_out), result_32_63_int16);
+        }
 
         dst_ptr       += dst_pitch;
         src_ptr_0_31  += src_pitch;
@@ -2780,13 +2792,19 @@ void resize_h_planar_uint16_avx512_permutex_vstripe_mp_4s16_ks8_pretransposed_co
 
         _mm512_stream_si512(reinterpret_cast<__m512i*>(dst_ptr), result_0_31_int16);
 
-        const int w_mod32 = width / 32 * 32;
-        if (x < (w_mod32 - 32))
-		{
-		  result_32_63_int16 = _mm512_min_epu16(result_32_63_int16, clamp_limit_max);
-		  result_32_63_int16 = _mm512_max_epu16(result_32_63_int16, clamp_limit_min);
+        const int remaining_32_63_out = width - (x + 32);
+        if (remaining_32_63_out >= 32)
+        {
+          result_32_63_int16 = _mm512_min_epu16(result_32_63_int16, clamp_limit_max);
+          result_32_63_int16 = _mm512_max_epu16(result_32_63_int16, clamp_limit_min);
           _mm512_stream_si512(reinterpret_cast<__m512i*>(dst_ptr + 32), result_32_63_int16);
-		}
+        }
+        else if (remaining_32_63_out > 0)
+        {
+          result_32_63_int16 = _mm512_min_epu16(result_32_63_int16, clamp_limit_max);
+          result_32_63_int16 = _mm512_max_epu16(result_32_63_int16, clamp_limit_min);
+          _mm512_mask_storeu_epi16(dst_ptr + 32, _bzhi_u32(~0u, remaining_32_63_out), result_32_63_int16);
+        }
 
         dst_ptr       += dst_pitch;
         src_ptr_0_15  += src_pitch;
@@ -3279,13 +3297,19 @@ void resize_h_planar_uint16_avx512_permutex_vstripe_mp_4s16_ks48_pretransposed_c
 
         _mm512_stream_si512(reinterpret_cast<__m512i*>(dst_ptr), result_0_31_int16);
 
-        const int w_mod32 = width / 32 * 32;
-        if (x < (w_mod32 - 32))
-		{
-		  result_32_63_int16 = _mm512_min_epu16(result_32_63_int16, clamp_limit_max);
-		  result_32_63_int16 = _mm512_max_epu16(result_32_63_int16, clamp_limit_min);			
+        const int remaining_32_63_out = width - (x + 32);
+        if (remaining_32_63_out >= 32)
+        {
+          result_32_63_int16 = _mm512_min_epu16(result_32_63_int16, clamp_limit_max);
+          result_32_63_int16 = _mm512_max_epu16(result_32_63_int16, clamp_limit_min);			
           _mm512_stream_si512(reinterpret_cast<__m512i*>(dst_ptr + 32), result_32_63_int16);
-		}
+        }
+        else if (remaining_32_63_out > 0)
+        {
+          result_32_63_int16 = _mm512_min_epu16(result_32_63_int16, clamp_limit_max);
+          result_32_63_int16 = _mm512_max_epu16(result_32_63_int16, clamp_limit_min);			
+          _mm512_mask_storeu_epi16(dst_ptr + 32, _bzhi_u32(~0u, remaining_32_63_out), result_32_63_int16);
+        }
 
         dst_ptr       += dst_pitch;
         src_ptr_0_15  += src_pitch;

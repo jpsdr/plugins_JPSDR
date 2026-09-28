@@ -2983,7 +2983,7 @@ PClip FilteredResizeMT::CreateResize(PClip clip, int target_width, int target_he
   if (placement_name)
   {
     // no format-oriented defaults
-    if (vi.IsYV411() || vi.Is420() || vi.Is422())
+    if (vi.Is411() || vi.Is420() || vi.Is422())
 	{
       // placement explicite parameter like in ConvertToXXX or Text
       // input frame properties, if "auto"

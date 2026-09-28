@@ -1,22 +1,4 @@
-// Microsoft Visual C++ generated resource script.
-//
-#include "./resource.h"
-
-#define APSTUDIO_READONLY_SYMBOLS
-/////////////////////////////////////////////////////////////////////////////
-//
-// Generated from the TEXTINCLUDE 2 resource.
-//
-#include "afxres.h"
-/////////////////////////////////////////////////////////////////////////////
-#undef APSTUDIO_READONLY_SYMBOLS
-
-/////////////////////////////////////////////////////////////////////////////
-// Anglais (États-Unis) resources
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
-#pragma code_page(1252)
+#include <winver.h>
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -41,13 +23,7 @@ BEGIN
     "\r\0"
 END
 
-2 TEXTINCLUDE 
-BEGIN
-    "#include ""afxres.h""\r\0"
-END
-
 #endif    // APSTUDIO_INVOKED
-
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -55,27 +31,27 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 4,4,1,0
- PRODUCTVERSION 4,4,1,0
+ FILEVERSION 4,4,2,0
+ PRODUCTVERSION 4,4,2,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
 #else
  FILEFLAGS 0x0L
 #endif
- FILEOS 0x4L
- FILETYPE 0x2L
- FILESUBTYPE 0x0L
+ FILEOS VOS__WINDOWS32
+ FILETYPE VFT_DLL
+ FILESUBTYPE VFT2_UNKNOWN
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "FileDescription", "Plugins JPSDR v4.4.1 for Avisynth 2.6.x"
-            VALUE "FileVersion", "4.4.1"
+            VALUE "FileDescription", "Plugins JPSDR v4.4.2 for Avisynth 2.6.x"
+            VALUE "FileVersion", "4.4.2"
             VALUE "LegalCopyright", "Copyright (C) 2017  JPSDR,Kevin Stone,Neuron2,MarcFD,cretindesalpes,pinterf"
             VALUE "OriginalFilename", "plugins_JPSDR.dll"
-            VALUE "ProductVersion", "4.4.1"
+            VALUE "ProductVersion", "4.4.2"
         END
     END
     BLOCK "VarFileInfo"
@@ -83,17 +59,3 @@ BEGIN
         VALUE "Translation", 0x409, 1200
     END
 END
-
-#endif    // Anglais (États-Unis) resources
-/////////////////////////////////////////////////////////////////////////////
-
-
-
-#ifndef APSTUDIO_INVOKED
-/////////////////////////////////////////////////////////////////////////////
-//
-// Generated from the TEXTINCLUDE 3 resource.
-//
-
-/////////////////////////////////////////////////////////////////////////////
-#endif    // not APSTUDIO_INVOKED
