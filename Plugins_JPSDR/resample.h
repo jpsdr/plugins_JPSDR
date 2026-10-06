@@ -41,7 +41,7 @@
 #include "./resample_functions.h"
 #include "./ThreadPoolInterface.h"
 
-#define RESAMPLE_MT_VERSION "ResampleMT 2.12.1 JPSDR"
+#define RESAMPLE_MT_VERSION "ResampleMT 2.12.2 JPSDR"
 
 
 #ifndef __CHROMALOCATION__
@@ -57,6 +57,14 @@ typedef enum _ChromaLocation_e
   AVS_CHROMA_BOTTOM = 5,
   AVS_CHROMA_DV = 6 // Special to Avisynth
 } ChromaLocation_e;
+
+// Helper struct and offset calculator for resamplers.
+// Chroma sample position of a subsampled chroma plane, in luma pixel units, relative to the
+// top-left luma sample of the xs*ys luma block the chroma sample belongs to.
+// x, y: progressive; ty, by: top and bottom field (in field luma rows), for interlaced use.
+struct ChromaSitingOffsets { float x, y, ty, by; };
+
+enum { SITE_START, SITE_CENTER, SITE_END }; // H/V agnostic
 #endif
 
 // Resizer function pointer
@@ -76,7 +84,7 @@ typedef struct _MT_Data_Info_ResampleMT
 	int32_t dst_UV_h_min,dst_UV_h_max,dst_UV_w;
 	bool aligned1,aligned2,aligned3,aligned4;
 	int *src_pitch_table_luma,*src_pitch_table_chromaU,*src_pitch_table_chromaV;
-	ResamplingProgram *resampling_program_luma,*resampling_program_chroma;
+	ResamplingProgram *resampling_program_luma,*resampling_program_chroma,*resampling_program_chromaV;
 	bool top,bottom;
 } MT_Data_Info_ResampleMT;
 
@@ -188,9 +196,11 @@ private:
   bool mode_YUY2;
   bool Enable_MMX,Enable_SSE2,Enable_SSE3,Enable_SSSE3,Enable_SSE4_1,Enable_AVX2;
   bool Enable_AVX512_Base,Enable_AVX512_Fast;
+  bool Chroma_PlaneV;
 	
   ResamplingProgram *resampling_program_luma;
   ResamplingProgram *resampling_program_chroma;
+  ResamplingProgram *resampling_program_chroma_planeV; // same as U unless V is sited differently than U ("dv")
   int *src_pitch_table_luma;
   int *src_pitch_table_chromaU;
   int *src_pitch_table_chromaV;
