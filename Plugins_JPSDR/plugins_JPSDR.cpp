@@ -12,7 +12,7 @@ bool aWarpSharp_Enable_SSE2,aWarpSharp_Enable_SSE41,aWarpSharp_Enable_AVX;
 const AVS_Linkage *AVS_linkage = nullptr;
 
 
-#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 4.4.3"
+#define PLUGINS_JPSDR_VERSION "Plugins JPSDR 4.5.0"
 
 
 /*
@@ -1074,25 +1074,48 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  args[13].Defined() ? threshC=args[13].AsInt(-1) : threshC=thresh;
 
     return new aWarpSharp(args[0].AsClip(),thresh,blur,blurt,depth,args[5].AsInt(4),depthC,is_cplace_mpeg2(args,7),
-		blurV,depthV,depthVC,blurC,blurVC,threshC,threads_number,sleep,negativePrefetch,avsp,env);
+		blurV,depthV,depthVC,blurC,blurVC,threshC,false,0,false,2,threads_number,sleep,negativePrefetch,avsp,env);
 	break;
 	  }
   case 1 :
 	  {
 	  if (!aWarpSharp_Enable_SSE2) env->ThrowError("aWarpSharp: SSE2 capable CPU is required");
 
-    blurt = (args[5].AsInt(2)!=2)?1:0;
+	const bool original = args[7].AsBool(false);
+	
+	const double original_d = args[1].AsFloat(16.0);
+	const double original_t = args[3].AsFloat(0.5);
+
+    if (original)
+	{
+      if ((!vi.IsYV12()) || (vi.ComponentSize()!=1))
+        env->ThrowError("aWarpSharp(original=true): 8-bit YV12 input is required");
+      if ((args[5].AsInt(2)<0) || (args[5].AsInt(2)>2))
+        env->ThrowError("aWarpSharp(original=true): bm must be 0..2");
+      if (!((original_d>=0.0) && (original_d<=64.0)))
+        env->ThrowError("aWarpSharp(original=true): depth must be 0..64");
+      if (!((original_t>=0.0) && (original_t<=1.0)))
+        env->ThrowError("aWarpSharp(original=true): thresh must be 0..1");
+      if ((args[2].AsInt(2)<1) || (args[2].AsInt(2)>4))
+        env->ThrowError("aWarpSharp(original=true): blurlevel must be 1..4");
+      if ((args[4].AsInt(1)<0) || (args[4].AsInt(1)>2))
+        env->ThrowError("aWarpSharp(original=true): cm must be 0..2");
+    }
+
+    const int original_depth = (original) ? int(original_d*args[2].AsInt(2)*128.0) : 0;
+	blurt = (args[5].AsInt(2)!=2)?1:0;
     const int blurlevel = args[2].AsInt(2);
     const unsigned int cm = args[4].AsInt(1);
     static const char map[4] = {1,4,3,2};
 
-	  threads=args[7].AsInt(0);
-	  LogicalCores=args[8].AsBool(true);
-	  MaxPhysCores=args[9].AsBool(true);
-	  SetAffinity=args[10].AsBool(false);
-	  sleep = args[11].AsBool(false);
-	  prefetch=args[12].AsInt(0);
-	  thread_level=args[13].AsInt(6);
+
+	  threads=args[8].AsInt(0);
+	  LogicalCores=args[9].AsBool(true);
+	  MaxPhysCores=args[10].AsBool(true);
+	  SetAffinity=args[11].AsBool(false);
+	  sleep = args[12].AsBool(false);
+	  prefetch=args[13].AsInt(0);
+	  thread_level=args[14].AsInt(6);
 
 	  negativePrefetch=(prefetch<0)?true:false;
 	  prefetch=abs(prefetch);
@@ -1153,8 +1176,10 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  }
 
 	  thresh=int(args[3].AsFloat(0.5)*256.0);
-	  blur=(blurt==1)?(blurlevel*3):blurlevel;
+	  if (original) thresh &= 255; // beta 1 passes the threshold as a byte
+	  blur=(original) ? blurlevel : ((blurt==1)?(blurlevel*3):blurlevel);
 	  depth=int(args[1].AsFloat(16.0)*blurlevel*0.5);
+	  if (original) depth=min(depth,127); // full precision is in original_depth
 	  depthC=vi.Is444() ? depth:(depth>>1);
 	  blurV=blur;
 	  depthV=depth;
@@ -1163,8 +1188,9 @@ AVSValue __cdecl Create_aWarpSharp(AVSValue args, void *user_data, IScriptEnviro
 	  blurVC=blurC;
 	  threshC=thresh;
 
-    return new aWarpSharp(args[0].AsClip(),thresh,blur,blurt,depth,(cm<4)?map[cm]:-1,depthC,false,
-		blurV,depthV,depthVC,blurC,blurVC,threshC,threads_number,sleep,negativePrefetch,avsp,env);
+    return new aWarpSharp(args[0].AsClip(),thresh,blur,blurt,depth,(original && (cm==0)) ? 2 : ((cm<4)?map[cm]:-1),depthC,false,
+		blurV,depthV,depthVC,blurC,blurVC,threshC,original,original_depth,args[6].AsBool(false),args[5].AsInt(2),
+		threads_number,sleep,negativePrefetch,avsp,env);
 	break;
 	  }
   case 2 :
@@ -4651,7 +4677,7 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 	// AWARPSHARP
   env->AddFunction("aWarpSharp2", "c[thresh]i[blur]i[type]i[depth]i[chroma]i[depthC]i[cplace]s[blurV]i[depthV]i[depthVC]i" \
 	  "[blurC]i[blurVC]i[threshC]i[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_aWarpSharp, (void*)0);
-  env->AddFunction("aWarpSharp", "c[depth]f[blurlevel]i[thresh]f[cm]i[bm]i[show]b" \
+  env->AddFunction("aWarpSharp", "c[depth]f[blurlevel]i[thresh]f[cm]i[bm]i[show]b[original]b" \
 	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_aWarpSharp, (void*)1);
   env->AddFunction("aSobel", "c[thresh]i[chroma]i[threshC]i" \
 	  "[threads]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[sleep]b[prefetch]i[ThreadLevel]i", Create_aWarpSharp, (void*)2);
