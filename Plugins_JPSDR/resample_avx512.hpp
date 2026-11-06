@@ -2061,10 +2061,10 @@ void resize_h_planar_uint16_avx512_permutex_vstripe_mp_2s32_ks4_pretransposed_co
 
       const int remaining_0_31  = program->source_size - iStart_0_31;
       const __mmask32 k1_0_31   = _bzhi_u32(~0U, remaining_0_31);
-      const __mmask32 k2_0_31   = _bzhi_u32(~0U, std::max(0, remaining_0_31 - 32));
+      const __mmask32 k2_0_31   = _bzhi_u32(~0U, max(0, remaining_0_31 - 32));
       const int remaining_32_63 = program->source_size - iStart_32_63;
       const __mmask32 k1_32_63  = _bzhi_u32(~0U, remaining_32_63);
-      const __mmask32 k2_32_63  = _bzhi_u32(~0U, std::max(0, remaining_32_63 - 32));
+      const __mmask32 k2_32_63  = _bzhi_u32(~0U, max(0, remaining_32_63 - 32));
 
       for (int y = y_from; y < y_to; y++)
       {
@@ -2302,10 +2302,10 @@ void resize_h_planar_uint16_avx512_permutex_vstripe_mp_2s32_ks8_pretransposed_co
 
       const int remaining_0_31  = program->source_size - iStart_0_31;
       const __mmask32 k1_0_31   = _bzhi_u32(~0U, remaining_0_31);
-      const __mmask32 k2_0_31   = _bzhi_u32(~0U, std::max(0, remaining_0_31 - 32));
+      const __mmask32 k2_0_31   = _bzhi_u32(~0U, max(0, remaining_0_31 - 32));
       const int remaining_32_63 = program->source_size - iStart_32_63;
       const __mmask32 k1_32_63  = _bzhi_u32(~0U, remaining_32_63);
-      const __mmask32 k2_32_63  = _bzhi_u32(~0U, std::max(0, remaining_32_63 - 32));
+      const __mmask32 k2_32_63  = _bzhi_u32(~0U, max(0, remaining_32_63 - 32));
 
       for (int y = y_from; y < y_to; y++)
       {
@@ -2611,16 +2611,16 @@ void resize_h_planar_uint16_avx512_permutex_vstripe_mp_4s16_ks8_pretransposed_co
 
       const int remaining_0_15  = program->source_size - iStart_0_15;
       const __mmask32 k1_0_15   = _bzhi_u32(~0U, remaining_0_15);
-      const __mmask32 k2_0_15   = _bzhi_u32(~0U, std::max(0, remaining_0_15  - 32));
+      const __mmask32 k2_0_15   = _bzhi_u32(~0U, max(0, remaining_0_15  - 32));
       const int remaining_16_31 = program->source_size - iStart_16_31;
       const __mmask32 k1_16_31  = _bzhi_u32(~0U, remaining_16_31);
-      const __mmask32 k2_16_31  = _bzhi_u32(~0U, std::max(0, remaining_16_31 - 32));
+      const __mmask32 k2_16_31  = _bzhi_u32(~0U, max(0, remaining_16_31 - 32));
       const int remaining_32_47 = program->source_size - iStart_32_47;
       const __mmask32 k1_32_47  = _bzhi_u32(~0U, remaining_32_47);
-      const __mmask32 k2_32_47  = _bzhi_u32(~0U, std::max(0, remaining_32_47 - 32));
+      const __mmask32 k2_32_47  = _bzhi_u32(~0U, max(0, remaining_32_47 - 32));
       const int remaining_48_63 = program->source_size - iStart_48_63;
       const __mmask32 k1_48_63  = _bzhi_u32(~0U, remaining_48_63);
-      const __mmask32 k2_48_63  = _bzhi_u32(~0U, std::max(0, remaining_48_63 - 32));
+      const __mmask32 k2_48_63  = _bzhi_u32(~0U, max(0, remaining_48_63 - 32));
 
       for (int y = y_from; y < y_to; y++)
       {
@@ -2921,7 +2921,7 @@ void resize_h_planar_uint16_avx512_permutex_vstripe_mp_ks16_pretransposed_coeffs
 
       const int remaining = program->source_size - iStart;
       const __mmask32 k1 = _bzhi_u32(~0U, remaining);
-      const __mmask32 k2 = _bzhi_u32(~0U, std::max(0, remaining - 32));
+      const __mmask32 k2 = _bzhi_u32(~0U, max(0, remaining - 32));
 
       for (int y = y_from; y < y_to; y++)
       {
@@ -3199,16 +3199,16 @@ void resize_h_planar_uint16_avx512_permutex_vstripe_mp_4s16_ks48_pretransposed_c
 
       const int remaining_0_15  = program->source_size - iStart_0_15;
       const __mmask32 k1_0_15   = _bzhi_u32(~0U, remaining_0_15);
-      const __mmask32 k2_0_15   = _bzhi_u32(~0U, std::max(0, remaining_0_15  - 32));
+      const __mmask32 k2_0_15   = _bzhi_u32(~0U, max(0, remaining_0_15  - 32));
       const int remaining_16_31 = program->source_size - iStart_16_31;
       const __mmask32 k1_16_31  = _bzhi_u32(~0U, remaining_16_31);
-      const __mmask32 k2_16_31  = _bzhi_u32(~0U, std::max(0, remaining_16_31 - 32));
+      const __mmask32 k2_16_31  = _bzhi_u32(~0U, max(0, remaining_16_31 - 32));
       const int remaining_32_47 = program->source_size - iStart_32_47;
       const __mmask32 k1_32_47  = _bzhi_u32(~0U, remaining_32_47);
-      const __mmask32 k2_32_47  = _bzhi_u32(~0U, std::max(0, remaining_32_47 - 32));
+      const __mmask32 k2_32_47  = _bzhi_u32(~0U, max(0, remaining_32_47 - 32));
       const int remaining_48_63 = program->source_size - iStart_48_63;
       const __mmask32 k1_48_63  = _bzhi_u32(~0U, remaining_48_63);
-      const __mmask32 k2_48_63  = _bzhi_u32(~0U, std::max(0, remaining_48_63 - 32));
+      const __mmask32 k2_48_63  = _bzhi_u32(~0U, max(0, remaining_48_63 - 32));
 
       for (int y = y_from; y < y_to; y++)
       {
