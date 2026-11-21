@@ -2217,12 +2217,18 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 
 	const int h_UV=vi.height >> shift_h;
 
+	resize_prepare_coeffs(resampling_program_chroma,env,8);
+	// for SIMD friendliness and more: consolidate the kernel_size vs filter_size at the end.
+	// See comments at FilteredResizeH::GetResampler
     resampler_chroma_aligned = GetResampler(true,resampling_program_chroma,env);
     resampler_chroma_unaligned = GetResampler(false,resampling_program_chroma,env);
 	
 	if (Chroma_PlaneV) GetResampler(true,resampling_program_chroma_planeV,env);
   }
 
+  resize_prepare_coeffs(resampling_program_luma,env,8);
+  // for SIMD friendliness and more: consolidate the kernel_size vs filter_size at the end.
+  // See comments at FilteredResizeH::GetResampler
   resampler_luma_aligned   = GetResampler(true,resampling_program_luma,env);
   resampler_luma_unaligned = GetResampler(false,resampling_program_luma,env);
 
@@ -2825,10 +2831,6 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 
 ResamplerV FilteredResizeV::GetResampler(bool aligned, ResamplingProgram* program, IScriptEnvironment* env)
 {
-	resize_prepare_coeffs(program, env, 8);
-	// for SIMD friendliness and more: consolidate the kernel_size vs filter_size at the end.
-	// See comments at FilteredResizeH::GetResampler
-
 	if (program->filter_size_real==1)
 	{
 		// Fast pointresize
