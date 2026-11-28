@@ -656,8 +656,6 @@ static void orig_Warp_c(const unsigned char *srcp8,const unsigned char *edgep8,u
 			continue;
 		}
 
-		const int32_t ym1=y-1;
-		
 		for (int x=0; x<width; x++)
 		{
 			const int gx=above[max(0,x-1)]-above[min(wm1,x+1)];
@@ -668,7 +666,7 @@ static void orig_Warp_c(const unsigned char *srcp8,const unsigned char *edgep8,u
 			
 			int dy=clamp(2*floor_div(gy*128*depth,65536),-32768,32767);
 			
-			dy=clamp(dy,max(-ym1*256,-16384),min((height-ym1)*256-1,16384));
+			dy=clamp(dy,max(-y*256,-16384),min((height-1-y)*256-1,16384));
 			
 			const int ix=floor_div(dx,256),iy=floor_div(dy,256);
 			int sx=x+ix,sy=y+iy;
@@ -721,8 +719,6 @@ static void orig_Warp_MT_c(const unsigned char *srcp8,const unsigned char *edgep
 			continue;
 		}
 
-		const int32_t ym1=y-1;
-		
 		for (int x=0; x<width; x++)
 		{
 			const int gx=above[max(0,x-1)]-above[min(wm1,x+1)];
@@ -733,7 +729,7 @@ static void orig_Warp_MT_c(const unsigned char *srcp8,const unsigned char *edgep
 			
 			int dy=clamp(2*floor_div(gy*128*depth,65536),-32768,32767);
 			
-			dy=clamp(dy,max(-ym1*256,-16384),min((height-ym1)*256-1,16384));
+			dy=clamp(dy,max(-y*256,-16384),min((height-1-y)*256-1,16384));
 			
 			const int ix=floor_div(dx,256),iy=floor_div(dy,256);
 			int sx=x+ix,sy=y+iy;
@@ -773,7 +769,7 @@ static void warp_c(const unsigned char *srcp8,const unsigned char *edgep8,unsign
   const uint8_t bits_per_sample)
 {
   const pixel_t *srcp = (const pixel_t *)srcp8;
-  const pixel_t *srcp2 = (const pixel_t *)(srcp8 + src_pitch_);
+  const pixel_t *srcp2 = (const pixel_t *) (srcp8+(((height==1) && (SMAGL==0)) ? 0:src_pitch_));
   const pixel_t *edgeptr = (const pixel_t *)edgep8;
   pixel_t *dstp = (pixel_t *)dstp8;
 
@@ -783,9 +779,14 @@ static void warp_c(const unsigned char *srcp8,const unsigned char *edgep8,unsign
 
   const int SMAG = 1 << SMAGL; // 180313
 
-  const int wmod8 = (width >> 3) << 3;
+  const int wmod8 = ((int)width >> 3) << 3;
+  const int lastx = ((width&7)!=0) ? wmod8 : ((wmod8>8) ? wmod8-8:0);
+  const int beforelastx = (lastx>8) ? lastx-8:0;
 
   const int32_t c = width-1;
+  const bool width_m8 = (width>8);
+  const int width_m16 = (width>16) ? ((int)width)-16:0;
+  const int width_left8 = (int)width-lastx;
 
   const int32_t x_limit_min[8] = {0*SMAG,-1*SMAG,-2*SMAG,-3*SMAG,-4*SMAG,-5*SMAG,-6*SMAG,-7*SMAG};
   const int32_t x_limit_max[8] = {c*SMAG,(c-1)*SMAG,(c-2)*SMAG,(c-3)*SMAG,(c-4)*SMAG,(c-5)*SMAG,(c-6)*SMAG,(c-7)*SMAG};
@@ -828,18 +829,60 @@ static void warp_c(const unsigned char *srcp8,const unsigned char *edgep8,unsign
     edgnext_ptr += edg_pitchn;
 
     int32_t edge_right[8],edge_left[8];
+	
+	if (width_m8)
+	{
+		for (uint8_t i=1; i<8; i++)
+		{
+			edge_left[i]=edgeptr[i-1];
+			edge_right[i]=edgeptr[i+1];
+		}
+		edge_left[0]=edge_left[1];
+		edge_right[0]=edgeptr[1];
+	}
+	else
+	{
+		if (width>2)
+		{
+			for (uint8_t i=1; i<(width-1); i++)
+			{
+				edge_left[i]=edgeptr[i-1];
+				edge_right[i]=edgeptr[i+1];
+			}
+			edge_left[0]=edge_left[1];
+			edge_right[0]=edgeptr[1];
+			edge_left[width-1]=edgeptr[width-2];
+			edge_right[width-1]=edgeptr[width-1];
+		}
+		else
+		{
+			if (width==2)
+			{
+				edge_left[0]=edgeptr[0];
+				edge_right[0]=edgeptr[1];
+				edge_left[1]=edgeptr[0];
+				edge_right[1]=edgeptr[1];
+			}
+			else
+			{
+				edge_left[0]=edgeptr[0];
+				edge_right[0]=edgeptr[0];
+			}
+		}
+	}
 
-    for (uint8_t i=1; i<8; i++)
-    {
-      edge_left[i]=edgeptr[i-1];
-      edge_right[i]=edgeptr[i+1];
-    }
-    edge_left[0]=edge_left[1];
-    edge_right[0]=edgeptr[1];
+    int32_t vert[8], horiz[8];
+    int32_t horiz_weight[8];
+    int32_t vert_weight[8];
+    int32_t horiz_offset_x1[8];
+    int32_t curr_0[8],curr_1[8];
+    int32_t bottom_0[8],bottom_1[8];
+    int32_t curr[8],bottom[8];
+    int32_t result[8];
+    bool b0[8],b3[8];
 
-    for (int x=0; x<width; x+=8)
+	for (int x=0; x<width_m16; x+=8)
     {
-      int32_t vert[8], horiz[8];
       for (uint8_t i=0; i<8; i++)
       {
         // depth is -128..127, src is scaled up to give mul result of 30 bits
@@ -851,8 +894,6 @@ static void warp_c(const unsigned char *srcp8,const unsigned char *edgep8,unsign
       for (uint8_t i=0; i<8; i++)
         vert[i]=max(min(vert[i],y_limit_max),y_limit_min);
 
-      int32_t horiz_weight[8];
-      int32_t vert_weight[8];
       for (uint8_t i=0; i<8; i++)
       {
         // remainder of the division by 128 (or 32 if it was shifted left by 2 above)
@@ -867,12 +908,10 @@ static void warp_c(const unsigned char *srcp8,const unsigned char *edgep8,unsign
         horiz[i] += x << SMAGL;
 
       // guard horizontal offsets min/max
-      int32_t horiz_offset_x1[8];
       for (uint8_t i=0; i<8; i++)
         horiz_offset_x1[i]=max(min(x_limit_max[i],horiz[i]),x_limit_min[i]);
 
       // mask out out-of-screen offset weights
-      bool b0[8],b3[8];
       for (uint8_t i=0; i<8; i++)
       {
         b3[i] = x_limit_max[i]>(horiz[i]);
@@ -884,21 +923,26 @@ static void warp_c(const unsigned char *srcp8,const unsigned char *edgep8,unsign
         horiz_weight[i] = (!b0[i]) ? horiz_weight[i]:0; // x0 = x7 where b0=false (below min)
       // keep horizontal weights where out of limit, otherwise zero
 
-      int32_t curr_0[8],curr_1[8];
-      int32_t bottom_0[8],bottom_1[8];
       for (uint8_t i=0; i<8; i++)
       {
         // combine vertical and horizontal offset things
         const int32_t offs=vert[i]*src_pitch+horiz_offset_x1[i]+i*SMAG;
         // for 8 bit: _mm_insert_epi16 is split to 00FF (offs) and FF00 (offs)
         // for 16 bit: _mm_insert_epi32 is split to 0000FFFF (offs) and FFFF0000 (offs+1)
-        curr_0[i] = (int32_t)srcp[offs];       // lo FFFF from 
-        curr_1[i] = (int32_t)srcp[offs+1];
-        bottom_0[i] = (int32_t)srcp2[offs];    // next line
-        bottom_1[i] = (int32_t)srcp2[offs+1];// next line
+		curr_0[i] = (int32_t)srcp[offs];				// lo FFFF from 
+		bottom_0[i] = (int32_t)srcp2[offs];				// next line
+		if (horiz_weight[i]!=0)
+		{
+			curr_1[i] = (int32_t)srcp[offs+1];
+			bottom_1[i] = (int32_t)srcp2[offs+1];		// next line
+		}
+		else
+		{
+			curr_1[i] = curr_0[i];
+			bottom_1[i] = bottom_0[i];
+		}
       }
 
-      int32_t curr[8],bottom[8];
       // curr = curr_0 * (1 - x0/128) + curr_1 * (x0/128)
       // bottom = bottom_0 * (1 - x0/128) + bottom_1 * (x0/128)
       for (int i=0; i<8; i++)
@@ -910,7 +954,6 @@ static void warp_c(const unsigned char *srcp8,const unsigned char *edgep8,unsign
       }
 
       // result = result * (1 - vert_weight_x4/128) + x1 * (vert_weight_x4/128)
-      int32_t result[8];
       for (int i=0; i<8; i++)
       {
         const int32_t a=vert_weight[i],b=ARITH_ONE-a;
@@ -921,12 +964,6 @@ static void warp_c(const unsigned char *srcp8,const unsigned char *edgep8,unsign
       for (int i=0; i<8; i++)
         result[i] = min(max(result[i],0),pixel_max);
 
-      if (x>=wmod8)
-      {
-        for (int i=0; i<(width-wmod8); i++)
-          dst[x+i]=result[i];
-        break; // finito, no more preload
-      }
       for (int i=0; i<8; i++)
         dst[x+i]=result[i];
 
@@ -937,13 +974,198 @@ static void warp_c(const unsigned char *srcp8,const unsigned char *edgep8,unsign
         edge_right[i]=edgeptr[x+i+8+1];
       }
     }
+	
+	//Last 8 full raw
+	if (width_m8)
+    {
+      for (uint8_t i=0; i<8; i++)
+      {
+        // depth is -128..127, src is scaled up to give mul result of 30 bits
+        // we are shifting it back by 12 to get a 7-bit fractional integer arithmetic
+        horiz[i]=((edge_left[i]-edge_right[i])*depth) >> 14; // depth scaled left-right
+        vert[i]=((edgprev_ptr[beforelastx+i]-edgnext_ptr[beforelastx+i])*depthV) >> 14; // depthV scaled top-bottom
+      }
+      // guard vertical offsets
+      for (uint8_t i=0; i<8; i++)
+        vert[i]=max(min(vert[i],y_limit_max),y_limit_min);
 
+      for (uint8_t i=0; i<8; i++)
+      {
+        // remainder of the division by 128 (or 32 if it was shifted left by 2 above)
+        horiz_weight[i]=(horiz[i] << SMAGL) & 0x7F; // fractional part: for fine weighting
+        vert_weight[i]=(vert[i]  << SMAGL) & 0x7F;
+        horiz[i] >>= (7-SMAGL); // integer part: the offset itself
+        vert[i] >>= (7-SMAGL); // shift by 7 (or 5); division by 128 (or 32)
+      }
+
+      // horizontal things
+      for (uint8_t i=0; i<8; i++)
+        horiz[i] += beforelastx << SMAGL;
+
+      // guard horizontal offsets min/max
+      for (uint8_t i=0; i<8; i++)
+        horiz_offset_x1[i]=max(min(x_limit_max[i],horiz[i]),x_limit_min[i]);
+
+      // mask out out-of-screen offset weights
+      for (uint8_t i=0; i<8; i++)
+      {
+        b3[i] = x_limit_max[i]>(horiz[i]);
+        b0[i] = x_limit_min[i]>(horiz[i]);
+      }
+      for (uint8_t i=0; i<8; i++)
+        horiz_weight[i] = b3[i] ? horiz_weight[i]:0; // x7 = keep x7 where b3=true (over max)
+      for (uint8_t i=0; i<8; i++)
+        horiz_weight[i] = (!b0[i]) ? horiz_weight[i]:0; // x0 = x7 where b0=false (below min)
+      // keep horizontal weights where out of limit, otherwise zero
+
+      for (uint8_t i=0; i<8; i++)
+      {
+        // combine vertical and horizontal offset things
+        const int32_t offs=vert[i]*src_pitch+horiz_offset_x1[i]+i*SMAG;
+        // for 8 bit: _mm_insert_epi16 is split to 00FF (offs) and FF00 (offs)
+        // for 16 bit: _mm_insert_epi32 is split to 0000FFFF (offs) and FFFF0000 (offs+1)
+		curr_0[i] = (int32_t)srcp[offs];				// lo FFFF from 
+		bottom_0[i] = (int32_t)srcp2[offs];				// next line
+		if (horiz_weight[i]!=0)
+		{
+			curr_1[i] = (int32_t)srcp[offs+1];
+			bottom_1[i] = (int32_t)srcp2[offs+1];		// next line
+		}
+		else
+		{
+			curr_1[i] = curr_0[i];
+			bottom_1[i] = bottom_0[i];
+		}
+      }
+
+      // curr = curr_0 * (1 - x0/128) + curr_1 * (x0/128)
+      // bottom = bottom_0 * (1 - x0/128) + bottom_1 * (x0/128)
+      for (int i=0; i<8; i++)
+      {
+        const int32_t a=horiz_weight[i],b=ARITH_ONE-a;
+
+        curr[i] = ((curr_0[i]*b+curr_1[i]*a)+ARITH_ROUNDER) >> ARITH_BITS;
+        bottom[i] = ((bottom_0[i]*b+bottom_1[i]*a)+ARITH_ROUNDER) >> ARITH_BITS;
+      }
+
+      // result = result * (1 - vert_weight_x4/128) + x1 * (vert_weight_x4/128)
+      for (int i=0; i<8; i++)
+      {
+        const int32_t a=vert_weight[i],b=ARITH_ONE-a;
+        result[i] = ((curr[i]*b+bottom[i]*a)+ARITH_ROUNDER) >> ARITH_BITS;
+      }
+
+      // clamp pixel min max
+      for (int i=0; i<8; i++)
+        result[i] = min(max(result[i],0),pixel_max);
+
+      for (int i=0; i<8; i++)
+        dst[beforelastx+i]=result[i];
+
+      // preload for last loop
+      for (int i=0; i<(width_left8-1); i++)
+      {
+        edge_left[i]=edgeptr[lastx+i-1];
+        edge_right[i]=edgeptr[lastx+i+1];
+      }
+	  edge_left[width_left8-1]=edgeptr[lastx+width_left8-2];
+	  edge_right[width_left8-1]=edgeptr[lastx+width_left8-1];
+    }
+
+	// Last pixels
+
+    for (uint8_t i=0; i<width_left8; i++)
+    {
+      // depth is -128..127, src is scaled up to give mul result of 30 bits
+      // we are shifting it back by 12 to get a 7-bit fractional integer arithmetic
+      horiz[i]=((edge_left[i]-edge_right[i])*depth) >> 14; // depth scaled left-right
+      vert[i]=((edgprev_ptr[lastx+i]-edgnext_ptr[lastx+i])*depthV) >> 14; // depthV scaled top-bottom
+    }
+    // guard vertical offsets
+    for (uint8_t i=0; i<width_left8; i++)
+      vert[i]=max(min(vert[i],y_limit_max),y_limit_min);
+
+    for (uint8_t i=0; i<width_left8; i++)
+    {
+      // remainder of the division by 128 (or 32 if it was shifted left by 2 above)
+      horiz_weight[i]=(horiz[i] << SMAGL) & 0x7F; // fractional part: for fine weighting
+      vert_weight[i]=(vert[i]  << SMAGL) & 0x7F;
+      horiz[i] >>= (7-SMAGL); // integer part: the offset itself
+      vert[i] >>= (7-SMAGL); // shift by 7 (or 5); division by 128 (or 32)
+    }
+
+    // horizontal things
+    for (uint8_t i=0; i<width_left8; i++)
+      horiz[i] += lastx << SMAGL;
+
+    // guard horizontal offsets min/max
+    for (uint8_t i=0; i<width_left8; i++)
+      horiz_offset_x1[i]=max(min(x_limit_max[i],horiz[i]),x_limit_min[i]);
+
+    // mask out out-of-screen offset weights
+    for (uint8_t i=0; i<width_left8; i++)
+    {
+      b3[i] = x_limit_max[i]>(horiz[i]);
+      b0[i] = x_limit_min[i]>(horiz[i]);
+    }
+    for (uint8_t i=0; i<width_left8; i++)
+      horiz_weight[i] = b3[i] ? horiz_weight[i]:0; // x7 = keep x7 where b3=true (over max)
+    for (uint8_t i=0; i<width_left8; i++)
+      horiz_weight[i] = (!b0[i]) ? horiz_weight[i]:0; // x0 = x7 where b0=false (below min)
+    // keep horizontal weights where out of limit, otherwise zero
+
+    for (uint8_t i=0; i<width_left8; i++)
+    {
+      // combine vertical and horizontal offset things
+      const int32_t offs=vert[i]*src_pitch+horiz_offset_x1[i]+i*SMAG;
+      // for 8 bit: _mm_insert_epi16 is split to 00FF (offs) and FF00 (offs)
+      // for 16 bit: _mm_insert_epi32 is split to 0000FFFF (offs) and FFFF0000 (offs+1)
+	  curr_0[i] = (int32_t)srcp[offs];				// lo FFFF from 
+	  bottom_0[i] = (int32_t)srcp2[offs];				// next line
+	  if (horiz_weight[i]!=0)
+	  {
+		curr_1[i] = (int32_t)srcp[offs+1];
+		bottom_1[i] = (int32_t)srcp2[offs+1];		// next line
+	  }
+	  else
+	  {
+		curr_1[i] = curr_0[i];
+		bottom_1[i] = bottom_0[i];
+	  }
+    }
+
+    // curr = curr_0 * (1 - x0/128) + curr_1 * (x0/128)
+    // bottom = bottom_0 * (1 - x0/128) + bottom_1 * (x0/128)
+    for (int i=0; i<width_left8; i++)
+    {
+      const int32_t a=horiz_weight[i],b=ARITH_ONE-a;
+
+      curr[i] = ((curr_0[i]*b+curr_1[i]*a)+ARITH_ROUNDER) >> ARITH_BITS;
+      bottom[i] = ((bottom_0[i]*b+bottom_1[i]*a)+ARITH_ROUNDER) >> ARITH_BITS;
+    }
+
+    // result = result * (1 - vert_weight_x4/128) + x1 * (vert_weight_x4/128)
+    for (int i=0; i<width_left8; i++)
+    {
+      const int32_t a=vert_weight[i],b=ARITH_ONE-a;
+      result[i] = ((curr[i]*b+bottom[i]*a)+ARITH_ROUNDER) >> ARITH_BITS;
+    }
+
+    // clamp pixel min max
+    for (int i=0; i<width_left8; i++)
+      result[i] = min(max(result[i],0),pixel_max);
+
+    for (int i=0; i<width_left8; i++)
+      dst[lastx+i]=result[i];
+
+	// Finish line
     srcp += src_pitch*SMAG; // 180313
     srcp2 += src_pitch*SMAG;// 180313
     edgeptr += edge_pitch;
     dstp += dst_pitch;
   }
 }
+
 
 // warp0: SMAGL is 0
 // warp2: SMAGL is 2 called from aWarp4
@@ -965,8 +1187,13 @@ static void warp_c_MT(const unsigned char *srcp8,const unsigned char *edgep8,uns
   const int32_t dst_pitch = dst_pitch_/sizeof(pixel_t);
 
   const int wmod8 = (width >> 3) << 3;
+  const int lastx = ((width&7)!=0) ? wmod8 : ((wmod8>8) ? wmod8-8:0);
+  const int beforelastx = (lastx>8) ? lastx-8:0;
 
   const int32_t c = width-1;
+  const bool width_m8 = (width>8);
+  const int width_m16 = (width>16) ? ((int)width)-16:0;
+  const int width_left8 = (int)width-lastx;
 
   const int32_t x_limit_min[8] = {0*SMAG,-1*SMAG,-2*SMAG,-3*SMAG,-4*SMAG,-5*SMAG,-6*SMAG,-7*SMAG};
   const int32_t x_limit_max[8] = {c*SMAG,(c-1)*SMAG,(c-2)*SMAG,(c-3)*SMAG,(c-4)*SMAG,(c-5)*SMAG,(c-6)*SMAG,(c-7)*SMAG};
@@ -1009,18 +1236,60 @@ static void warp_c_MT(const unsigned char *srcp8,const unsigned char *edgep8,uns
     edgnext_ptr += edg_pitchn;
 
     int32_t edge_right[8],edge_left[8];
+	
+	if (width_m8)
+	{
+		for (uint8_t i=1; i<8; i++)
+		{
+			edge_left[i]=edgeptr[i-1];
+			edge_right[i]=edgeptr[i+1];
+		}
+		edge_left[0]=edge_left[1];
+		edge_right[0]=edgeptr[1];
+	}
+	else
+	{
+		if (width>2)
+		{
+			for (uint8_t i=1; i<(width-1); i++)
+			{
+				edge_left[i]=edgeptr[i-1];
+				edge_right[i]=edgeptr[i+1];
+			}
+			edge_left[0]=edge_left[1];
+			edge_right[0]=edgeptr[1];
+			edge_left[width-1]=edgeptr[width-2];
+			edge_right[width-1]=edgeptr[width-1];
+		}
+		else
+		{
+			if (width==2)
+			{
+				edge_left[0]=edgeptr[0];
+				edge_right[0]=edgeptr[1];
+				edge_left[1]=edgeptr[0];
+				edge_right[1]=edgeptr[1];
+			}
+			else
+			{
+				edge_left[0]=edgeptr[0];
+				edge_right[0]=edgeptr[0];
+			}
+		}
+	}
 
-    for (uint8_t i=1; i<8; i++)
-    {
-      edge_left[i]=edgeptr[i-1];
-      edge_right[i]=edgeptr[i+1];
-    }
-    edge_left[0]=edge_left[1];
-    edge_right[0]=edgeptr[1];
+    int32_t vert[8], horiz[8];
+    int32_t horiz_weight[8];
+    int32_t vert_weight[8];
+    int32_t horiz_offset_x1[8];
+    int32_t curr_0[8],curr_1[8];
+    int32_t bottom_0[8],bottom_1[8];
+    int32_t curr[8],bottom[8];
+    int32_t result[8];
+    bool b0[8],b3[8];
 
-    for (int x=0; x<width; x+=8)
+	for (int x=0; x<width_m16; x+=8)
     {
-      int32_t vert[8], horiz[8];
       for (uint8_t i=0; i<8; i++)
       {
         // depth is -128..127, src is scaled up to give mul result of 30 bits
@@ -1032,8 +1301,6 @@ static void warp_c_MT(const unsigned char *srcp8,const unsigned char *edgep8,uns
       for (uint8_t i=0; i<8; i++)
         vert[i]=max(min(vert[i],y_limit_max),y_limit_min);
 
-      int32_t horiz_weight[8];
-      int32_t vert_weight[8];
       for (uint8_t i=0; i<8; i++)
       {
         // remainder of the division by 128 (or 32 if it was shifted left by 2 above)
@@ -1048,12 +1315,10 @@ static void warp_c_MT(const unsigned char *srcp8,const unsigned char *edgep8,uns
         horiz[i] += x << SMAGL;
 
       // guard horizontal offsets min/max
-      int32_t horiz_offset_x1[8];
       for (uint8_t i=0; i<8; i++)
         horiz_offset_x1[i]=max(min(x_limit_max[i],horiz[i]),x_limit_min[i]);
 
       // mask out out-of-screen offset weights
-      bool b0[8],b3[8];
       for (uint8_t i=0; i<8; i++)
       {
         b3[i] = x_limit_max[i]>(horiz[i]);
@@ -1065,21 +1330,26 @@ static void warp_c_MT(const unsigned char *srcp8,const unsigned char *edgep8,uns
         horiz_weight[i] = (!b0[i]) ? horiz_weight[i]:0; // x0 = x7 where b0=false (below min)
       // keep horizontal weights where out of limit, otherwise zero
 
-      int32_t curr_0[8],curr_1[8];
-      int32_t bottom_0[8],bottom_1[8];
       for (uint8_t i=0; i<8; i++)
       {
         // combine vertical and horizontal offset things
         const int32_t offs=vert[i]*src_pitch+horiz_offset_x1[i]+i*SMAG;
         // for 8 bit: _mm_insert_epi16 is split to 00FF (offs) and FF00 (offs)
         // for 16 bit: _mm_insert_epi32 is split to 0000FFFF (offs) and FFFF0000 (offs+1)
-        curr_0[i] = (int32_t)srcp[offs];       // lo FFFF from 
-        curr_1[i] = (int32_t)srcp[offs+1];
-        bottom_0[i] = (int32_t)srcp2[offs];    // next line
-        bottom_1[i] = (int32_t)srcp2[offs+1];// next line
+		curr_0[i] = (int32_t)srcp[offs];				// lo FFFF from 
+		bottom_0[i] = (int32_t)srcp2[offs];				// next line
+		if (horiz_weight[i]!=0)
+		{
+			curr_1[i] = (int32_t)srcp[offs+1];
+			bottom_1[i] = (int32_t)srcp2[offs+1];		// next line
+		}
+		else
+		{
+			curr_1[i] = curr_0[i];
+			bottom_1[i] = bottom_0[i];
+		}
       }
 
-      int32_t curr[8],bottom[8];
       // curr = curr_0 * (1 - x0/128) + curr_1 * (x0/128)
       // bottom = bottom_0 * (1 - x0/128) + bottom_1 * (x0/128)
       for (int i=0; i<8; i++)
@@ -1091,7 +1361,6 @@ static void warp_c_MT(const unsigned char *srcp8,const unsigned char *edgep8,uns
       }
 
       // result = result * (1 - vert_weight_x4/128) + x1 * (vert_weight_x4/128)
-      int32_t result[8];
       for (int i=0; i<8; i++)
       {
         const int32_t a=vert_weight[i],b=ARITH_ONE-a;
@@ -1102,12 +1371,6 @@ static void warp_c_MT(const unsigned char *srcp8,const unsigned char *edgep8,uns
       for (int i=0; i<8; i++)
         result[i] = min(max(result[i],0),pixel_max);
 
-      if (x>=wmod8)
-      {
-        for (int i=0; i<(width-wmod8); i++)
-          dst[x+i]=result[i];
-        break; // finito, no more preload
-      }
       for (int i=0; i<8; i++)
         dst[x+i]=result[i];
 
@@ -1118,7 +1381,192 @@ static void warp_c_MT(const unsigned char *srcp8,const unsigned char *edgep8,uns
         edge_right[i]=edgeptr[x+i+8+1];
       }
     }
+	
+	//Last 8 full raw
+	if (width_m8)
+    {
+      for (uint8_t i=0; i<8; i++)
+      {
+        // depth is -128..127, src is scaled up to give mul result of 30 bits
+        // we are shifting it back by 12 to get a 7-bit fractional integer arithmetic
+        horiz[i]=((edge_left[i]-edge_right[i])*depth) >> 14; // depth scaled left-right
+        vert[i]=((edgprev_ptr[beforelastx+i]-edgnext_ptr[beforelastx+i])*depthV) >> 14; // depthV scaled top-bottom
+      }
+      // guard vertical offsets
+      for (uint8_t i=0; i<8; i++)
+        vert[i]=max(min(vert[i],y_limit_max),y_limit_min);
 
+      for (uint8_t i=0; i<8; i++)
+      {
+        // remainder of the division by 128 (or 32 if it was shifted left by 2 above)
+        horiz_weight[i]=(horiz[i] << SMAGL) & 0x7F; // fractional part: for fine weighting
+        vert_weight[i]=(vert[i]  << SMAGL) & 0x7F;
+        horiz[i] >>= (7-SMAGL); // integer part: the offset itself
+        vert[i] >>= (7-SMAGL); // shift by 7 (or 5); division by 128 (or 32)
+      }
+
+      // horizontal things
+      for (uint8_t i=0; i<8; i++)
+        horiz[i] += beforelastx << SMAGL;
+
+      // guard horizontal offsets min/max
+      for (uint8_t i=0; i<8; i++)
+        horiz_offset_x1[i]=max(min(x_limit_max[i],horiz[i]),x_limit_min[i]);
+
+      // mask out out-of-screen offset weights
+      for (uint8_t i=0; i<8; i++)
+      {
+        b3[i] = x_limit_max[i]>(horiz[i]);
+        b0[i] = x_limit_min[i]>(horiz[i]);
+      }
+      for (uint8_t i=0; i<8; i++)
+        horiz_weight[i] = b3[i] ? horiz_weight[i]:0; // x7 = keep x7 where b3=true (over max)
+      for (uint8_t i=0; i<8; i++)
+        horiz_weight[i] = (!b0[i]) ? horiz_weight[i]:0; // x0 = x7 where b0=false (below min)
+      // keep horizontal weights where out of limit, otherwise zero
+
+      for (uint8_t i=0; i<8; i++)
+      {
+        // combine vertical and horizontal offset things
+        const int32_t offs=vert[i]*src_pitch+horiz_offset_x1[i]+i*SMAG;
+        // for 8 bit: _mm_insert_epi16 is split to 00FF (offs) and FF00 (offs)
+        // for 16 bit: _mm_insert_epi32 is split to 0000FFFF (offs) and FFFF0000 (offs+1)
+		curr_0[i] = (int32_t)srcp[offs];				// lo FFFF from 
+		bottom_0[i] = (int32_t)srcp2[offs];				// next line
+		if (horiz_weight[i]!=0)
+		{
+			curr_1[i] = (int32_t)srcp[offs+1];
+			bottom_1[i] = (int32_t)srcp2[offs+1];		// next line
+		}
+		else
+		{
+			curr_1[i] = curr_0[i];
+			bottom_1[i] = bottom_0[i];
+		}
+      }
+
+      // curr = curr_0 * (1 - x0/128) + curr_1 * (x0/128)
+      // bottom = bottom_0 * (1 - x0/128) + bottom_1 * (x0/128)
+      for (int i=0; i<8; i++)
+      {
+        const int32_t a=horiz_weight[i],b=ARITH_ONE-a;
+
+        curr[i] = ((curr_0[i]*b+curr_1[i]*a)+ARITH_ROUNDER) >> ARITH_BITS;
+        bottom[i] = ((bottom_0[i]*b+bottom_1[i]*a)+ARITH_ROUNDER) >> ARITH_BITS;
+      }
+
+      // result = result * (1 - vert_weight_x4/128) + x1 * (vert_weight_x4/128)
+      for (int i=0; i<8; i++)
+      {
+        const int32_t a=vert_weight[i],b=ARITH_ONE-a;
+        result[i] = ((curr[i]*b+bottom[i]*a)+ARITH_ROUNDER) >> ARITH_BITS;
+      }
+
+      // clamp pixel min max
+      for (int i=0; i<8; i++)
+        result[i] = min(max(result[i],0),pixel_max);
+
+      for (int i=0; i<8; i++)
+        dst[beforelastx+i]=result[i];
+
+      // preload for last loop
+      for (int i=0; i<(width_left8-1); i++)
+      {
+        edge_left[i]=edgeptr[lastx+i-1];
+        edge_right[i]=edgeptr[lastx+i+1];
+      }
+	  edge_left[width_left8-1]=edgeptr[lastx+width_left8-2];
+	  edge_right[width_left8-1]=edgeptr[lastx+width_left8-1];
+    }
+	
+
+	// Last pixels
+
+    for (uint8_t i=0; i<width_left8; i++)
+    {
+      // depth is -128..127, src is scaled up to give mul result of 30 bits
+      // we are shifting it back by 12 to get a 7-bit fractional integer arithmetic
+      horiz[i]=((edge_left[i]-edge_right[i])*depth) >> 14; // depth scaled left-right
+      vert[i]=((edgprev_ptr[lastx+i]-edgnext_ptr[lastx+i])*depthV) >> 14; // depthV scaled top-bottom
+    }
+    // guard vertical offsets
+    for (uint8_t i=0; i<width_left8; i++)
+      vert[i]=max(min(vert[i],y_limit_max),y_limit_min);
+
+    for (uint8_t i=0; i<width_left8; i++)
+    {
+      // remainder of the division by 128 (or 32 if it was shifted left by 2 above)
+      horiz_weight[i]=(horiz[i] << SMAGL) & 0x7F; // fractional part: for fine weighting
+      vert_weight[i]=(vert[i]  << SMAGL) & 0x7F;
+      horiz[i] >>= (7-SMAGL); // integer part: the offset itself
+      vert[i] >>= (7-SMAGL); // shift by 7 (or 5); division by 128 (or 32)
+    }
+
+    // horizontal things
+    for (uint8_t i=0; i<width_left8; i++)
+      horiz[i] += lastx << SMAGL;
+
+    // guard horizontal offsets min/max
+    for (uint8_t i=0; i<width_left8; i++)
+      horiz_offset_x1[i]=max(min(x_limit_max[i],horiz[i]),x_limit_min[i]);
+
+    // mask out out-of-screen offset weights
+    for (uint8_t i=0; i<width_left8; i++)
+    {
+      b3[i] = x_limit_max[i]>(horiz[i]);
+      b0[i] = x_limit_min[i]>(horiz[i]);
+    }
+    for (uint8_t i=0; i<width_left8; i++)
+      horiz_weight[i] = b3[i] ? horiz_weight[i]:0; // x7 = keep x7 where b3=true (over max)
+    for (uint8_t i=0; i<width_left8; i++)
+      horiz_weight[i] = (!b0[i]) ? horiz_weight[i]:0; // x0 = x7 where b0=false (below min)
+    // keep horizontal weights where out of limit, otherwise zero
+
+    for (uint8_t i=0; i<width_left8; i++)
+    {
+      // combine vertical and horizontal offset things
+      const int32_t offs=vert[i]*src_pitch+horiz_offset_x1[i]+i*SMAG;
+      // for 8 bit: _mm_insert_epi16 is split to 00FF (offs) and FF00 (offs)
+      // for 16 bit: _mm_insert_epi32 is split to 0000FFFF (offs) and FFFF0000 (offs+1)
+	  curr_0[i] = (int32_t)srcp[offs];				// lo FFFF from 
+	  bottom_0[i] = (int32_t)srcp2[offs];				// next line
+	  if (horiz_weight[i]!=0)
+	  {
+		curr_1[i] = (int32_t)srcp[offs+1];
+		bottom_1[i] = (int32_t)srcp2[offs+1];		// next line
+	  }
+	  else
+	  {
+		curr_1[i] = curr_0[i];
+		bottom_1[i] = bottom_0[i];
+	  }
+    }
+
+    // curr = curr_0 * (1 - x0/128) + curr_1 * (x0/128)
+    // bottom = bottom_0 * (1 - x0/128) + bottom_1 * (x0/128)
+    for (int i=0; i<width_left8; i++)
+    {
+      const int32_t a=horiz_weight[i],b=ARITH_ONE-a;
+
+      curr[i] = ((curr_0[i]*b+curr_1[i]*a)+ARITH_ROUNDER) >> ARITH_BITS;
+      bottom[i] = ((bottom_0[i]*b+bottom_1[i]*a)+ARITH_ROUNDER) >> ARITH_BITS;
+    }
+
+    // result = result * (1 - vert_weight_x4/128) + x1 * (vert_weight_x4/128)
+    for (int i=0; i<width_left8; i++)
+    {
+      const int32_t a=vert_weight[i],b=ARITH_ONE-a;
+      result[i] = ((curr[i]*b+bottom[i]*a)+ARITH_ROUNDER) >> ARITH_BITS;
+    }
+
+    // clamp pixel min max
+    for (int i=0; i<width_left8; i++)
+      result[i] = min(max(result[i],0),pixel_max);
+
+    for (int i=0; i<width_left8; i++)
+      dst[lastx+i]=result[i];
+
+	// Finish line
     srcp += src_pitch*SMAG; // 180313
     srcp2 += src_pitch*SMAG;// 180313
     edgeptr += edge_pitch;
@@ -1150,7 +1598,10 @@ static void warp_u16_sse41_core(const unsigned char *srcp8,const unsigned char *
 
   const int SMAG = 1 << SMAGL; // 180313
 
-  const int wmod8 = (width >> 3) << 3;
+  const int lastx = ((width-1)>>3)<<3;
+  const int last_i = width-1-lastx;
+
+  const __m128i mask_right = _mm_cmpgt_epi16(_mm_setr_epi16(0,1,2,3,4,5,6,7),_mm_set1_epi16(last_i-1));
 
   const int32_t c=width-1;
 
@@ -1204,7 +1655,17 @@ static void warp_u16_sse41_core(const unsigned char *srcp8,const unsigned char *
     edge_left = _mm_or_si128(_mm_slli_si128(edge_left,2),edge_leftmost); // shift 1 words, keep lo word
 
    // FIX 180318 PF: loadu instead of load.
-    __m128i edge_right = _mm_loadu_si128(reinterpret_cast<const __m128i *>(edgeptr+1));
+	__m128i edge_right;
+
+	if (lastx!=0)
+	{
+		edge_right = _mm_loadu_si128(reinterpret_cast<const __m128i *>(edgeptr+1));
+	}
+	else
+	{
+		edge_right = _mm_srli_si128(_mm_load_si128(reinterpret_cast<const __m128i *>(edgeptr)),2);
+		edge_right = _mm_blendv_epi8(edge_right,_mm_set1_epi16(edgeptr[c]),mask_right);
+	}
 
     // 8 pixel at a time (16 bytes, full 128 bit lane)
     // when 32 bit arithmetic needed we have to separate to low and high
@@ -1402,11 +1863,21 @@ static void warp_u16_sse41_core(const unsigned char *srcp8,const unsigned char *
       // if (x >= wmod8), store less bytes // not needed!
 
       // preload next 8 pixels
-      if (x<wmod8)
-	  { // prevent overread
-        edge_left = _mm_loadu_si128(reinterpret_cast<const __m128i *>(edgeptr+x+8-1));
-        edge_right = _mm_loadu_si128(reinterpret_cast<const __m128i *>(edgeptr+x+8+1));
-      }
+	  // prevent overread
+	  if (x<lastx)
+	  {
+		edge_left = _mm_loadu_si128(reinterpret_cast<const __m128i *>(edgeptr+x+8-1));
+
+		if ((x+8)<lastx)
+		{
+			edge_right = _mm_loadu_si128(reinterpret_cast<const __m128i *>(edgeptr+x+8+1));
+		}
+		else
+		{
+			edge_right = _mm_srli_si128(_mm_load_si128(reinterpret_cast<const __m128i *>(edgeptr+lastx)),2);
+			edge_right = _mm_blendv_epi8(edge_right,_mm_set1_epi16(edgeptr[c]),mask_right);
+		}
+	  }
     }
 
     srcp += src_pitch*SMAG;
@@ -1441,7 +1912,10 @@ static void warp_u16_sse41_core_MT(const unsigned char *srcp8,const unsigned cha
   const int32_t edge_pitch = edge_pitch_ >> 1;
   const int32_t dst_pitch = dst_pitch_ >> 1;
 
-  const int wmod8 = (width >> 3) << 3;
+  const int lastx = ((width-1)>>3)<<3;
+  const int last_i = width-1-lastx;
+
+  const __m128i mask_right = _mm_cmpgt_epi16(_mm_setr_epi16(0,1,2,3,4,5,6,7),_mm_set1_epi16(last_i-1));
 
   const int32_t c=width-1;
 
@@ -1495,7 +1969,17 @@ static void warp_u16_sse41_core_MT(const unsigned char *srcp8,const unsigned cha
     edge_left = _mm_or_si128(_mm_slli_si128(edge_left,2),edge_leftmost); // shift 1 words, keep lo word
 
    // FIX 180318 PF: loadu instead of load.
-    __m128i edge_right = _mm_loadu_si128(reinterpret_cast<const __m128i *>(edgeptr+1));
+	__m128i edge_right;
+
+	if (lastx!=0)
+	{
+		edge_right = _mm_loadu_si128(reinterpret_cast<const __m128i *>(edgeptr+1));
+	}
+	else
+	{
+		edge_right = _mm_srli_si128(_mm_load_si128(reinterpret_cast<const __m128i *>(edgeptr)),2);
+		edge_right = _mm_blendv_epi8(edge_right,_mm_set1_epi16(edgeptr[c]),mask_right);
+	}
 
     // 8 pixel at a time (16 bytes, full 128 bit lane)
     // when 32 bit arithmetic needed we have to separate to low and high
@@ -1693,11 +2177,21 @@ static void warp_u16_sse41_core_MT(const unsigned char *srcp8,const unsigned cha
       // if (x >= wmod8), store less bytes // not needed!
 
       // preload next 8 pixels
-      if (x<wmod8)
-	  { // prevent overread
-        edge_left = _mm_loadu_si128(reinterpret_cast<const __m128i *>(edgeptr+x+8-1));
-        edge_right = _mm_loadu_si128(reinterpret_cast<const __m128i *>(edgeptr+x+8+1));
-      }
+	  // prevent overread
+	  if (x<lastx)
+	  {
+		edge_left = _mm_loadu_si128(reinterpret_cast<const __m128i *>(edgeptr+x+8-1));
+
+		if ((x+8)<lastx)
+		{
+			edge_right = _mm_loadu_si128(reinterpret_cast<const __m128i *>(edgeptr+x+8+1));
+		}
+		else
+		{
+			edge_right = _mm_srli_si128(_mm_load_si128(reinterpret_cast<const __m128i *>(edgeptr+lastx)),2);
+			edge_right = _mm_blendv_epi8(edge_right,_mm_set1_epi16(edgeptr[c]),mask_right);
+		}
+	  }
     }
 
     srcp += src_pitch*SMAG;
@@ -1794,6 +2288,17 @@ static void Warp0_8(const unsigned char *psrc,const unsigned char *pedg,unsigned
 	const int32_t edg_pitch,const int32_t dst_pitch,const int32_t dst_row_size,const int32_t dst_height,int32_t depthH,
 	int32_t depthV)
 {
+	if ( (!aWarpSharp_Enable_SSE2) || (((reinterpret_cast<uintptr_t>(psrc) |
+		reinterpret_cast<uintptr_t>(pedg) | reinterpret_cast<uintptr_t>(pdst)) & 15)!=0) ||
+		(((src_pitch | edg_pitch | dst_pitch) & 15)!=0) ||
+		(dst_height==1) || (src_pitch>32767) || (src_pitch<-32768) || (dst_row_size>32760) )
+	{
+		warp_c<0,uint8_t>(psrc,pedg,pdst,src_pitch,
+			edg_pitch,dst_pitch,dst_row_size,dst_height,
+			depthH,depthV,8);
+		return;
+	}
+
 	const int32_t i = -((dst_row_size+3)&~3);
 	const int32_t c = dst_row_size + i - 1;
 
@@ -1850,6 +2355,17 @@ static void Warp0_8_MT(const unsigned char *psrc,const unsigned char *pedg,unsig
 	const int32_t edg_pitch,const int32_t dst_pitch,const int32_t dst_row_size,const int32_t dst_height,int32_t depthH,
 	int32_t depthV,const int32_t ymin,const int32_t ymax)
 {
+	if ( (!aWarpSharp_Enable_SSE2) || (((reinterpret_cast<uintptr_t>(psrc) |
+		reinterpret_cast<uintptr_t>(pedg) | reinterpret_cast<uintptr_t>(pdst)) & 15)!=0) ||
+		(((src_pitch | edg_pitch | dst_pitch) & 15)!=0) ||
+		(src_pitch>32767) || (src_pitch<-32768) || (dst_row_size>32760) )
+	{
+		warp_c_MT<0,uint8_t>(psrc,pedg,pdst,src_pitch,
+			edg_pitch,dst_pitch,dst_row_size,dst_height,
+			depthH,depthV,8,ymin,ymax);
+		return;
+	}
+
 	const int32_t i = -((dst_row_size+3)&~3);
 	const int32_t c = dst_row_size + i - 1;
 
@@ -1910,6 +2426,17 @@ static void Warp2_8(const unsigned char *psrc,const unsigned char *pedg,unsigned
 	const int32_t edg_pitch,const int32_t dst_pitch,const int32_t dst_row_size,const int32_t dst_height,int32_t depthH,
 	int32_t depthV)
 {
+	if ( (!aWarpSharp_Enable_SSE2) || (((reinterpret_cast<uintptr_t>(psrc) |
+		reinterpret_cast<uintptr_t>(pedg) | reinterpret_cast<uintptr_t>(pdst)) & 15)!=0) ||
+		(((src_pitch | edg_pitch | dst_pitch) & 15)!=0) ||
+		(dst_height==1) || (src_pitch>32767) || (src_pitch<-32768) || (dst_row_size>8184) )
+	{
+		warp_c<2,uint8_t>(psrc,pedg,pdst,src_pitch,
+			edg_pitch,dst_pitch,dst_row_size,dst_height,
+			depthH,depthV,8);
+		return;
+	}
+
 	const int32_t i = -((dst_row_size+3)&~3);
 	const int32_t c = dst_row_size + i - 1;
 	const int32_t src_pitch4=src_pitch<<2;
@@ -1967,6 +2494,17 @@ static void Warp2_8_MT(const unsigned char *psrc,const unsigned char *pedg,unsig
 	const int32_t edg_pitch,const int32_t dst_pitch,const int32_t dst_row_size,const int32_t dst_height,int32_t depthH,
 	int32_t depthV,const int32_t ymin,const int32_t ymax)
 {
+	if ( (!aWarpSharp_Enable_SSE2) || (((reinterpret_cast<uintptr_t>(psrc) |
+		reinterpret_cast<uintptr_t>(pedg) | reinterpret_cast<uintptr_t>(pdst)) & 15)!=0) ||
+		(((src_pitch | edg_pitch | dst_pitch) & 15)!=0) ||
+		(src_pitch>32767) || (src_pitch<-32768) || (dst_row_size>8184) )
+	{
+		warp_c_MT<2,uint8_t>(psrc,pedg,pdst,src_pitch,
+			edg_pitch,dst_pitch,dst_row_size,dst_height,
+			depthH,depthV,8,ymin,ymax);
+		return;
+	}
+
 	const int32_t i = -((dst_row_size+3)&~3);
 	const int32_t c = dst_row_size + i - 1;
 	const int32_t src_pitch4=src_pitch<<2;
@@ -2388,6 +2926,23 @@ static void Sobel_16_MT(const unsigned char *psrc,unsigned char *pdst,const int3
 }
 
 
+static AVS_FORCEINLINE uint8_t BlurR6_Pixel_8(const uint8_t *psrc,const int32_t x,const int32_t width)
+{
+    const int32_t wm1=width-1;
+
+    const int32_t a1=avg(psrc[max(0,x-1)],psrc[min(wm1,x+1)]);
+    const int32_t a2=avg(psrc[max(0,x-2)],psrc[min(wm1,x+2)]);
+    const int32_t a3=avg(psrc[max(0,x-3)],psrc[min(wm1,x+3)]);
+    const int32_t a4=avg(psrc[max(0,x-4)],psrc[min(wm1,x+4)]);
+    const int32_t a5=avg(psrc[max(0,x-5)],psrc[min(wm1,x+5)]);
+    const int32_t a6=avg(psrc[max(0,x-6)],psrc[min(wm1,x+6)]);
+
+    const int32_t b1=avg(avg(a2,a1),psrc[x]);
+    const int32_t b2=avg(avg(a6,a5),avg(a4,a3));
+
+    return(static_cast<uint8_t>(avg(avg(b2,b1),b1)));
+}
+
 // WxH min: 1x12, mul: 1x1 (write 16x1)
 // (6+5+4+3)/16 + (2+1)*3/16 + (0)*6/16
 static void BlurR6_8(unsigned char *const psrc,unsigned char *const ptmp,const int32_t src_pitch,const int32_t tmp_pitch,
@@ -2414,21 +2969,23 @@ static void BlurR6_8(unsigned char *const psrc,unsigned char *const ptmp,const i
 	  }
 	else
 	{
-		const int32_t offsetw1=src_row_size-16-6,offsetw2=src_row_size-16;
-		int32_t src_row_size_16w = (src_row_size-12 + 15) >> 4;
-		const bool testw=(12+(src_row_size_16w << 4))>abs(src_pitch)?true:false;
-		if (testw) src_row_size_16w--;
+		const int32_t left=min(6,src_row_size);
+		const int32_t src_row_size_16w=max(0,src_row_size-12)>>4;
+		const int32_t right=left+(src_row_size_16w<<4);
 
-		// SSE2 version
 		for (int32_t y=0; y<src_height; y++)
 		{
-			JPSDR_H_BlurR6a_8_SSE2(psrc2,ptmp2);
-			JPSDR_H_BlurR6_8_SSE2(psrc2+6,ptmp2+6,src_row_size_16w);
-			if (testw) JPSDR_H_BlurR6b_8_SSE2(psrc2+offsetw1,ptmp2+offsetw1);
-			JPSDR_H_BlurR6c_8_SSE2(psrc2+offsetw2,ptmp2+offsetw2);
+			for (int32_t x=0; x<left; x++)
+				ptmp2[x]=BlurR6_Pixel_8(psrc2,x,src_row_size);
 
-			psrc2 += src_pitch;
-			ptmp2 += tmp_pitch;
+			if (src_row_size_16w>0)
+				JPSDR_H_BlurR6_8_SSE2(psrc2+6,ptmp2+6,src_row_size_16w);
+
+			for (int32_t x=right; x<src_row_size; x++)
+				ptmp2[x]=BlurR6_Pixel_8(psrc2,x,src_row_size);
+
+			psrc2+=src_pitch;
+			ptmp2+=tmp_pitch;
 		}
 	  }
   }
@@ -2671,23 +3228,25 @@ static void BlurR6_8_MT_H(unsigned char *const psrc,unsigned char *const ptmp,co
 	  }
 	else
 	{
-		const int32_t offsetw1=src_row_size-16-6,offsetw2=src_row_size-16;
-		int32_t src_row_size_16w = (src_row_size-12 + 15) >> 4;
-		const bool testw=(12+(src_row_size_16w << 4))>abs(src_pitch)?true:false;
-		if (testw) src_row_size_16w--;
+		const int32_t left=min(6,src_row_size);
+		const int32_t src_row_size_16w=max(0,src_row_size-12)>>4;
+		const int32_t right=left+(src_row_size_16w<<4);
 
-		// SSE2 version
 		for (int32_t y=ymin; y<ymax; y++)
 		{
-			JPSDR_H_BlurR6a_8_SSE2(psrc2,ptmp2);
-			JPSDR_H_BlurR6_8_SSE2(psrc2+6,ptmp2+6,src_row_size_16w);
-			if (testw) JPSDR_H_BlurR6b_8_SSE2(psrc2+offsetw1,ptmp2+offsetw1);
-			JPSDR_H_BlurR6c_8_SSE2(psrc2+offsetw2,ptmp2+offsetw2);
+			for (int32_t x=0; x<left; x++)
+				ptmp2[x]=BlurR6_Pixel_8(psrc2,x,src_row_size);
 
-			psrc2 += src_pitch;
-			ptmp2 += tmp_pitch;
+			if (src_row_size_16w>0)
+				JPSDR_H_BlurR6_8_SSE2(psrc2+6,ptmp2+6,src_row_size_16w);
+
+			for (int32_t x=right; x<src_row_size; x++)
+				ptmp2[x]=BlurR6_Pixel_8(psrc2,x,src_row_size);
+
+			psrc2+=src_pitch;
+			ptmp2+=tmp_pitch;
 		}
-	  }
+	}
   }
   else
   {
@@ -3643,6 +4202,57 @@ static void BlurR2_16_MT_V(unsigned char *const psrc,unsigned char *const ptmp,c
 }
 
 
+template<typename pixel_t>
+static void GuideChroma_411_c(const pixel_t *py,pixel_t *pu, const int32_t src_pitch_y,const int32_t dst_pitch_uv,
+    const int32_t dst_width_uv,const int32_t ymin, const int32_t ymax,bool cplace_mpeg2_flag)
+{
+    py+=src_pitch_y*ymin;
+    pu+=dst_pitch_uv*ymin;
+
+    // MPEG-2 chroma placement
+    if (cplace_mpeg2_flag)
+    {
+        for (int32_t y=ymin; y<ymax; y++)
+        {
+            // Left edge
+            pu[0]=static_cast<pixel_t>((10*py[0]+3*py[1]+2*py[2]+py[3]+8)>>4);
+
+            for (int32_t x=1; x<dst_width_uv; x++)
+            {
+                const int32_t x_4=x<<2;
+
+                pu[x]=static_cast<pixel_t>(
+                    (py[x_4-3]+2*py[x_4-2]+3*py[x_4-1]
+                    +4*py[x_4]+3*py[x_4+1]+2*py[x_4+2]
+                    +py[x_4+3]+8)>>4);
+            }
+
+            py+=src_pitch_y;
+            pu+=dst_pitch_uv;
+        }
+    }
+
+    // MPEG-1 chroma placement
+    else
+    {
+        for (int32_t y=ymin; y<ymax; y++)
+        {
+            for (int32_t x=0; x<dst_width_uv; x++)
+            {
+                const int32_t x_4=x<<2;
+
+                pu[x]=static_cast<pixel_t>(
+                    (py[x_4]+py[x_4+1]+py[x_4+2]
+                    +py[x_4+3]+2)>>2);
+            }
+
+            py+=src_pitch_y;
+            pu+=dst_pitch_uv;
+        }
+    }
+}
+
+
 static bool GuideChroma_8(const unsigned char *py,unsigned char *pu,const int32_t src_pitch_y,const int32_t dst_pitch_uv,
 	const int32_t dst_height_uv,const int32_t dst_width_uv,const int32_t subspl_dst_h_l2,
 	const int32_t subspl_dst_v_l2,bool cplace_mpeg2_flag)
@@ -3755,6 +4365,16 @@ static bool GuideChroma_8(const unsigned char *py,unsigned char *pu,const int32_
 	return(true);
   }
 
+  // 4:1:1
+  else if ((subspl_dst_h_l2==2) && (subspl_dst_v_l2==0))
+  {
+    GuideChroma_411_c<uint8_t>(py,pu,src_pitch_y,
+		dst_pitch_uv,dst_width_uv,0,dst_height_uv,
+        cplace_mpeg2_flag);
+
+    return(true);
+  }
+
   // 4:4:4
   else if ((subspl_dst_h_l2==0) && (subspl_dst_v_l2==0))
   {
@@ -3828,7 +4448,7 @@ static bool GuideChroma_16(const unsigned char *py_,unsigned char *pu_,const int
 					const int32_t x_2=x << 1;
 					const int avg1=(py[x_2]+py[x_2+1]+1)>>1;
 					const int avg2=(py[src_pitch_y2+x_2]+py[src_pitch_y2+x_2+1]+1)>>1;
-					pu[x]= static_cast <uint16_t> (avg1 + avg2 + 1) >> 1;
+					pu[x]= static_cast <uint16_t> ((avg1 + avg2 + 1) >> 1);
 				}
 		      py += src_pitch_y;
 			  pu += dst_pitch_uv2;
@@ -3883,7 +4503,7 @@ static bool GuideChroma_16(const unsigned char *py_,unsigned char *pu_,const int
 				for (int32_t x=0; x<dst_width_uv; x++)
 				{
 					const int32_t x_2=x << 1;
-					pu[x] = static_cast <uint16_t> (py[x_2]+py[x_2]+1)>>1;
+					pu[x] = static_cast <uint16_t> ((py[x_2]+py[x_2+1]+1)>>1);
 				}
 			py += src_pitch_y2;
 			pu += dst_pitch_uv2;
@@ -3894,6 +4514,16 @@ static bool GuideChroma_16(const unsigned char *py_,unsigned char *pu_,const int
 	return(true);
   }
 
+  // 4:1:1
+  else if ((subspl_dst_h_l2==2) && (subspl_dst_v_l2==0))
+  {
+    GuideChroma_411_c<uint16_t>(py,pu,src_pitch_y2,
+		dst_pitch_uv2,dst_width_uv,0,dst_height_uv,
+        cplace_mpeg2_flag);
+
+    return(true);
+  }
+ 
   // 4:4:4
   else if ((subspl_dst_h_l2==0) && (subspl_dst_v_l2==0))
   {
@@ -4025,6 +4655,14 @@ void GuideChroma_8_MT(const unsigned char *py,unsigned char *pu,const int32_t sr
 
   }
 
+  // 4:1:1
+  else if ((subspl_dst_h_l2==2) && (subspl_dst_v_l2==0))
+  {
+    GuideChroma_411_c<uint8_t>(py,pu,src_pitch_y,
+        dst_pitch_uv,dst_width_uv,ymin,ymax,
+        cplace_mpeg2_flag);
+  }
+
   // 4:4:4
   else if ((subspl_dst_h_l2==0) && (subspl_dst_v_l2==0))
   {
@@ -4063,16 +4701,16 @@ void GuideChroma_16_MT(const unsigned char *py_,unsigned char *pu_,const int32_t
     {
       for (int32_t y=ymin; y<ymax; y++)
       {
-        int32_t c2 = py[0]+py[src_pitch_y];
+        int32_t c2 = py[0]+py[src_pitch_y2];
 
         for (int32_t x=0; x<dst_width_uv; x++)
         {
 		  const int32_t x_2=x << 1;
           const int32_t c0=c2;
-          const int32_t c1=py[x_2]+py[src_pitch_y+x_2];
+          const int32_t c1=py[x_2]+py[src_pitch_y2+x_2];
 
-          c2 = py[x_2+1]+py[src_pitch_y+x_2+1];
-          pu[x] = static_cast <unsigned char> ((c0 + (c1<<1) + c2 + 4) >> 3);
+          c2 = py[x_2+1]+py[src_pitch_y2+x_2+1];
+          pu[x] = static_cast <uint16_t> ((c0 + (c1<<1) + c2 + 4) >> 3);
         }
         py += src_pitch_y;
         pu += dst_pitch_uv2;
@@ -4102,7 +4740,7 @@ void GuideChroma_16_MT(const unsigned char *py_,unsigned char *pu_,const int32_t
 					const int avg1=(py[x_2]+py[x_2+1]+1)>>1;
 					const int avg2=(py[src_pitch_y2+x_2]+py[src_pitch_y2+x_2+1]+1)>>1;
 
-					pu[x]= static_cast <uint16_t> (avg1 + avg2 + 1) >> 1;
+					pu[x]= static_cast <uint16_t> ((avg1 + avg2 + 1) >> 1);
 				}
 				py += src_pitch_y;
 				pu += dst_pitch_uv2;
@@ -4131,7 +4769,7 @@ void GuideChroma_16_MT(const unsigned char *py_,unsigned char *pu_,const int32_t
           const int32_t c1=py[x_2];
 
           c2 = py[x_2+1];
-          pu[x] = static_cast <unsigned char> ((c0 + (c1 << 1) + c2 + 2) >> 2);
+          pu[x] = static_cast <uint16_t> ((c0 + (c1 << 1) + c2 + 2) >> 2);
         }
         py += src_pitch_y2;
         pu += dst_pitch_uv2;
@@ -4159,7 +4797,7 @@ void GuideChroma_16_MT(const unsigned char *py_,unsigned char *pu_,const int32_t
 				{
 					const int32_t x_2=x << 1;
 
-					pu[x] = static_cast <uint16_t> (py[x_2]+py[x_2]+1)>>1;
+					pu[x] = static_cast <uint16_t> ((py[x_2]+py[x_2+1]+1)>>1);
 				}
 				py += src_pitch_y2;
 				pu += dst_pitch_uv2;
@@ -4167,6 +4805,14 @@ void GuideChroma_16_MT(const unsigned char *py_,unsigned char *pu_,const int32_t
 		}
     }	// MPEG-1
 
+  }
+
+  // 4:1:1
+  else if ((subspl_dst_h_l2==2) && (subspl_dst_v_l2==0))
+  {
+    GuideChroma_411_c<uint16_t>(py,pu,src_pitch_y2,
+        dst_pitch_uv2,dst_width_uv,ymin,ymax,
+        cplace_mpeg2_flag);
   }
 
   // 4:4:4
@@ -4198,6 +4844,12 @@ static bool GuideChroma_Test(const int32_t subspl_dst_h_l2,const int32_t subspl_
   else if ((subspl_dst_h_l2==1) && (subspl_dst_v_l2==0))
   {
 	return(true);
+  }
+
+  // 4:1:1
+  else if ((subspl_dst_h_l2==2) && (subspl_dst_v_l2==0))
+  {
+    return(true);
   }
 
   // 4:4:4

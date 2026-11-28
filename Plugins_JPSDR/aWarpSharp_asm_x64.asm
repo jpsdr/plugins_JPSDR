@@ -108,24 +108,56 @@ depthV equ dword ptr[rbp+112]
     psllw xmm5,15
 	
     add	r9,rcx
-	
-	movdqa xmm7,XMMWORD ptr[rdi+rcx]
-	
+
+    pextrw r8d,xmm13,0
+    movsx r8,r8w
+
+    movq xmm7,qword ptr[rdi+rcx]
+
     movdqa xmm1,xmm7
     pslldq xmm7,7
     punpcklqdq xmm7,xmm1
-    psrldq xmm1,1
     psrldq xmm7,7
-	psrlw xmm5,8
-	
-JPSDR_Warp0_8_SSE2_1:
-	movq xmm4,qword ptr[rdi+r10]
-	movq xmm2,qword ptr[rdi+r9]
+    psrlw xmm5,8
+
+JPSDR_Warp0_8_SSE2_LoadRight:
     pxor xmm3,xmm3
-    punpcklbw xmm7,xmm3
+    lea rax,[rdi+7]
+    cmp rax,r8
+    jge short JPSDR_Warp0_8_SSE2_LastRight
+
+    movq xmm1,qword ptr[rdi+rcx+1]
     punpcklbw xmm1,xmm3
+    jmp short JPSDR_Warp0_8_SSE2_1
+
+JPSDR_Warp0_8_SSE2_LastRight:
+    movq xmm1,qword ptr[rdi+rcx]
+    psrldq xmm1,1
+    punpcklbw xmm1,xmm3
+
+    movd xmm0,edi
+    pshufd xmm0,xmm0,0
+    packssdw xmm0,xmm0
+
+    movdqa xmm2,xmm13
+    pcmpgtw xmm2,xmm0
+
+    movzx eax,byte ptr[rcx+r8]
+    movd xmm0,eax
+    pshuflw xmm0,xmm0,0
+    pshufd xmm0,xmm0,0
+
+    pand xmm1,xmm2
+    pandn xmm2,xmm0
+    por xmm1,xmm2
+
+JPSDR_Warp0_8_SSE2_1:
+    movq xmm4,qword ptr[rdi+r10]
+    movq xmm2,qword ptr[rdi+r9]
+    punpcklbw xmm7,xmm3
     punpcklbw xmm4,xmm3
     punpcklbw xmm2,xmm3
+
     psubw xmm7,xmm1
     psubw xmm4,xmm2
     psllw xmm7,7
@@ -232,23 +264,22 @@ JPSDR_Warp0_8_SSE2_1:
     psraw xmm1,7
 
     psubw xmm6,xmm4
-    movdqu xmm7,XMMWORD ptr[rdi+rcx+7]
     pmullw xmm1,xmm4
     pmullw xmm3,xmm6
     paddw xmm3,xmm1
-    movdqa xmm1,xmm7
-	
-    paddw xmm3,xmm5  ;0040
-    psrldq xmm1,2
+
+    paddw xmm3,xmm5
     psraw xmm3,7
     paddw xmm5,xmm5
     packuswb xmm3,xmm3
     add rdi,8
     jg short JPSDR_Warp0_8_SSE2_2
     movq qword ptr[rdi+r11],xmm3
-    jnz JPSDR_Warp0_8_SSE2_1
-    jmp short JPSDR_Warp0_8_SSE2_Fin
-	
+    jz short JPSDR_Warp0_8_SSE2_Fin
+
+    movq xmm7,qword ptr[rdi+rcx-1]
+    jmp JPSDR_Warp0_8_SSE2_LoadRight
+
 JPSDR_Warp0_8_SSE2_2:
 	movd dword ptr[rdi+r11],xmm3
 	
@@ -355,23 +386,49 @@ depthV equ dword ptr[rbp+112]
     vpsllw xmm5,xmm5,15
 	
     add	r9,rcx
-	
-	vmovdqa xmm7,XMMWORD ptr[rdi+rcx]
 
-    vmovdqa xmm1,xmm7
-    vpslldq xmm7,xmm7,7
+    vpextrw r8d,xmm13,0
+    movsx r8,r8w
+
+    vmovq xmm1,qword ptr[rdi+rcx]
+    vpslldq xmm7,xmm1,7
     vpunpcklqdq xmm7,xmm7,xmm1
-    vpsrldq xmm1,xmm1,1
     vpsrldq xmm7,xmm7,7
-	
+
+JPSDR_Warp0_8_AVX_LoadRight:
+    vpxor xmm0,xmm0,xmm0
+    lea rax,[rdi+7]
+    cmp rax,r8
+    jge short JPSDR_Warp0_8_AVX_LastRight
+
+    vmovq xmm1,qword ptr[rdi+rcx+1]
+    vpunpcklbw xmm1,xmm1,xmm0
+    jmp short JPSDR_Warp0_8_AVX_1
+
+JPSDR_Warp0_8_AVX_LastRight:
+    vmovq xmm1,qword ptr[rdi+rcx]
+    vpsrldq xmm1,xmm1,1
+    vpunpcklbw xmm1,xmm1,xmm0
+
+    vmovd xmm2,edi
+    vpshufd xmm2,xmm2,0
+    vpackssdw xmm2,xmm2,xmm2
+    vpcmpgtw xmm2,xmm13,xmm2
+
+    movzx eax,byte ptr[rcx+r8]
+    vmovd xmm3,eax
+    vpshuflw xmm3,xmm3,0
+    vpshufd xmm3,xmm3,0
+
+    vpblendvb xmm1,xmm3,xmm1,xmm2
+
 JPSDR_Warp0_8_AVX_1:
     vmovq xmm4,qword ptr[rdi+r10]
     vmovq xmm2,qword ptr[rdi+r9]
-    vpxor xmm0,xmm0,xmm0
     vpunpcklbw xmm7,xmm7,xmm0
-    vpunpcklbw xmm1,xmm1,xmm0
     vpunpcklbw xmm4,xmm4,xmm0
     vpunpcklbw xmm2,xmm2,xmm0
+
     vpsubw xmm7,xmm7,xmm1
     vpsubw xmm4,xmm4,xmm2
     vpsllw xmm7,xmm7,7
@@ -462,34 +519,34 @@ JPSDR_Warp0_8_AVX_1:
     vpinsrw xmm4,xmm4,word ptr[rax+rdx+7],7
 
     vpcmpeqw xmm2,xmm2,xmm2
-    vmovdqu xmm7,XMMWORD ptr[rdi+rcx+7]
     vpmaddubsw xmm3,xmm3,xmm0
     vpmaddubsw xmm4,xmm4,xmm0
-	
+
     vpsignw xmm3,xmm3,xmm2
     vpsignw xmm4,xmm4,xmm2
-    vpaddw xmm3,xmm3,xmm5 ; 0040
-    vpaddw xmm4,xmm4,xmm5 ; 0040
+    vpaddw xmm3,xmm3,xmm5 ;0040
+    vpaddw xmm4,xmm4,xmm5 ;0040
     vpsraw xmm3,xmm3,7
     vpsraw xmm4,xmm4,7
     vpackuswb xmm3,xmm3,xmm3
     vpackuswb xmm4,xmm4,xmm4
     vpunpcklbw xmm3,xmm3,xmm4
     vpmaddubsw xmm3,xmm3,xmm1
-    vpalignr xmm1,xmm1,xmm7,2
     vpsignw xmm3,xmm3,xmm2
 
-    vpaddw xmm3,xmm3,xmm5 ; 0040
+    vpaddw xmm3,xmm3,xmm5 ;0040
     vpsraw xmm3,xmm3,7
     vpsllw xmm5,xmm5,9
     vpackuswb xmm3,xmm3,xmm3
-		  
+
     add rdi,8
     jg short JPSDR_Warp0_8_AVX_2
     vmovq qword ptr[rdi+r11],xmm3
-    jnz JPSDR_Warp0_8_AVX_1
-    jmp short JPSDR_Warp0_8_AVX_Fin
-	
+    jz short JPSDR_Warp0_8_AVX_Fin
+
+    vmovq xmm7,qword ptr[rdi+rcx-1]
+    jmp JPSDR_Warp0_8_AVX_LoadRight
+
 JPSDR_Warp0_8_AVX_2:
 	vmovd dword ptr[rdi+r11],xmm3
 	
@@ -596,24 +653,58 @@ depthV equ dword ptr[rbp+112]
     psllw xmm5,15
 	
     add	r9,rcx
-	
-	movdqa xmm7,XMMWORD ptr[rdi+rcx]
-	
+
+    pextrw r8d,xmm13,0
+    movsx r8,r8w
+    sar r8,2
+
+    movq xmm7,qword ptr[rdi+rcx]
+
     movdqa xmm1,xmm7
     pslldq xmm7,7
     punpcklqdq xmm7,xmm1
-    psrldq xmm1,1
     psrldq xmm7,7
-	psrlw xmm5,8
+    psrlw xmm5,8
+
+JPSDR_Warp2_8_SSE2_LoadRight:
+    pxor xmm3,xmm3
+    lea rax,[rdi+7]
+    cmp rax,r8
+    jge short JPSDR_Warp2_8_SSE2_LastRight
+
+    movq xmm1,qword ptr[rdi+rcx+1]
+    punpcklbw xmm1,xmm3
+    jmp short JPSDR_Warp2_8_SSE2_1
+
+JPSDR_Warp2_8_SSE2_LastRight:
+    movq xmm1,qword ptr[rdi+rcx]
+    psrldq xmm1,1
+    punpcklbw xmm1,xmm3
+
+    movd xmm0,edi
+    pshufd xmm0,xmm0,0
+    pslld xmm0,2
+    packssdw xmm0,xmm0
+
+    movdqa xmm2,xmm13
+    pcmpgtw xmm2,xmm0
+
+    movzx eax,byte ptr[rcx+r8]
+    movd xmm0,eax
+    pshuflw xmm0,xmm0,0
+    pshufd xmm0,xmm0,0
+
+    pand xmm1,xmm2
+    pandn xmm2,xmm0
+    por xmm1,xmm2
 
 JPSDR_Warp2_8_SSE2_1:
-	movq xmm4,qword ptr[rdi+r10]
-	movq xmm2,qword ptr[rdi+r9]
-    pxor xmm3,xmm3
+    movq xmm4,qword ptr[rdi+r10]
+    movq xmm2,qword ptr[rdi+r9]
     punpcklbw xmm7,xmm3
-    punpcklbw xmm1,xmm3
     punpcklbw xmm4,xmm3
     punpcklbw xmm2,xmm3
+
     psubw xmm7,xmm1
     psubw xmm4,xmm2
     psllw xmm7,7
@@ -725,22 +816,21 @@ JPSDR_Warp2_8_SSE2_1:
     psraw xmm1,7
 
     psubw xmm6,xmm4
-    movdqu xmm7,XMMWORD ptr[rdi+rcx+7]
     pmullw xmm1,xmm4
     pmullw xmm3,xmm6
     paddw xmm3,xmm1
-    movdqa xmm1,xmm7
-	
-    paddw xmm3,xmm5  ;0040
-    psrldq xmm1,2
+
+    paddw xmm3,xmm5 ;0040
     psraw xmm3,7
     paddw xmm5,xmm5
     packuswb xmm3,xmm3
     add rdi,8
     jg short JPSDR_Warp2_8_SSE2_2
     movq qword ptr[rdi+r11],xmm3
-    jnz JPSDR_Warp2_8_SSE2_1
-    jmp short JPSDR_Warp2_8_SSE2_Fin
+    jz short JPSDR_Warp2_8_SSE2_Fin
+
+    movq xmm7,qword ptr[rdi+rcx-1]
+    jmp JPSDR_Warp2_8_SSE2_LoadRight
 	
 JPSDR_Warp2_8_SSE2_2:
 	movd dword ptr[rdi+r11],xmm3
@@ -848,23 +938,51 @@ depthV equ dword ptr[rbp+112]
     vpsllw xmm5,xmm5,15
 	
     add	r9,rcx
-	
-	vmovdqa xmm7,XMMWORD ptr[rdi+rcx]
 
-    vmovdqa xmm1,xmm7
-    vpslldq xmm7,xmm7,7
+    vpextrw r8d,xmm13,0
+    movsx r8,r8w
+    sar r8,2
+
+    vmovq xmm1,qword ptr[rdi+rcx]
+    vpslldq xmm7,xmm1,7
     vpunpcklqdq xmm7,xmm7,xmm1
-    vpsrldq xmm1,xmm1,1
     vpsrldq xmm7,xmm7,7
-	
+
+JPSDR_Warp2_8_AVX_LoadRight:
+    vpxor xmm0,xmm0,xmm0
+    lea rax,[rdi+7]
+    cmp rax,r8
+    jge short JPSDR_Warp2_8_AVX_LastRight
+
+    vmovq xmm1,qword ptr[rdi+rcx+1]
+    vpunpcklbw xmm1,xmm1,xmm0
+    jmp short JPSDR_Warp2_8_AVX_1
+
+JPSDR_Warp2_8_AVX_LastRight:
+    vmovq xmm1,qword ptr[rdi+rcx]
+    vpsrldq xmm1,xmm1,1
+    vpunpcklbw xmm1,xmm1,xmm0
+
+    vmovd xmm2,edi
+    vpshufd xmm2,xmm2,0
+    vpslld xmm2,xmm2,2
+    vpackssdw xmm2,xmm2,xmm2
+    vpcmpgtw xmm2,xmm13,xmm2
+
+    movzx eax,byte ptr[rcx+r8]
+    vmovd xmm3,eax
+    vpshuflw xmm3,xmm3,0
+    vpshufd xmm3,xmm3,0
+
+    vpblendvb xmm1,xmm3,xmm1,xmm2
+
 JPSDR_Warp2_8_AVX_1:
     vmovq xmm4,qword ptr[rdi+r10]
     vmovq xmm2,qword ptr[rdi+r9]
-    vpxor xmm0,xmm0,xmm0
     vpunpcklbw xmm7,xmm7,xmm0
-    vpunpcklbw xmm1,xmm1,xmm0
     vpunpcklbw xmm4,xmm4,xmm0
     vpunpcklbw xmm2,xmm2,xmm0
+
     vpsubw xmm7,xmm7,xmm1
     vpsubw xmm4,xmm4,xmm2
     vpsllw xmm7,xmm7,7
@@ -960,33 +1078,33 @@ JPSDR_Warp2_8_AVX_1:
     vpinsrw xmm4,xmm4,word ptr[rax+rdx+7*4],7
 
     vpcmpeqw xmm2,xmm2,xmm2
-    vmovdqu xmm7,XMMWORD ptr[rdi+rcx+7]
     vpmaddubsw xmm3,xmm3,xmm0
     vpmaddubsw xmm4,xmm4,xmm0
-	
+
     vpsignw xmm3,xmm3,xmm2
     vpsignw xmm4,xmm4,xmm2
-    vpaddw xmm3,xmm3,xmm5 ; 0040
-    vpaddw xmm4,xmm4,xmm5 ; 0040
+    vpaddw xmm3,xmm3,xmm5 ;0040
+    vpaddw xmm4,xmm4,xmm5 ;0040
     vpsraw xmm3,xmm3,7
     vpsraw xmm4,xmm4,7
     vpackuswb xmm3,xmm3,xmm3
     vpackuswb xmm4,xmm4,xmm4
     vpunpcklbw xmm3,xmm3,xmm4
     vpmaddubsw xmm3,xmm3,xmm1
-    vpalignr xmm1,xmm1,xmm7,2
     vpsignw xmm3,xmm3,xmm2
 
-    vpaddw xmm3,xmm3,xmm5 ; 0040
+    vpaddw xmm3,xmm3,xmm5 ;0040
     vpsraw xmm3,xmm3,7
     vpsllw xmm5,xmm5,9
     vpackuswb xmm3,xmm3,xmm3
-		  
+
     add rdi,8
     jg short JPSDR_Warp2_8_AVX_2
     vmovq qword ptr[rdi+r11],xmm3
-    jnz JPSDR_Warp2_8_AVX_1
-    jmp short JPSDR_Warp2_8_AVX_Fin
+    jz short JPSDR_Warp2_8_AVX_Fin
+
+    vmovq xmm7,qword ptr[rdi+rcx-1]
+    jmp JPSDR_Warp2_8_AVX_LoadRight
 	
 JPSDR_Warp2_8_AVX_2:
 	vmovd dword ptr[rdi+r11],xmm3
@@ -2794,6 +2912,18 @@ JPSDR_H_BlurR6_8_AVX proc public frame
     
 JPSDR_H_BlurR6_8_AVX_1:
     vmovdqa xmm7,XMMWORD ptr[rax]
+
+    cmp rcx,6
+    jae short JPSDR_H_BlurR6_8_AVX_1_Compute
+
+    lea r8d,[ecx-1]
+    vpxor xmm0,xmm0,xmm0
+    vmovd xmm1,r8d
+    vpshufb xmm1,xmm1,xmm0
+    vpminub xmm1,xmm1,XMMWORD ptr[r9]
+    vpshufb xmm7,xmm7,xmm1
+
+JPSDR_H_BlurR6_8_AVX_1_Compute:
     vpalignr xmm0,xmm6,xmm5,10
     vpalignr xmm2,xmm7,xmm6,6
     vpavgb xmm0,xmm0,xmm2
@@ -2833,7 +2963,7 @@ JPSDR_H_BlurR6_8_AVX_2:
     vpshufb xmm1,xmm1,xmm0
     vpminub xmm1,xmm1,XMMWORD ptr[r9]	;0x0F0E..00
     vpshufb xmm6,xmm6,xmm1
-    vpsrldq xmm7,xmm7,15
+    vpsrldq xmm7,xmm6,15
     vpshufb xmm7,xmm7,xmm0
     vpalignr xmm0,xmm6,xmm5,10
     vpalignr xmm2,xmm7,xmm6,6
